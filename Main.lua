@@ -1,4 +1,4 @@
--- YANZ HUB | V0.0.1 - BETA
+-- YANZ HUB | V0.0.2 - BETA
 -- Roblox Lua Script for Fisck Game
 -- Designed for Ronix Executor on Windows
 -- Created by xAI
@@ -58,7 +58,7 @@ local TitleLabel = Instance.new("TextLabel")
 TitleLabel.Size = UDim2.new(1, -50, 1, 0)
 TitleLabel.Position = UDim2.new(0, 15, 0, 0)
 TitleLabel.BackgroundTransparency = 1
-TitleLabel.Text = "YANZ HUB | V0.0.1 - BETA"
+TitleLabel.Text = "YANZ HUB | V0.0.2 - BETA"
 TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 TitleLabel.TextSize = 20
 TitleLabel.Font = Enum.Font.GothamBold
@@ -190,6 +190,68 @@ local function createButton(parent, text, position, callback)
     end)
 end
 
+-- Function to Create Dropdown
+local function createDropdown(parent, text, position, items, callback)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Size = UDim2.new(1, -10, 0, 35)
+    DropdownFrame.Position = UDim2.new(0, 5, 0, position)
+    DropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    local DropdownCorner = Instance.new("UICorner")
+    DropdownCorner.CornerRadius = UDim.new(0, 6)
+    DropdownCorner.Parent = DropdownFrame
+    DropdownFrame.Parent = parent
+    
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Size = UDim2.new(1, 0, 1, 0)
+    DropdownButton.BackgroundTransparency = 1
+    DropdownButton.Text = text .. ": Select"
+    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownButton.TextSize = 14
+    DropdownButton.Font = Enum.Font.Gotham
+    DropdownButton.Parent = DropdownFrame
+    
+    local DropdownList = Instance.new("Frame")
+    DropdownList.Size = UDim2.new(1, 0, 0, #items * 35)
+    DropdownList.Position = UDim2.new(0, 0, 1, 5)
+    DropdownList.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    DropdownList.Visible = false
+    local ListCorner = Instance.new("UICorner")
+    ListCorner.CornerRadius = UDim.new(0, 6)
+    ListCorner.Parent = DropdownList
+    DropdownList.Parent = DropdownFrame
+    
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.FillDirection = Enum.FillDirection.Vertical
+    ListLayout.Padding = UDim.new(0, 5)
+    ListLayout.Parent = DropdownList
+    
+    for i, item in ipairs(items) do
+        local ItemButton = Instance.new("TextButton")
+        ItemButton.Size = UDim2.new(1, 0, 0, 30)
+        ItemButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        ItemButton.Text = item
+        ItemButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ItemButton.TextSize = 14
+        ItemButton.Font = Enum.Font.Gotham
+        local ItemCorner = Instance.new("UICorner")
+        ItemCorner.CornerRadius = UDim.new(0, 6)
+        ItemCorner.Parent = ItemButton
+        ItemButton.Parent = DropdownList
+        ItemButton.MouseButton1Click:Connect(function()
+            DropdownButton.Text = text .. ": " .. item
+            DropdownList.Visible = false
+            callback(item)
+        end)
+    end
+    
+    DropdownButton.MouseButton1Click:Connect(function()
+        DropdownList.Visible = not DropdownList.Visible
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+        local tween = TweenService:Create(DropdownFrame, tweenInfo, {BackgroundColor3 = DropdownList.Visible and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(40, 40, 40)})
+        tween:Play()
+    end)
+end
+
 -- Enhanced Pixel Scan Function
 local function isColorMatch(pixelColor, targetColor, tolerance)
     local r, g, b = pixelColor.r, pixelColor.g, pixelColor.b
@@ -197,117 +259,149 @@ local function isColorMatch(pixelColor, targetColor, tolerance)
     return math.abs(r - tr) <= tolerance and math.abs(g - tg) <= tolerance and math.abs(b - tb) <= tolerance
 end
 
--- Auto Farm Fish with Hold Click
+-- Auto Farm Fish with Hold Click and x2.0 Luck Boost Detection
 local AutoFarmFishToggle = false
 local function pixelScanForFishBar()
     local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
-    local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Adjust based on game
-    local perfectColor = Color3.fromRGB(0, 255, 0) -- Green (Perfect)
-    local goodColor = Color3.fromRGB(255, 255, 0) -- Yellow (Good)
-    local okColor = Color3.fromRGB(255, 0, 0) -- Red (OK)
+    local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Adjust for green bar
+    local chargeRegion = {x1 = 850, y1 = 380, x2 = 950, y2 = 400} -- Adjust for "CHARGE" text
+    local greenColor = Color3.fromRGB(0, 255, 0) -- Green bar
+    local luckBoostColor = Color3.fromRGB(0, 200, 0) -- x2.0 Luck Boost (darker green, adjust)
+    local chargeColor = Color3.fromRGB(255, 255, 255) -- "CHARGE" text (white, adjust)
     local tolerance = 10 -- RGB tolerance
     
     while AutoFarmFishToggle do
-        local barDetected = false
-        local detectedState = nil
-        for x = barRegion.x1, barRegion.x2, 3 do
-            for y = barRegion.y1, barRegion.y2, 3 do
+        -- Check for "CHARGE" text
+        local chargeDetected = false
+        for x = chargeRegion.x1, chargeRegion.x2, 5 do
+            for y = chargeRegion.y1, chargeRegion.y2, 5 do
                 local pixelColor = syn.getpixelcolor(x, y)
-                if isColorMatch(pixelColor, perfectColor, tolerance) then
-                    barDetected = true
-                    detectedState = "Perfect"
-                    break
-                elseif isColorMatch(pixelColor, goodColor, tolerance) then
-                    barDetected = true
-                    detectedState = "Good"
-                    break
-                elseif isColorMatch(pixelColor, okColor, tolerance) then
-                    barDetected = true
-                    detectedState = "OK"
+                if isColorMatch(pixelColor, chargeColor, tolerance) then
+                    chargeDetected = true
                     break
                 end
             end
-            if barDetected then break end
+            if chargeDetected then break end
         end
         
-        if barDetected then
-            syn.mouse_press(1) -- Start holding click
-            print("Detected " .. detectedState .. " bar, holding click!")
-            -- Hold until bar disappears
-            while AutoFarmFishToggle do
-                local stillDetected = false
-                for x = barRegion.x1, barRegion.x2, 3 do
-                    for y = barRegion.y1, barRegion.y2, 3 do
-                        local pixelColor = syn.getpixelcolor(x, y)
-                        if isColorMatch(pixelColor, perfectColor, tolerance) or
-                           isColorMatch(pixelColor, goodColor, tolerance) or
-                           isColorMatch(pixelColor, okColor, tolerance) then
-                            stillDetected = true
-                            break
-                        end
+        if chargeDetected then
+            -- Check for green bar
+            local barDetected = false
+            local luckBoostDetected = false
+            for x = barRegion.x1, barRegion.x2, 3 do
+                for y = barRegion.y1, barRegion.y2, 3 do
+                    local pixelColor = syn.getpixelcolor(x, y)
+                    if isColorMatch(pixelColor, luckBoostColor, tolerance) and x >= barRegion.x2 - 10 then -- Rightmost part for x2.0 Luck Boost
+                        luckBoostDetected = true
+                        break
+                    elseif isColorMatch(pixelColor, greenColor, tolerance) then
+                        barDetected = true
+                        break
                     end
-                    if stillDetected then break end
                 end
-                if not stillDetected then break end
-                wait(0.01)
+                if luckBoostDetected or barDetected then break end
             end
-            syn.mouse_release(1) -- Release click
-            print("Bar disappeared, released click!")
+            
+            if barDetected and not luckBoostDetected then
+                syn.mouse_press(1) -- Start holding click
+                print("Detected green bar with CHARGE, holding click!")
+                -- Hold until x2.0 Luck Boost or bar disappears
+                while AutoFarmFishToggle do
+                    local stillBar = false
+                    luckBoostDetected = false
+                    for x = barRegion.x1, barRegion.x2, 3 do
+                        for y = barRegion.y1, barRegion.y2, 3 do
+                            local pixelColor = syn.getpixelcolor(x, y)
+                            if isColorMatch(pixelColor, luckBoostColor, tolerance) and x >= barRegion.x2 - 10 then
+                                luckBoostDetected = true
+                                break
+                            elseif isColorMatch(pixelColor, greenColor, tolerance) then
+                                stillBar = true
+                                break
+                            end
+                        end
+                        if luckBoostDetected or stillBar then break end
+                    end
+                    
+                    if luckBoostDetected then
+                        syn.mouse_release(1)
+                        print("Detected x2.0 Luck Boost, released click!")
+                        break
+                    elseif not stillBar then
+                        syn.mouse_release(1)
+                        print("Green bar disappeared, released click!")
+                        break
+                    end
+                    wait(0.005) -- High precision check
+                end
+            end
         end
         
         wait(math.random(0.01, 0.03))
     end
 end
 
--- Auto Click Fast with Text Detection
+-- Auto Click Fast with Professional Text Detection
 local AutoClickFastToggle = false
 local function autoClickFast()
-    local textRegion = {x1 = 900, y1 = 100, x2 = 1000, y2 = 150} -- Adjust for "Click Fast! (000)" text
+    local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
+    local textRegion = {x1 = 850, y1 = 430, x2 = 1050, y2 = 450} -- Adjust for "Click Fast! (000)" below bar
     local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Bar region for new bar detection
-    local perfectColor = Color3.fromRGB(0, 255, 0)
-    local goodColor = Color3.fromRGB(255, 255, 0)
-    local okColor = Color3.fromRGB(255, 0, 0)
+    local clickFastColor = Color3.fromRGB(255, 255, 255) -- White text (adjust)
+    local greenColor = Color3.fromRGB(0, 255, 0) -- Green bar
+    local chargeColor = Color3.fromRGB(255, 255, 255) -- CHARGE text
     local tolerance = 10
-    local clickFastColor = Color3.fromRGB(255, 255, 255) -- White text (adjust based on game)
+    local clickPosition = {x = 960, y = 440} -- Center of bar (adjust)
     
     while AutoClickFastToggle do
-        -- Check for "Click Fast! (000)" text (simulated via pixel color)
+        -- Check for "Click Fast! (000)" text
         local textDetected = false
-        for x = textRegion.x1, textRegion.x2, 5 do
-            for y = textRegion.y1, textRegion.y2, 5 do
+        local pixelCount = 0
+        local threshold = 50 -- Number of matching pixels to confirm text
+        for x = textRegion.x1, textRegion.x2, 2 do -- High precision scan
+            for y = textRegion.y1, textRegion.y2, 2 do
                 local pixelColor = syn.getpixelcolor(x, y)
                 if isColorMatch(pixelColor, clickFastColor, tolerance) then
-                    textDetected = true
-                    break
+                    pixelCount = pixelCount + 1
+                    if pixelCount >= threshold then
+                        textDetected = true
+                        break
+                    end
                 end
             end
             if textDetected then break end
         end
         
         if textDetected then
-            print("Detected 'Click Fast! (000)', starting fast click!")
+            print("Detected 'Click Fast! (000)', clicking at center!")
+            syn.mouse_click(clickPosition.x, clickPosition.y, 1)
+            wait(0.01)
+            
+            -- Monitor text and new bar
             while AutoClickFastToggle do
-                -- Check if text is still present
                 local stillText = false
-                for x = textRegion.x1, textRegion.x2, 5 do
-                    for y = textRegion.y1, textRegion.y2, 5 do
+                pixelCount = 0
+                for x = textRegion.x1, textRegion.x2, 2 do
+                    for y = textRegion.y1, textRegion.y2, 2 do
                         local pixelColor = syn.getpixelcolor(x, y)
                         if isColorMatch(pixelColor, clickFastColor, tolerance) then
-                            stillText = true
-                            break
+                            pixelCount = pixelCount + 1
+                            if pixelCount >= threshold then
+                                stillText = true
+                                break
+                            end
                         end
                     end
                     if stillText then break end
                 end
                 
-                -- Check for new bar (Perfect/Good/OK)
+                -- Check for new bar (green or CHARGE)
                 local newBarDetected = false
                 for x = barRegion.x1, barRegion.x2, 3 do
                     for y = barRegion.y1, barRegion.y2, 3 do
                         local pixelColor = syn.getpixelcolor(x, y)
-                        if isColorMatch(pixelColor, perfectColor, tolerance) or
-                           isColorMatch(pixelColor, goodColor, tolerance) or
-                           isColorMatch(pixelColor, okColor, tolerance) then
+                        if isColorMatch(pixelColor, greenColor, tolerance) or
+                           isColorMatch(pixelColor, chargeColor, tolerance) then
                             newBarDetected = true
                             break
                         end
@@ -320,7 +414,7 @@ local function autoClickFast()
                     break
                 end
                 
-                syn.mouse_click(960, 100, 1) -- Click at top center
+                syn.mouse_click(clickPosition.x, clickPosition.y, 1)
                 wait(0.01)
             end
         end
@@ -401,11 +495,11 @@ local AutoSellToggle = false
 local AutoSellAllToggle = false
 local function autoSell()
     local sellTextRegion = {x1 = 850, y1 = 500, x2 = 1050, y2 = 550} -- Adjust for "Would you like to sell..." text
-    local sellTextColor = Color3.fromRGB(255, 255, 255) -- White text (adjust based on game)
+    local sellTextColor = Color3.fromRGB(255, 255, 255) -- White text (adjust)
     local tolerance = 10
     
     while AutoSellToggle or AutoSellAllToggle do
-        -- Check for NPC Alex (simulated via text detection)
+        -- Check for "Would you like to sell..." text
         local textDetected = false
         for x = sellTextRegion.x1, sellTextRegion.x2, 5 do
             for y = sellTextRegion.y1, sellTextRegion.y2, 5 do
@@ -420,11 +514,11 @@ local function autoSell()
         
         if textDetected then
             print("Detected 'Would you like to sell...' with NPC Alex, pressing Q and Yes!")
-            syn.keyboard_press(Enum.KeyCode.Q) -- Press Q to interact
+            syn.keyboard_press(Enum.KeyCode.Q)
             wait(0.1)
             syn.keyboard_release(Enum.KeyCode.Q)
-            wait(0.5) -- Wait for dialog
-            syn.mouse_click(950, 600, 1) -- Click Yes button (adjust coordinates)
+            wait(0.5)
+            syn.mouse_click(950, 600, 1) -- Click Yes button
         end
         
         wait(math.random(0.5, 1.0))
@@ -549,4 +643,4 @@ MainFrame.InputEnded:Connect(function(input)
 end)
 
 -- Initialize GUI
-print("YANZ HUB | V0.0.1 - BETA Loaded for Ronix Executor!")
+print("YANZ HUB | V0.0.2 - BETA Loaded for Ronix Executor!")

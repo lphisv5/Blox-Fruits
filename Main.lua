@@ -1,7 +1,6 @@
 -- YANZ HUB | V0.0.1 - BETA
 -- Roblox Lua Script for Fisck Game
 -- Designed for Ronix Executor on Windows
--- Created by xAI
 
 -- Services
 local UserInputService = game:GetService("UserInputService")
@@ -259,6 +258,7 @@ local function isColorMatch(pixelColor, targetColor, tolerance)
     return math.abs(r - tr) <= tolerance and math.abs(g - tg) <= tolerance and math.abs(b - tb) <= tolerance
 end
 
+-- Auto Farm Fish with Hold Click
 local AutoFarmFishToggle = false
 local function pixelScanForFishBar()
     local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
@@ -292,10 +292,83 @@ local function pixelScanForFishBar()
         end
         
         if detected then
-            syn.mouse_press(1)
-            wait(0.01)
-            syn.mouse_release(1)
-            print("Detected " .. detectedState .. " bar, clicking!")
+            syn.mouse_press(1) -- Hold click
+            while detected and AutoFarmFishToggle do
+                -- Continue holding while bar is detected
+                local stillDetected = false
+                for x = barRegion.x1, barRegion.x2, 3 do
+                    for y = barRegion.y1, barRegion.y2, 3 do
+                        local pixelColor = syn.getpixelcolor(x, y)
+                        if isColorMatch(pixelColor, perfectColor, tolerance) or
+                           isColorMatch(pixelColor, goodColor, tolerance) or
+                           isColorMatch(pixelColor, okColor, tolerance) then
+                            stillDetected = true
+                            break
+                        end
+                    end
+                    if stillDetected then break end
+                end
+                if not stillDetected then
+                    syn.mouse_release(1) -- Release when bar disappears
+                    print("Released click after " .. detectedState .. " bar disappeared!")
+                    break
+                end
+                wait(0.01)
+            end
+            print("Detected " .. detectedState .. " bar, held click!")
+        end
+        
+        wait(math.random(0.01, 0.03))
+    end
+end
+
+-- Auto Click Fast
+local AutoClickFastToggle = false
+local function autoClickFast()
+    local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
+    local clickFastRegion = {x1 = 900, y1 = 200, x2 = 1000, y2 = 220} -- Adjust for "Click Fast! (000)" text
+    local clickFastColor = Color3.fromRGB(255, 255, 255) -- Adjust based on text color
+    local tolerance = 10
+    
+    while AutoClickFastToggle do
+        local textDetected = false
+        local barDetected = false
+        -- Check for "Click Fast! (000)" text
+        for x = clickFastRegion.x1, clickFastRegion.x2, 3 do
+            for y = clickFastRegion.y1, clickFastRegion.y2, 3 do
+                local pixelColor = syn.getpixelcolor(x, y)
+                if isColorMatch(pixelColor, clickFastColor, tolerance) then
+                    textDetected = true
+                    break
+                end
+            end
+            if textDetected then break end
+        end
+        
+        -- Check for any fish bar (Perfect/Good/OK)
+        local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Same as Auto Farm Fish
+        local perfectColor = Color3.fromRGB(0, 255, 0)
+        local goodColor = Color3.fromRGB(255, 255, 0)
+        local okColor = Color3.fromRGB(255, 0, 0)
+        for x = barRegion.x1, barRegion.x2, 3 do
+            for y = barRegion.y1, barRegion.y2, 3 do
+                local pixelColor = syn.getpixelcolor(x, y)
+                if isColorMatch(pixelColor, perfectColor, tolerance) or
+                   isColorMatch(pixelColor, goodColor, tolerance) or
+                   isColorMatch(pixelColor, okColor, tolerance) then
+                    barDetected = true
+                    break
+                end
+            end
+            if barDetected then break end
+        end
+        
+        if textDetected and not barDetected then
+            syn.mouse_click(950, 210, 1) -- Click at center of "Click Fast! (000)" region
+            print("Clicked on Click Fast! (000)")
+        elseif barDetected then
+            print("New fish bar detected, stopping Auto Click Fast")
+            wait(0.5) -- Wait briefly before rechecking
         end
         
         wait(math.random(0.01, 0.03))
@@ -332,18 +405,7 @@ end)
 
 -- MAIN Tab
 local savedPosition = nil
-local selectedRod = nil
-createDropdown(MainTab, "Choose Rod Equip", 5, {"Rod1", "Rod2", "Rod3"}, function(rod)
-    selectedRod = rod
-    print("Selected Rod: " .. rod)
-end)
-
-createButton(MainTab, "Refresh Choose Rod Equip", 48, function()
-    selectedRod = nil
-    print("Rod selection refreshed!")
-end)
-
-createButton(MainTab, "Save Position", 91, function()
+createButton(MainTab, "Save Position", 5, function()
     if LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart then
         savedPosition = LocalPlayer.Character.HumanoidRootPart.Position
         print("Position saved!")
@@ -352,19 +414,19 @@ createButton(MainTab, "Save Position", 91, function()
     end
 end)
 
-createButton(MainTab, "Reset Save Position", 134, function()
+createButton(MainTab, "Reset Save Position", 48, function()
     savedPosition = nil
     print("Saved position reset!")
 end)
 
-createToggleButton(MainTab, "Auto Farm Fish", 177, function(state)
+createToggleButton(MainTab, "Auto Farm Fish", 91, function(state)
     AutoFarmFishToggle = state
     if state then
         spawn(pixelScanForFishBar)
     end
 end)
 
-createButton(MainTab, "Teleport To Saved Position", 220, function()
+createButton(MainTab, "Teleport To Saved Position", 134, function()
     if savedPosition and LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart then
         LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
         print("Teleported to saved position!")
@@ -373,69 +435,52 @@ createButton(MainTab, "Teleport To Saved Position", 220, function()
     end
 end)
 
-createToggleButton(MainTab, "Auto Click Cast", 263, function(state)
+createToggleButton(MainTab, "Auto Click Fast", 177, function(state)
+    AutoClickFastToggle = state
     if state then
-        spawn(function()
-            while state do
-                syn.mouse_click(960, 100, 1)
-                wait(math.random(0.01, 0.03))
-            end
-        end)
-    end
-end)
-
-createToggleButton(MainTab, "Auto Click Shake", 306, function(state)
-    if state then
-        spawn(function()
-            while state do
-                syn.mouse_click(960, 100, 1)
-                wait(math.random(0.01, 0.03))
-            end
-        end)
-    end
-end)
-
-createToggleButton(MainTab, "Auto Click Reel", 349, function(state)
-    if state then
-        spawn(function()
-            while state do
-                syn.mouse_click(960, 100, 1)
-                wait(math.random(0.01, 0.03))
-            end
-        end)
-    end
-end)
-
-createToggleButton(MainTab, "Auto Collect Item", 392, function(state)
-    if state then
-        spawn(function()
-            while state do
-                print("Collecting items...")
-                wait(1)
-            end
-        end)
+        spawn(autoClickFast)
     end
 end)
 
 -- SELLER Tab
-local selectedSell = nil
-createDropdown(SellerTab, "Choose Sell", 5, {"Fish", "Items", "All"}, function(item)
-    selectedSell = item
-    print("Selected Sell: " .. item)
-end)
-
-createToggleButton(SellerTab, "Auto Sell", 48, function(state)
+createToggleButton(SellerTab, "Auto Sell", 5, function(state)
     if state then
         spawn(function()
+            local sellPromptRegion = {x1 = 700, y1 = 300, x2 = 900, y2 = 350} -- Adjust for sell prompt
+            local sellPromptColor = Color3.fromRGB(255, 255, 255) -- Adjust for text color
+            local tolerance = 10
+            local yesButtonPos = {x = 850, y = 400} -- Adjust for Yes button position
+            
             while state do
-                print("Auto selling " .. (selectedSell or "nothing") .. "...")
+                -- Check for Alex and sell prompt
+                local promptDetected = false
+                for x = sellPromptRegion.x1, sellPromptRegion.x2, 5 do
+                    for y = sellPromptRegion.y1, sellPromptRegion.y2, 5 do
+                        local pixelColor = syn.getpixelcolor(x, y)
+                        if isColorMatch(pixelColor, sellPromptColor, tolerance) then
+                            promptDetected = true
+                            break
+                        end
+                    end
+                    if promptDetected then break end
+                end
+                
+                if promptDetected then
+                    syn.key_press(Enum.KeyCode.Q) -- Press Q to interact with Alex
+                    wait(0.1)
+                    syn.key_release(Enum.KeyCode.Q)
+                    wait(0.2)
+                    syn.mouse_click(yesButtonPos.x, yesButtonPos.y, 1) -- Click Yes
+                    print("Interacted with Alex and clicked Yes to sell")
+                end
+                
                 wait(1)
             end
         end)
     end
 end)
 
-createToggleButton(SellerTab, "Auto Sell All", 91, function(state)
+createToggleButton(SellerTab, "Auto Sell All", 48, function(state)
     if state then
         spawn(function()
             while state do

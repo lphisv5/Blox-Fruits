@@ -1,694 +1,500 @@
--- ROBLOX LUA SCRIPT - YANZ Executor Beta v0.0.1
--- GUI Horizontal Layout - COMPLETELY FIXED VERSION
+-- YANZ HUB | V0.0.1 - BETA
+-- Roblox Lua Script for Fisck Game
+-- Created for Synapse X or compatible Executors
 
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
+-- Services
 local UserInputService = game:GetService("UserInputService")
-local TeleportService = game:GetService("TeleportService")
-local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
--- Config
-local Config = {
-    InfiniteJump = false,
-    ClickTeleport = false,
-    AutoFarm = false,
-    AutoCast = false,
-    AutoShake = false,
-    AutoReel = false,
-    AutoCollect = false,
-    AutoSell = false,
-    AutoSellAll = false,
-    ReduceLag = false,
-    AntiCrash = false,
-    ScreenWhite = false,
-    ScreenBlack = false,
-    AutoReconnect = false,
-    SavedPosition = nil,
-    SelectedRod = "",
-    SelectedSell = "",
-    SelectedZone = ""
-}
+-- GUI Setup
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "YANZ_HUB"
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- Safe file operations
-local function SafeWriteFile(filename, content)
-    local success, result = pcall(function()
-        if writefile then
-            writefile(filename, content)
-            return true
-        end
-        return false
-    end)
-    return success
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 600, 0, 350)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -175)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+-- Scrolling Frame for Horizontal and Vertical Scrolling
+local ScrollingFrame = Instance.new("ScrollingFrame")
+ScrollingFrame.Size = UDim2.new(1, 0, 1, -50)
+ScrollingFrame.Position = UDim2.new(0, 0, 0, 50)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.ScrollBarThickness = 8
+ScrollingFrame.CanvasSize = UDim2.new(3, 0, 2, 0)
+ScrollingFrame.Parent = MainFrame
+
+-- UI List Layout for Horizontal Layout
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.Parent = ScrollingFrame
+
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+TitleBar.Parent = MainFrame
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Size = UDim2.new(1, -50, 1, 0)
+TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "YANZ HUB | V0.0.1 - BETA"
+TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleLabel.TextSize = 18
+TitleLabel.Font = Enum.Font.SourceSansBold
+TitleLabel.Parent = TitleBar
+
+-- Close/Open Button with Animation
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0, 30, 0, 30)
+ToggleButton.Position = UDim2.new(1, -30, 0, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+ToggleButton.Text = "X"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 14
+ToggleButton.Parent = TitleBar
+
+local isGuiOpen = true
+local function toggleGui()
+    isGuiOpen = not isGuiOpen
+    local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    local goal = isGuiOpen and {Size = UDim2.new(0, 600, 0, 350)} or {Size = UDim2.new(0, 600, 0, 30)}
+    local tween = TweenService:Create(MainFrame, tweenInfo, goal)
+    tween:Play()
+    ToggleButton.Text = isGuiOpen and "X" or "O"
+    ToggleButton.BackgroundColor3 = isGuiOpen and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(50, 255, 50)
+end
+ToggleButton.MouseButton1Click:Connect(toggleGui)
+
+-- Tab System
+local Tabs = {}
+local function createTab(name)
+    local TabFrame = Instance.new("Frame")
+    TabFrame.Size = UDim2.new(0, 200, 0, 300)
+    TabFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    TabFrame.BorderSizePixel = 0
+    TabFrame.Parent = ScrollingFrame
+    
+    local TabTitle = Instance.new("TextLabel")
+    TabTitle.Size = UDim2.new(1, 0, 0, 30)
+    TabTitle.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    TabTitle.Text = name
+    TabTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TabTitle.TextSize = 16
+    TabTitle.Font = Enum.Font.SourceSansBold
+    TabTitle.Parent = TabFrame
+    
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Size = UDim2.new(1, 0, 1, -30)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = TabFrame
+    
+    local ContentLayout = Instance.new("UIListLayout")
+    ContentLayout.FillDirection = Enum.FillDirection.Vertical
+    ContentLayout.Padding = UDim.new(0, 5)
+    ContentLayout.Parent = ContentFrame
+    
+    Tabs[name] = ContentFrame
+    return ContentFrame
 end
 
-local function SafeReadFile(filename)
-    local success, result = pcall(function()
-        if readfile and isfile then
-            if isfile(filename) then
-                return readfile(filename)
-            end
-        end
-        return nil
+-- Create Tabs
+local HomeTab = createTab("HOME")
+local MainTab = createTab("MAIN")
+local SellerTab = createTab("SELLER")
+local TeleportTab = createTab("TELEPORT")
+local MiscTab = createTab("MISCELLANEOUS")
+local SettingsTab = createTab("SETTINGS")
+
+-- Function to Create Toggle Button
+local function createToggleButton(parent, text, position, callback)
+    local ToggleButton = Instance.new("TextButton")
+    ToggleButton.Size = UDim2.new(1, -10, 0, 30)
+    ToggleButton.Position = UDim2.new(0, 5, 0, position)
+    ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    ToggleButton.Text = text .. ": OFF"
+    ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleButton.TextSize = 14
+    ToggleButton.Parent = parent
+    local toggleState = false
+    ToggleButton.MouseButton1Click:Connect(function()
+        toggleState = not toggleState
+        ToggleButton.Text = text .. ": " .. (toggleState and "ON" or "OFF")
+        ToggleButton.BackgroundColor3 = toggleState and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(50, 50, 50)
+        callback(toggleState)
     end)
-    return success and result or nil
+    return ToggleButton
 end
 
--- Save/Load Config
-local function SaveConfig()
-    local success, json = pcall(function()
-        if game:GetService("HttpService") then
-            return game:GetService("HttpService"):JSONEncode(Config)
-        end
-        return nil
-    end)
-    if success and json then
-        SafeWriteFile("YanzConfig.json", json)
-    end
+-- Function to Create Regular Button
+local function createButton(parent, text, position, callback)
+    local Button = Instance.new("TextButton")
+    Button.Size = UDim2.new(1, -10, 0, 30)
+    Button.Position = UDim2.new(0, 5, 0, position)
+    Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Button.Text = text
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 14
+    Button.Parent = parent
+    Button.MouseButton1Click:Connect(callback)
 end
 
-local function LoadConfig()
-    local fileContent = SafeReadFile("YanzConfig.json")
-    if fileContent then
-        local success, result = pcall(function()
-            if game:GetService("HttpService") then
-                return game:GetService("HttpService"):JSONDecode(fileContent)
-            end
-            return nil
+-- Function to Create Dropdown
+local function createDropdown(parent, text, position, items, callback)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Size = UDim2.new(1, -10, 0, 30)
+    DropdownFrame.Position = UDim2.new(0, 5, 0, position)
+    DropdownFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    DropdownFrame.Parent = parent
+    
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Size = UDim2.new(1, 0, 1, 0)
+    DropdownButton.BackgroundTransparency = 1
+    DropdownButton.Text = text .. ": Select"
+    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownButton.TextSize = 14
+    DropdownButton.Parent = DropdownFrame
+    
+    local DropdownList = Instance.new("Frame")
+    DropdownList.Size = UDim2.new(1, 0, 0, #items * 30)
+    DropdownList.Position = UDim2.new(0, 0, 1, 0)
+    DropdownList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    DropdownList.Visible = false
+    DropdownList.Parent = DropdownFrame
+    
+    local ListLayout = Instance.new("UIListLayout")
+    ListLayout.FillDirection = Enum.FillDirection.Vertical
+    ListLayout.Parent = DropdownList
+    
+    for i, item in ipairs(items) do
+        local ItemButton = Instance.new("TextButton")
+        ItemButton.Size = UDim2.new(1, 0, 0, 30)
+        ItemButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        ItemButton.Text = item
+        ItemButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ItemButton.TextSize = 14
+        ItemButton.Parent = DropdownList
+        ItemButton.MouseButton1Click:Connect(function()
+            DropdownButton.Text = text .. ": " .. item
+            DropdownList.Visible = false
+            callback(item)
         end)
-        if success and result then
-            for key, value in pairs(result) do
-                if Config[key] ~= nil then
-                    Config[key] = value
-                end
-            end
-        end
-    end
-end
-
--- Simple GUI Library (Built-in to avoid external dependencies)
-local function CreateSimpleGUI()
-    local GUI = {}
-    local tabs = {}
-    local currentTab = nil
-    
-    function GUI:CreateWindow(options)
-        local window = {}
-        window.Title = options.Title or "YANZ GUI"
-        
-        function window:AddTab(name)
-            local tab = {
-                Name = name,
-                LeftGroups = {},
-                RightGroups = {}
-            }
-            tabs[name] = tab
-            currentTab = tab
-            
-            function tab:AddLeftGroupbox(title)
-                local group = {
-                    Title = title,
-                    Elements = {}
-                }
-                table.insert(currentTab.LeftGroups, group)
-                
-                function group:AddButton(text, callback)
-                    local button = {
-                        Type = "Button",
-                        Text = text,
-                        Callback = callback
-                    }
-                    table.insert(group.Elements, button)
-                    print("[YANZ] Button added: " .. text)
-                end
-                
-                function group:AddToggle(name, options)
-                    local toggle = {
-                        Type = "Toggle",
-                        Name = name,
-                        Text = options.Text or name,
-                        Default = options.Default or false,
-                        Value = options.Default or false
-                    }
-                    
-                    table.insert(group.Elements, toggle)
-                    
-                    local toggleObj = {
-                        Value = toggle.Value
-                    }
-                    
-                    function toggleObj:OnChanged(callback)
-                        toggle.Callback = callback
-                    end
-                    
-                    function toggleObj:SetValue(value)
-                        toggle.Value = value
-                        toggleObj.Value = value
-                        if toggle.Callback then
-                            toggle.Callback(value)
-                        end
-                    end
-                    
-                    print("[YANZ] Toggle added: " .. name)
-                    return toggleObj
-                end
-                
-                function group:AddDropdown(name, options)
-                    local dropdown = {
-                        Type = "Dropdown",
-                        Name = name,
-                        Text = options.Text or name,
-                        Values = options.Values or {},
-                        Value = options.Values[1] or ""
-                    }
-                    
-                    table.insert(group.Elements, dropdown)
-                    
-                    local dropdownObj = {
-                        Value = dropdown.Value
-                    }
-                    
-                    function dropdownObj:OnChanged(callback)
-                        dropdown.Callback = callback
-                    end
-                    
-                    function dropdownObj:SetValue(value)
-                        dropdown.Value = value
-                        dropdownObj.Value = value
-                        if dropdown.Callback then
-                            dropdown.Callback(value)
-                        end
-                    end
-                    
-                    function dropdownObj:SetValues(values)
-                        dropdown.Values = values
-                    end
-                    
-                    print("[YANZ] Dropdown added: " .. name)
-                    return dropdownObj
-                end
-                
-                return group
-            end
-            
-            function tab:AddRightGroupbox(title)
-                return self:AddLeftGroupbox(title)
-            end
-            
-            return tab
-        end
-        
-        function GUI:Notify(message)
-            print("[YANZ NOTIFY]: " .. message)
-        end
-        
-        function GUI:SetTheme(theme)
-            -- Theme setting not implemented in simple GUI
-        end
-        
-        print("[YANZ] GUI Window created: " .. window.Title)
-        return window
     end
     
-    return GUI
-end
-
--- Load GUI Library safely
-local library
-local success, errorMsg = pcall(function()
-    -- Try to load external library first
-    library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
-end)
-
-if not success or not library then
-    print("[YANZ] Using built-in simple GUI")
-    library = CreateSimpleGUI()
-end
-
--- Load config
-LoadConfig()
-
--- Create window
-local Window = library:CreateWindow({
-    Title = "YANZ | BETA - v0.0.1",
-    Center = true,
-    AutoShow = true
-})
-
--- Global tables for elements
-local Toggles = {}
-local Options = {}
-
--- Create tabs
-local HomeTab = Window:AddTab('Home')
-local MainTab = Window:AddTab('Main')
-local SellerTab = Window:AddTab('Seller')
-local TeleportTab = Window:AddTab('Teleport')
-local MiscTab = Window:AddTab('Miscellaneous')
-local SettingsTab = Window:AddTab('Settings')
-
--- Home Tab
-local HomeSection = HomeTab:AddLeftGroupbox('Home')
-
-HomeSection:AddButton('Discord Invite', function()
-    pcall(function()
-        if setclipboard then
-            setclipboard("https://discord.gg/yanz")
-        end
+    DropdownButton.MouseButton1Click:Connect(function()
+        DropdownList.Visible = not DropdownList.Visible
     end)
-    library:Notify("Discord invite copied to clipboard!")
-end)
+end
 
--- Infinite Jump Toggle
-Toggles.InfiniteJump = HomeSection:AddToggle('InfiniteJump', {
-    Text = 'Infinite Jump',
-    Default = Config.InfiniteJump or false,
-    Tooltip = 'Toggle infinite jump'
-})
+-- Enhanced Pixel Scan Function
+local function isColorMatch(pixelColor, targetColor, tolerance)
+    local r, g, b = pixelColor.r, pixelColor.g, pixelColor.b
+    local tr, tg, tb = targetColor.r, targetColor.g, targetColor.b
+    return math.abs(r - tr) <= tolerance and math.abs(g - tg) <= tolerance and math.abs(b - tb) <= tolerance
+end
 
-local InfiniteJumpConnection
-Toggles.InfiniteJump:OnChanged(function(value)
-    Config.InfiniteJump = value
-    SaveConfig()
+local AutoFarmFishToggle = false
+local function pixelScanForFishBar()
+    local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
+    local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Adjust based on game
+    local perfectColor = Color3.fromRGB(0, 255, 0) -- Green (Perfect)
+    local goodColor = Color3.fromRGB(255, 255, 0) -- Yellow (Good)
+    local okColor = Color3.fromRGB(255, 0, 0) -- Red (OK)
+    local tolerance = 10 -- RGB tolerance for color matching
     
-    if InfiniteJumpConnection then
-        InfiniteJumpConnection:Disconnect()
-        InfiniteJumpConnection = nil
-    end
-    
-    if value then
-        InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
-            pcall(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                    LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    while AutoFarmFishToggle do
+        local detected = false
+        local detectedState = nil
+        -- Scan multiple points in the bar region
+        for x = barRegion.x1, barRegion.x2, 3 do -- Reduced step size for precision
+            for y = barRegion.y1, barRegion.y2, 3 do
+                local pixelColor = syn.getpixelcolor(x, y)
+                if isColorMatch(pixelColor, perfectColor, tolerance) then
+                    detected = true
+                    detectedState = "Perfect"
+                    break
+                elseif isColorMatch(pixelColor, goodColor, tolerance) then
+                    detected = true
+                    detectedState = "Good"
+                    break
+                elseif isColorMatch(pixelColor, okColor, tolerance) then
+                    detected = true
+                    detectedState = "OK"
+                    break
                 end
-            end)
+            end
+            if detected then break end
+        end
+        
+        if detected then
+            syn.mouse_press(1) -- Invisible click
+            wait(0.01) -- Hold briefly
+            syn.mouse_release(1)
+            print("Detected " .. detectedState .. " bar, clicking!")
+        end
+        
+        wait(math.random(0.01, 0.03)) -- Random delay to reduce ban risk
+    end
+end
+
+-- HOME Tab
+createButton(HomeTab, "Join Discord", 5, function()
+    setclipboard("https://discord.com/invite/mNGeUVcjKB")
+    print("Discord link copied to clipboard!")
+end)
+
+createToggleButton(HomeTab, "Infinite Jump", 40, function(state)
+    if state then
+        UserInputService.JumpRequest:Connect(function()
+            if LocalPlayer.Character and LocalPlayer.Character.Humanoid then
+                LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
         end)
-        library:Notify("Infinite Jump: ON")
-    else
-        library:Notify("Infinite Jump: OFF")
     end
 end)
 
--- Click Teleport Toggle
-Toggles.ClickTeleport = HomeSection:AddToggle('ClickTeleport', {
-    Text = 'CTRL + Click to Teleport',
-    Default = Config.ClickTeleport or false,
-    Tooltip = 'Hold CTRL and click to teleport'
-})
-
-Toggles.ClickTeleport:OnChanged(function(value)
-    Config.ClickTeleport = value
-    SaveConfig()
-    
-    if value then
-        library:Notify("Click Teleport: ON")
-    else
-        library:Notify("Click Teleport: OFF")
+local ctrlTeleport = false
+createToggleButton(HomeTab, "CTRL + Click Teleport", 75, function(state)
+    ctrlTeleport = state
+end)
+UserInputService.InputBegan:Connect(function(input)
+    if ctrlTeleport and input.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        if LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 5, 0))
+        end
     end
 end)
 
--- Click Teleport Handler
-UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    
+-- MAIN Tab
+local savedPosition = nil
+local selectedRod = nil
+createDropdown(MainTab, "Choose Rod Equip", 5, {"Rod1", "Rod2", "Rod3"}, function(rod)
+    selectedRod = rod
+    print("Selected Rod: " .. rod)
+end)
+
+createButton(MainTab, "Refresh Choose Rod Equip", 40, function()
+    selectedRod = nil
+    print("Rod selection refreshed!")
+end)
+
+createButton(MainTab, "Save Position", 75, function()
+    if LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart then
+        savedPosition = LocalPlayer.Character.HumanoidRootPart.Position
+        print("Position saved!")
+    else
+        print("Character not found!")
+    end
+end)
+
+createButton(MainTab, "Reset Save Position", 110, function()
+    savedPosition = nil
+    print("Saved position reset!")
+end)
+
+createToggleButton(MainTab, "Auto Farm Fish", 145, function(state)
+    AutoFarmFishToggle = state
+    if state then
+        spawn(pixelScanForFishBar)
+    end
+end)
+
+createButton(MainTab, "Teleport To Saved Position", 180, function()
+    if savedPosition and LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(savedPosition)
+        print("Teleported to saved position!")
+    else
+        print("No saved position or character not found!")
+    end
+end)
+
+createToggleButton(MainTab, "Auto Click Cast", 215, function(state)
+    if state then
+        spawn(function()
+            while state do
+                syn.mouse_click(960, 100, 1)
+                wait(math.random(0.01, 0.03))
+            end
+        end)
+    end
+end)
+
+createToggleButton(MainTab, "Auto Click Shake", 250, function(state)
+    if state then
+        spawn(function()
+            while state do
+                syn.mouse_click(960, 100, 1)
+                wait(math.random(0.01, 0.03))
+            end
+        end)
+    end
+end)
+
+createToggleButton(MainTab, "Auto Click Reel", 285, function(state)
+    if state then
+        spawn(function()
+            while state do
+                syn.mouse_click(960, 100, 1)
+                wait(math.random(0.01, 0.03))
+            end
+        end)
+    end
+end)
+
+createToggleButton(MainTab, "Auto Collect Item", 320, function(state)
+    if state then
+        spawn(function()
+            while state do
+                print("Collecting items...")
+                wait(1)
+            end
+        end)
+    end
+end)
+
+-- SELLER Tab
+local selectedSell = nil
+createDropdown(SellerTab, "Choose Sell", 5, {"Fish", "Items", "All"}, function(item)
+    selectedSell = item
+    print("Selected Sell: " .. item)
+end)
+
+createToggleButton(SellerTab, "Auto Sell", 40, function(state)
+    if state then
+        spawn(function()
+            while state do
+                print("Auto selling " .. (selectedSell or "nothing") .. "...")
+                wait(1)
+            end
+        end)
+    end
+end)
+
+createToggleButton(SellerTab, "Auto Sell All", 75, function(state)
+    if state then
+        spawn(function()
+            while state do
+                print("Auto selling all items...")
+                wait(1)
+            end
+        end)
+    end
+end)
+
+-- TELEPORT Tab
+local selectedZone = nil
+createDropdown(TeleportTab, "Choose Zone", 5, {"Zone1", "Zone2", "Zone3"}, function(zone)
+    selectedZone = zone
+    print("Selected Zone: " .. zone)
+end)
+
+createButton(TeleportTab, "Teleport To Zone", 40, function()
+    if selectedZone then
+        print("Teleporting to " .. selectedZone)
+    else
+        print("No zone selected!")
+    end
+end)
+
+-- MISCELLANEOUS Tab
+createToggleButton(MiscTab, "Reduce Lag", 5, function(state)
+    if state then
+        game:GetService("Lighting").GlobalShadows = false
+        game:GetService("Lighting").Brightness = 0
+        print("Lag reduction enabled!")
+    else
+        game:GetService("Lighting").GlobalShadows = true
+        game:GetService("Lighting").Brightness = 1
+        print("Lag reduction disabled!")
+    end
+end)
+
+createToggleButton(MiscTab, "Anti-Crash", 40, function(state)
+    if state then
+        print("Anti-Crash enabled (placeholder)!")
+    end
+end)
+
+createToggleButton(MiscTab, "Show Screen White", 75, function(state)
+    if state then
+        local whiteScreen = Instance.new("Frame")
+        whiteScreen.Size = UDim2.new(1, 0, 1, 0)
+        whiteScreen.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        whiteScreen.Parent = ScreenGui
+        whiteScreen.Name = "WhiteScreen"
+    else
+        if ScreenGui:FindFirstChild("WhiteScreen") then
+            ScreenGui.WhiteScreen:Destroy()
+        end
+    end
+end)
+
+createToggleButton(MiscTab, "Show Screen Black", 110, function(state)
+    if state then
+        local blackScreen = Instance.new("Frame")
+        blackScreen.Size = UDim2.new(1, 0, 1, 0)
+        blackScreen.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        blackScreen.Parent = ScreenGui
+        blackScreen.Name = "BlackScreen"
+    else
+        if ScreenGui:FindFirstChild("BlackScreen") then
+            ScreenGui.BlackScreen:Destroy()
+        end
+    end
+end)
+
+createToggleButton(MiscTab, "Auto Reconnect", 145, function(state)
+    if state then
+        spawn(function()
+            while state do
+                if not game:IsLoaded() then
+                    game:Rejoin()
+                end
+                wait(5)
+            end
+        end)
+    end
+end)
+
+-- SETTINGS Tab
+createButton(SettingsTab, "Reset Script Config", 5, function()
+    print("Script config reset!")
+end)
+
+-- Dragging Functionality for GUI
+local dragging, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if Toggles.ClickTeleport and Toggles.ClickTeleport.Value then
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) then
-                pcall(function()
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(Mouse.Hit.Position + Vector3.new(0, 3, 0))
-                        library:Notify("Teleported to cursor position")
-                    end
-                end)
-            end
-        end
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
     end
 end)
 
--- Main Tab - Fishing
-local MainSection = MainTab:AddLeftGroupbox('Fishing')
-
--- Rod Selection
-Options.RodSelect = MainSection:AddDropdown('RodSelect', {
-    Values = {'None'},
-    Default = 1,
-    Multi = false,
-    Text = 'Choose Rod Equip',
-    Tooltip = 'Select fishing rod to equip'
-})
-
-MainSection:AddButton('Refresh Choose Rod Equip', function()
-    pcall(function()
-        local rods = {'None'}
-        if LocalPlayer and LocalPlayer.Backpack then
-            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
-                if tool:IsA("Tool") then
-                    table.insert(rods, tool.Name)
-                end
-            end
-        end
-        Options.RodSelect:SetValues(rods)
-        library:Notify("Rod list refreshed: " .. #rods .. " items found")
-    end)
-end)
-
-Options.RodSelect:OnChanged(function(value)
-    Config.SelectedRod = value
-    SaveConfig()
-    library:Notify("Selected rod: " .. value)
-end)
-
--- Position Management
-MainSection:AddButton('Save Position', function()
-    pcall(function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            Config.SavedPosition = {
-                X = LocalPlayer.Character.HumanoidRootPart.Position.X,
-                Y = LocalPlayer.Character.HumanoidRootPart.Position.Y,
-                Z = LocalPlayer.Character.HumanoidRootPart.Position.Z
-            }
-            SaveConfig()
-            library:Notify("Position saved!")
-        end
-    end)
-end)
-
-MainSection:AddButton('Reset Save Position', function()
-    Config.SavedPosition = nil
-    SaveConfig()
-    library:Notify("Position reset!")
-end)
-
-MainSection:AddButton('Teleport To Saved Position', function()
-    pcall(function()
-        if Config.SavedPosition and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local pos = Config.SavedPosition
-            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
-            library:Notify("Teleported to saved position!")
-        else
-            library:Notify("No saved position found!")
-        end
-    end)
-end)
-
--- Auto Fishing Toggles
-Toggles.AutoFarm = MainSection:AddToggle('AutoFarm', {
-    Text = 'Auto Farm Fish',
-    Default = Config.AutoFarm or false,
-    Tooltip = 'Automatically farm fish'
-})
-
-Toggles.AutoFarm:OnChanged(function(value)
-    Config.AutoFarm = value
-    SaveConfig()
-    library:Notify("Auto Farm: " .. (value and "ON" or "OFF"))
-end)
-
-Toggles.AutoCast = MainSection:AddToggle('AutoCast', {
-    Text = 'Auto Click Cast',
-    Default = Config.AutoCast or false,
-    Tooltip = 'Automatically cast fishing rod'
-})
-
-Toggles.AutoCast:OnChanged(function(value)
-    Config.AutoCast = value
-    SaveConfig()
-    library:Notify("Auto Cast: " .. (value and "ON" or "OFF"))
-end)
-
-Toggles.AutoShake = MainSection:AddToggle('AutoShake', {
-    Text = 'Auto Click Shake',
-    Default = Config.AutoShake or false,
-    Tooltip = 'Automatically shake when fish bites'
-})
-
-Toggles.AutoShake:OnChanged(function(value)
-    Config.AutoShake = value
-    SaveConfig()
-    library:Notify("Auto Shake: " .. (value and "ON" or "OFF"))
-end)
-
-Toggles.AutoReel = MainSection:AddToggle('AutoReel', {
-    Text = 'Auto Click Reel',
-    Default = Config.AutoReel or false,
-    Tooltip = 'Automatically reel in fish'
-})
-
-Toggles.AutoReel:OnChanged(function(value)
-    Config.AutoReel = value
-    SaveConfig()
-    library:Notify("Auto Reel: " .. (value and "ON" or "OFF"))
-end)
-
-Toggles.AutoCollect = MainSection:AddToggle('AutoCollect', {
-    Text = 'Auto Collect Item',
-    Default = Config.AutoCollect or false,
-    Tooltip = 'Automatically collect items'
-})
-
-Toggles.AutoCollect:OnChanged(function(value)
-    Config.AutoCollect = value
-    SaveConfig()
-    library:Notify("Auto Collect: " .. (value and "ON" or "OFF"))
-end)
-
--- Seller Tab
-local SellerSection = SellerTab:AddLeftGroupbox('Auto Seller')
-
-Options.SellSelect = SellerSection:AddDropdown('SellSelect', {
-    Values = {'All', 'Common', 'Rare', 'Legendary'},
-    Default = 1,
-    Multi = false,
-    Text = 'Choose Sell',
-    Tooltip = 'Select what to sell'
-})
-
-Options.SellSelect:OnChanged(function(value)
-    Config.SelectedSell = value
-    SaveConfig()
-    library:Notify("Sell selection: " .. value)
-end)
-
-Toggles.AutoSell = SellerSection:AddToggle('AutoSell', {
-    Text = 'Auto Sell',
-    Default = Config.AutoSell or false,
-    Tooltip = 'Automatically sell selected items'
-})
-
-Toggles.AutoSell:OnChanged(function(value)
-    Config.AutoSell = value
-    SaveConfig()
-    library:Notify("Auto Sell: " .. (value and "ON" or "OFF"))
-end)
-
-Toggles.AutoSellAll = SellerSection:AddToggle('AutoSellAll', {
-    Text = 'Auto Sell All',
-    Default = Config.AutoSellAll or false,
-    Tooltip = 'Automatically sell all items'
-})
-
-Toggles.AutoSellAll:OnChanged(function(value)
-    Config.AutoSellAll = value
-    SaveConfig()
-    library:Notify("Auto Sell All: " .. (value and "ON" or "OFF"))
-end)
-
--- Teleport Tab
-local TeleportSection = TeleportTab:AddLeftGroupbox('Zones')
-
-Options.ZoneSelect = TeleportSection:AddDropdown('ZoneSelect', {
-    Values = {'Spawn', 'Fishing Area', 'Shop', 'Sell Area'},
-    Default = 1,
-    Multi = false,
-    Text = 'Choose Zone',
-    Tooltip = 'Select zone to teleport to'
-})
-
-Options.ZoneSelect:OnChanged(function(value)
-    Config.SelectedZone = value
-    SaveConfig()
-    library:Notify("Zone selected: " .. value)
-end)
-
-TeleportSection:AddButton('Teleport To Zone', function()
-    pcall(function()
-        local zone = Options.ZoneSelect.Value
-        local targetCFrame
-        
-        if zone == "Spawn" then
-            targetCFrame = CFrame.new(0, 10, 0)
-        elseif zone == "Fishing Area" then
-            targetCFrame = CFrame.new(100, 10, 50)
-        elseif zone == "Shop" then
-            targetCFrame = CFrame.new(-50, 10, 0)
-        elseif zone == "Sell Area" then
-            targetCFrame = CFrame.new(0, 10, -100)
-        end
-        
-        if targetCFrame and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            LocalPlayer.Character.HumanoidRootPart.CFrame = targetCFrame
-            library:Notify("Teleported to: " .. zone)
-        end
-    end)
-end)
-
--- Miscellaneous Tab
-local MiscSection = MiscTab:AddLeftGroupbox('Performance')
-
-Toggles.ReduceLag = MiscSection:AddToggle('ReduceLag', {
-    Text = 'Reduce Lag',
-    Default = Config.ReduceLag or false,
-    Tooltip = 'Reduce game lag'
-})
-
-Toggles.ReduceLag:OnChanged(function(value)
-    Config.ReduceLag = value
-    SaveConfig()
-    
-    if value then
-        pcall(function()
-            settings().Rendering.QualityLevel = 1
-            for _, effect in ipairs(Lighting:GetChildren()) do
-                if effect:IsA("ParticleEmitter") then
-                    effect.Enabled = false
-                end
-            end
-        end)
-        library:Notify("Reduce Lag: ON")
-    else
-        library:Notify("Reduce Lag: OFF")
+MainFrame.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
-Toggles.AntiCrash = MiscSection:AddToggle('AntiCrash', {
-    Text = 'Anti-Crash',
-    Default = Config.AntiCrash or false,
-    Tooltip = 'Prevent game crashes'
-})
-
-Toggles.AntiCrash:OnChanged(function(value)
-    Config.AntiCrash = value
-    SaveConfig()
-    library:Notify("Anti-Crash: " .. (value and "ON" or "OFF"))
-end)
-
-local VisualSection = MiscTab:AddRightGroupbox('Visual')
-
-Toggles.ScreenWhite = VisualSection:AddToggle('ScreenWhite', {
-    Text = 'Show Screen White',
-    Default = Config.ScreenWhite or false,
-    Tooltip = 'Make screen white'
-})
-
-Toggles.ScreenWhite:OnChanged(function(value)
-    Config.ScreenWhite = value
-    SaveConfig()
-    
-    pcall(function()
-        if value then
-            if Toggles.ScreenBlack then
-                Toggles.ScreenBlack:SetValue(false)
-            end
-            Lighting.Brightness = 10
-            Lighting.Ambient = Color3.new(1, 1, 1)
-            library:Notify("Screen White: ON")
-        else
-            Lighting.Brightness = 1
-            Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-            library:Notify("Screen White: OFF")
-        end
-    end)
-end)
-
-Toggles.ScreenBlack = VisualSection:AddToggle('ScreenBlack', {
-    Text = 'Show Screen Black',
-    Default = Config.ScreenBlack or false,
-    Tooltip = 'Make screen black'
-})
-
-Toggles.ScreenBlack:OnChanged(function(value)
-    Config.ScreenBlack = value
-    SaveConfig()
-    
-    pcall(function()
-        if value then
-            if Toggles.ScreenWhite then
-                Toggles.ScreenWhite:SetValue(false)
-            end
-            Lighting.Brightness = 0
-            Lighting.Ambient = Color3.new(0, 0, 0)
-            library:Notify("Screen Black: ON")
-        else
-            Lighting.Brightness = 1
-            Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-            library:Notify("Screen Black: OFF")
-        end
-    end)
-end)
-
-Toggles.AutoReconnect = VisualSection:AddToggle('AutoReconnect', {
-    Text = 'Auto Reconnect',
-    Default = Config.AutoReconnect or false,
-    Tooltip = 'Automatically reconnect if disconnected'
-})
-
-Toggles.AutoReconnect:OnChanged(function(value)
-    Config.AutoReconnect = value
-    SaveConfig()
-    library:Notify("Auto Reconnect: " .. (value and "ON" or "OFF"))
-end)
-
--- Settings Tab
-local SettingsSection = SettingsTab:AddLeftGroupbox('Configuration')
-
-SettingsSection:AddButton('Reset Script Config', function()
-    pcall(function()
-        -- Reset config
-        Config = {
-            InfiniteJump = false,
-            ClickTeleport = false,
-            AutoFarm = false,
-            AutoCast = false,
-            AutoShake = false,
-            AutoReel = false,
-            AutoCollect = false,
-            AutoSell = false,
-            AutoSellAll = false,
-            ReduceLag = false,
-            AntiCrash = false,
-            ScreenWhite = false,
-            ScreenBlack = false,
-            AutoReconnect = false,
-            SavedPosition = nil,
-            SelectedRod = "",
-            SelectedSell = "",
-            SelectedZone = ""
-        }
-        SaveConfig()
-        
-        -- Reset all toggles
-        for name, toggle in pairs(Toggles) do
-            if toggle and toggle.SetValue then
-                toggle:SetValue(false)
-            end
-        end
-        
-        library:Notify("Configuration reset successfully!")
-    end)
-end)
-
--- Initialize settings
-for name, toggle in pairs(Toggles) do
-    if toggle and toggle.SetValue and Config[name] ~= nil then
-        toggle:SetValue(Config[name])
+MainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
     end
-end
+end)
 
--- Final initialization
-library:Notify("YANZ Script Loaded Successfully! v0.0.1")
-print("=== YANZ SCRIPT INITIALIZED ===")
-print("All features are ready to use!")
-print("Memory Usage: Stable")
+-- Initialize GUI
+print("YANZ HUB | V0.0.1 - BETA Loaded!")

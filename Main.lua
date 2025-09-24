@@ -267,15 +267,16 @@ SetPosButton.MouseLeave:Connect(function()
     }):Play()
 end)
 
--- Enhanced Settings Panel
+-- Enhanced Settings Panel - FIXED POSITION
 local SettingsFrame = Instance.new("Frame")
-SettingsFrame.Parent = MainFrame
-SettingsFrame.Size = UDim2.new(0.9, 0, 0, 120)
-SettingsFrame.Position = UDim2.new(0.05, 0, 1.1, 0)
+SettingsFrame.Parent = ScreenGui -- เปลี่ยนจาก MainFrame เป็น ScreenGui เพื่อให้อยู่บนสุด
+SettingsFrame.Size = UDim2.new(0, 320, 0, 150) -- ปรับขนาดให้พอดี
+SettingsFrame.Position = UDim2.new(0.36, 0, 0.55, 0) -- ตำแหน่งใหม่ที่อยู่ด้านล่างของ GUI หลัก
 SettingsFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 SettingsFrame.BackgroundTransparency = 0.1
 SettingsFrame.Visible = false
 SettingsFrame.BorderSizePixel = 0
+SettingsFrame.ZIndex = 1000 -- ให้มี ZIndex สูงสุด
 
 local SettingsCorner = Instance.new("UICorner")
 SettingsCorner.CornerRadius = UDim.new(0, 12)
@@ -301,10 +302,10 @@ SettingsTitle.TextXAlignment = Enum.TextXAlignment.Center
 
 -- Speed/Delay Settings
 local speeds = {
-    {label = "ULTRA FAST", value = 0.05},
-    {label = "FAST", value = 0.1},
-    {label = "NORMAL", value = 0.2},
-    {label = "SLOW", value = 0.5}
+    {label = "ULTRA FAST", value = 0.01},
+    {label = "FAST", value = 0.6},
+    {label = "NORMAL", value = 1},
+    {label = "SLOW", value = 1.5}
 }
 
 _G.clickDelay = _G.clickDelay or 0.2 -- Default delay
@@ -312,14 +313,15 @@ _G.clickDelay = _G.clickDelay or 0.2 -- Default delay
 for i, speedData in ipairs(speeds) do
     local speedButton = Instance.new("TextButton")
     speedButton.Parent = SettingsFrame
-    speedButton.Size = UDim2.new(0.9, 0, 0, 22)
-    speedButton.Position = UDim2.new(0.05, 0, 0.2 + (i-1)*0.2, 0)
+    speedButton.Size = UDim2.new(0.9, 0, 0, 25) -- ปรับขนาดให้ใหญ่ขึ้น
+    speedButton.Position = UDim2.new(0.05, 0, 0.15 + (i-1)*0.22, 0) -- ปรับตำแหน่ง
     speedButton.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     speedButton.Font = Enum.Font.GothamMedium
     speedButton.Text = speedData.label .. " (" .. speedData.value .. "s)"
     speedButton.TextColor3 = Color3.fromRGB(200, 200, 200)
     speedButton.TextSize = 12
     speedButton.AutoButtonColor = false
+    speedButton.ZIndex = 1001 -- ให้ปุ่มมี ZIndex สูง
     
     local speedCorner = Instance.new("UICorner")
     speedCorner.CornerRadius = UDim.new(0, 6)
@@ -363,7 +365,7 @@ for i, speedData in ipairs(speeds) do
         
         wait(0.5)
         -- Hide settings panel
-        TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {Position = UDim2.new(0.05, 0, 1.1, 0)}):Play()
+        TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {Position = UDim2.new(0.36, 0, 0.55, 0)}):Play()
         wait(0.3)
         SettingsFrame.Visible = false
     end)
@@ -507,6 +509,13 @@ CloseButton.MouseButton1Click:Connect(function()
         BackgroundTransparency = 1
     }):Play()
     
+    -- Also hide settings frame
+    if SettingsFrame then
+        TweenService:Create(SettingsFrame, TweenInfo.new(0.5), {
+            BackgroundTransparency = 1
+        }):Play()
+    end
+    
     wait(0.5)
     ScreenGui:Destroy()
 end)
@@ -545,21 +554,21 @@ MinButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Settings Panel Toggle
+-- Settings Panel Toggle - FIXED ANIMATION
 SettingsBtn.MouseButton1Click:Connect(function()
     if SettingsFrame.Visible then
         -- Hide settings
         TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {
-            Position = UDim2.new(0.05, 0, 1.1, 0)
+            Position = UDim2.new(0.36, 0, 0.55, 0)
         }):Play()
         wait(0.3)
         SettingsFrame.Visible = false
     else
         -- Show settings
         SettingsFrame.Visible = true
-        SettingsFrame.Position = UDim2.new(0.05, 0, 1.1, 0)
+        SettingsFrame.Position = UDim2.new(0.36, 0, 0.55, 0)
         TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {
-            Position = UDim2.new(0.05, 0, 0.95, 0)
+            Position = UDim2.new(0.36, 0, 0.52, 0) -- เลื่อนขึ้นเล็กน้อยเมื่อแสดง
         }):Play()
     end
 end)

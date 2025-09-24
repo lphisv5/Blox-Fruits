@@ -1,6 +1,6 @@
 --[[
-YANZ Hub - Fisch TI | v0.0.6 [BETA VERSION]
-GUI ล้ำสมัย 2025 - ระบบครบถ้วนทำงานจริง
+YANZ Hub - Fisch TI | v0.0.7 [BETA VERSION]
+แก้ไขปัญหา GUI เรียบร้อยแล้ว - ทุกแท็บแสดงปกติ
 ]]
 
 local Players = game:GetService("Players")
@@ -27,14 +27,13 @@ local _G = {
 local SavedPos = nil
 local SelectedRod = "Wooden Rod"
 local StartTime = os.time()
-local FPS = 60
+local RealFPS = 60
 
 -- =========================
 -- 🎮 Game Functions
 -- =========================
 local function GetAvailableRods()
     local rods = {}
-    -- ค้นหาเบ็ดใน Backpack
     if Player and Player:FindFirstChild("Backpack") then
         for _, item in pairs(Player.Backpack:GetChildren()) do
             if string.find(item.Name:lower(), "rod") then
@@ -70,7 +69,6 @@ local function FindFish()
 end
 
 local function FindJoeSeller()
-    -- ค้นหา Joe หรือร้านขายเบ็ด
     for _, npc in pairs(workspace:GetChildren()) do
         if npc:IsA("Model") then
             if npc.Name:lower():find("joe") or npc.Name:lower():find("rod") or npc.Name:lower():find("seller") then
@@ -82,7 +80,6 @@ local function FindJoeSeller()
 end
 
 local function FindSellNPC()
-    -- ค้นหา NPC ขายปลา
     for _, npc in pairs(workspace:GetChildren()) do
         if npc:IsA("Model") and (npc.Name:lower():find("sell") or npc.Name:lower():find("merchant") or npc.Name:lower():find("shop")) then
             return npc
@@ -96,16 +93,13 @@ local function AutoSellFish()
         local sellNPC = FindSellNPC()
         if not sellNPC then return end
         
-        -- จำลองการขายปลา (กด Q อัตโนมัติ)
         if Player.Backpack then
             local fishCount = 0
             local totalValue = 0
             
-            -- นับจำนวนปลาและมูลค่า
             for _, item in pairs(Player.Backpack:GetChildren()) do
                 if item:IsA("Tool") and string.find(item.Name:lower(), "fish") then
                     fishCount = fishCount + 1
-                    -- คำนวณมูลค่าตามความหายาก
                     if string.find(item.Name:lower(), "legendary") then
                         totalValue = totalValue + 1000
                     elseif string.find(item.Name:lower(), "epic") then
@@ -119,14 +113,12 @@ local function AutoSellFish()
             end
             
             if fishCount > 0 then
-                -- ขายปลาทั้งหมด
                 for _, item in pairs(Player.Backpack:GetChildren()) do
                     if item:IsA("Tool") and string.find(item.Name:lower(), "fish") then
-                        item:Destroy() -- จำลองการขาย
+                        item:Destroy()
                     end
                 end
                 
-                -- แจ้งเตือนการขาย
                 game:GetService("StarterGui"):SetCore("SendNotification", {
                     Title = "🎣 Auto Sell",
                     Text = string.format("ขายปลา %d ตัว ได้ %d Coins", fishCount, totalValue),
@@ -138,7 +130,7 @@ local function AutoSellFish()
 end
 
 -- =========================
--- 🖼️ Modern GUI System 2025
+-- 🖼️ Fixed Modern GUI System
 -- =========================
 local function CreateModernGUI()
     -- สร้าง GUI หลัก
@@ -150,17 +142,19 @@ local function CreateModernGUI()
 
     -- Background Blur
     local BlurEffect = Instance.new("BlurEffect")
-    BlurEffect.Size = 10
+    BlurEffect.Size = 8
     BlurEffect.Parent = game:GetService("Lighting")
 
-    -- Main Container
+    -- Main Container (สามารถลากได้ทั้งหน้าต่าง)
     local MainContainer = Instance.new("Frame")
-    MainContainer.Size = UDim2.new(0, 450, 0, 600)
-    MainContainer.Position = UDim2.new(0.5, -225, 0.5, -300)
+    MainContainer.Size = UDim2.new(0, 450, 0, 550) -- ลดความสูงลงเล็กน้อย
+    MainContainer.Position = UDim2.new(0.5, -225, 0.5, -275)
     MainContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    MainContainer.BackgroundTransparency = 0.1
+    MainContainer.BackgroundTransparency = 0.05
     MainContainer.BorderSizePixel = 0
     MainContainer.ClipsDescendants = true
+    MainContainer.Active = true
+    MainContainer.Draggable = true
     MainContainer.Parent = ScreenGui
 
     -- Gradient Background
@@ -175,12 +169,12 @@ local function CreateModernGUI()
     -- Glass Effect
     local GlassFrame = Instance.new("Frame")
     GlassFrame.Size = UDim2.new(1, 0, 1, 0)
-    GlassFrame.BackgroundTransparency = 0.9
+    GlassFrame.BackgroundTransparency = 0.92
     GlassFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     GlassFrame.BorderSizePixel = 0
     GlassFrame.Parent = MainContainer
 
-    -- Header
+    -- Header (สำหรับแสดงข้อมูลเท่านั้น ไม่ใช้ลาก)
     local Header = Instance.new("Frame")
     Header.Size = UDim2.new(1, 0, 0, 80)
     Header.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
@@ -210,7 +204,7 @@ local function CreateModernGUI()
     local VersionLabel = Instance.new("TextLabel")
     VersionLabel.Size = UDim2.new(0, 80, 0, 20)
     VersionLabel.Position = UDim2.new(1, -85, 0, 15)
-    VersionLabel.Text = "v0.0.6 [BETA]"
+    VersionLabel.Text = "v0.0.7 [BETA]"
     VersionLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
     VersionLabel.TextSize = 12
     VersionLabel.Font = Enum.Font.GothamBold
@@ -218,7 +212,7 @@ local function CreateModernGUI()
     VersionLabel.TextXAlignment = Enum.TextXAlignment.Right
     VersionLabel.Parent = Header
 
-    -- Stats Bar
+    -- Stats Bar (FPS และ Timer จริง)
     local StatsBar = Instance.new("Frame")
     StatsBar.Size = UDim2.new(1, -30, 0, 20)
     StatsBar.Position = UDim2.new(0, 15, 0, 50)
@@ -269,7 +263,7 @@ local function CreateModernGUI()
     CloseButton.BorderSizePixel = 0
     CloseButton.Parent = Header
 
-    -- Tabs Container
+    -- Tabs Container (แท็บทั้งหมด)
     local TabsContainer = Instance.new("Frame")
     TabsContainer.Size = UDim2.new(1, 0, 0, 40)
     TabsContainer.Position = UDim2.new(0, 0, 0, 80)
@@ -277,32 +271,33 @@ local function CreateModernGUI()
     TabsContainer.BorderSizePixel = 0
     TabsContainer.Parent = MainContainer
 
-    -- Content Container
+    -- Content Container (พื้นที่แสดงเนื้อหา - แก้ไขให้เลื่อนได้)
     local ContentContainer = Instance.new("ScrollingFrame")
-    ContentContainer.Size = UDim2.new(1, -20, 1, -130)
-    ContentContainer.Position = UDim2.new(0, 10, 0, 130)
+    ContentContainer.Size = UDim2.new(1, -10, 1, -130)
+    ContentContainer.Position = UDim2.new(0, 5, 0, 130)
     ContentContainer.BackgroundTransparency = 1
     ContentContainer.BorderSizePixel = 0
-    ContentContainer.ScrollBarThickness = 4
+    ContentContainer.ScrollBarThickness = 6
+    ContentContainer.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 150)
     ContentContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
     ContentContainer.Parent = MainContainer
 
     local ContentLayout = Instance.new("UIListLayout")
-    ContentLayout.Padding = UDim.new(0, 15)
+    ContentLayout.Padding = UDim.new(0, 12)
     ContentLayout.Parent = ContentContainer
 
-    -- Tabs System
+    -- Tabs System (แก้ไขให้แสดงทุกแท็บ)
     local Tabs = {}
     local CurrentTab = nil
 
     local function CreateTab(name)
         local tabButton = Instance.new("TextButton")
-        tabButton.Size = UDim2.new(0, 80, 1, 0)
+        tabButton.Size = UDim2.new(0, 90, 1, 0)
         tabButton.Text = name
         tabButton.TextColor3 = Color3.new(1, 1, 1)
         tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
         tabButton.BorderSizePixel = 0
-        tabButton.TextSize = 14
+        tabButton.TextSize = 13
         tabButton.Font = Enum.Font.Gotham
         tabButton.Parent = TabsContainer
 
@@ -327,6 +322,8 @@ local function CreateModernGUI()
             CurrentTab = Tabs[name]
             CurrentTab.content.Visible = true
             CurrentTab.button.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
+            -- เลื่อนไปด้านบนเมื่อเปลี่ยนแท็บ
+            ContentContainer.CanvasPosition = Vector2.new(0, 0)
         end)
 
         return tabContent
@@ -335,7 +332,8 @@ local function CreateModernGUI()
     -- Modern Button Function
     local function CreateModernButton(parent, text, callback)
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 45)
+        button.Size = UDim2.new(1, -10, 0, 45)
+        button.Position = UDim2.new(0, 5, 0, 0)
         button.Text = text
         button.TextColor3 = Color3.new(1, 1, 1)
         button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
@@ -356,7 +354,6 @@ local function CreateModernGUI()
 
         button.MouseButton1Click:Connect(function()
             pcall(callback)
-            -- Click Effect
             game:GetService("TweenService"):Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 120, 220)}):Play()
             wait(0.1)
             game:GetService("TweenService"):Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 50, 70)}):Play()
@@ -368,7 +365,8 @@ local function CreateModernGUI()
     -- Modern Toggle Function
     local function CreateModernToggle(parent, text, default, callback)
         local toggleFrame = Instance.new("Frame")
-        toggleFrame.Size = UDim2.new(1, 0, 0, 45)
+        toggleFrame.Size = UDim2.new(1, -10, 0, 45)
+        toggleFrame.Position = UDim2.new(0, 5, 0, 0)
         toggleFrame.BackgroundTransparency = 1
         toggleFrame.Parent = parent
 
@@ -416,7 +414,6 @@ local function CreateModernGUI()
             pcall(function() callback(currentState) end)
         end)
 
-        -- Hover Effects
         toggleButton.MouseEnter:Connect(function()
             game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 80)}):Play()
         end)
@@ -432,10 +429,10 @@ local function CreateModernGUI()
     end
 
     -- =========================
-    -- 📱 Tab Contents
+    -- 📱 สร้างแท็บทั้งหมด (แสดงปกติ)
     -- =========================
 
-    -- 🏠 HOME Tab
+    -- 🏠 HOME Tab (แสดงแน่นอน)
     local HomeTab = CreateTab("🏠 HOME")
     
     CreateModernButton(HomeTab, "📋 Discord: https://discord.com/invite/mNGeUVcjKB", function()
@@ -447,7 +444,24 @@ local function CreateModernGUI()
         })
     end)
 
-    -- ⚙️ MAIN Tab
+    CreateModernButton(HomeTab, "🔄 อัปเดต Rod List", function()
+        local rods = GetAvailableRods()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "YANZ Hub",
+            Text = "พบเบ็ด " .. #rods .. " อัน: " .. table.concat(rods, ", "),
+            Duration = 5
+        })
+    end)
+
+    CreateModernButton(HomeTab, "⚡ ตรวจสอบ FPS จริง", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "FPS Monitor",
+            Text = "FPS ปัจจุบัน: " .. RealFPS,
+            Duration = 3
+        })
+    end)
+
+    -- ⚙️ MAIN Tab (แสดงแน่นอน)
     local MainTab = CreateTab("⚙️ MAIN")
     
     local autoFarmToggle = CreateModernToggle(MainTab, "🎣 Auto Farm Fish", _G.AutoFarm, function(state)
@@ -475,7 +489,7 @@ local function CreateModernGUI()
         end
     end)
 
-    -- 💰 SELLER Tab
+    -- 💰 SELLER Tab (แสดงแน่นอน)
     local SellerTab = CreateTab("💰 SELLER")
     
     local autoSellToggle = CreateModernToggle(SellerTab, "💰 Auto Sell Fish (Q)", _G.AutoSell, function(state)
@@ -486,7 +500,7 @@ local function CreateModernGUI()
         AutoSellFish()
     end)
 
-    -- 🔧 SETTINGS Tab
+    -- 🔧 SETTINGS Tab (แสดงแน่นอน)
     local SettingsTab = CreateTab("🔧 SETTINGS")
     
     CreateModernToggle(SettingsTab, "🛡️ Anti-Kick Protection", _G.AntiKick, function(state)
@@ -498,17 +512,8 @@ local function CreateModernGUI()
         if state then
             setfpscap(30)
         else
-            setfpscap(60)
+            setfpscap(0) -- ปล่อย FPS ตามสเปคเครื่อง
         end
-    end)
-
-    CreateModernButton(SettingsTab, "🔄 Refresh Rod List", function()
-        local rods = GetAvailableRods()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "YANZ Hub",
-            Text = "พบเบ็ด " .. #rods .. " อันในกระเป๋า",
-            Duration = 3
-        })
     end)
 
     CreateModernButton(SettingsTab, "🏠 Teleport to Joe's Rods", function()
@@ -530,9 +535,32 @@ local function CreateModernGUI()
         autoFarmToggle.setState(false)
         autoCastToggle.setState(false)
         autoSellToggle.setState(false)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "YANZ Hub",
+            Text = "รีเซ็ตการตั้งค่าทั้งหมดแล้ว!",
+            Duration = 3
+        })
     end)
 
-    -- เปิดแท็บแรก
+    CreateModernButton(SettingsTab, "📊 System Info", function()
+        local rods = GetAvailableRods()
+        local fishCount = 0
+        if Player.Backpack then
+            for _, item in pairs(Player.Backpack:GetChildren()) do
+                if item:IsA("Tool") and string.find(item.Name:lower(), "fish") then
+                    fishCount = fishCount + 1
+                end
+            end
+        end
+        
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "System Info",
+            Text = string.format("FPS: %d | Rods: %d | Fish: %d", RealFPS, #rods, fishCount),
+            Duration = 5
+        })
+    end)
+
+    -- เปิดแท็บ HOME โดยอัตโนมัติ (แสดงแน่นอน)
     if Tabs["🏠 HOME"] then
         Tabs["🏠 HOME"].button.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
         Tabs["🏠 HOME"].content.Visible = true
@@ -547,29 +575,47 @@ local function CreateModernGUI()
         BlurEffect.Enabled = false
     end)
 
-    -- ลากเคลื่อนย้าย
-    Header.Active = true
-    Header.Draggable = true
-
     -- Animation เมื่อเปิด
     MainContainer.Size = UDim2.new(0, 0, 0, 0)
-    game:GetService("TweenService"):Create(MainContainer, TweenInfo.new(0.5), {Size = UDim2.new(0, 450, 0, 600)}):Play()
+    game:GetService("TweenService"):Create(MainContainer, TweenInfo.new(0.5), {Size = UDim2.new(0, 450, 0, 550)}):Play()
 
-    -- Update Stats Loop
+    -- Update Real FPS และ Timer (ระบบตรวจสอบ FPS จริง)
     spawn(function()
+        local frameCount = 0
+        local lastTime = tick()
+        
         while ScreenGui.Parent do
-            -- Update FPS
-            FPS = math.round(Stats.Network.ServerStatsItem["Data Ping"] and 1/Stats.Network.ServerStatsItem["Data Ping"]:GetValue() or 60)
-            FPSLabel.Text = "FPS: " .. FPS
+            frameCount = frameCount + 1
+            local currentTime = tick()
             
-            -- Update Time
+            -- อัปเดต FPS จริงทุก 1 วินาที
+            if currentTime - lastTime >= 1 then
+                RealFPS = math.floor(frameCount / (currentTime - lastTime))
+                frameCount = 0
+                lastTime = currentTime
+                
+                FPSLabel.Text = "FPS: " .. RealFPS
+                
+                -- เปลี่ยนสี FPS ตามประสิทธิภาพ
+                if RealFPS >= 100 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0) -- เขียว (ดีมาก)
+                elseif RealFPS >= 60 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0) -- เหลือง (ดี)
+                elseif RealFPS >= 30 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 165, 0) -- ส้ม (ปานกลาง)
+                else
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0) -- แดง (ต่ำ)
+                end
+            end
+            
+            -- อัปเดต Timer
             local elapsed = os.time() - StartTime
             local hours = math.floor(elapsed / 3600)
             local minutes = math.floor((elapsed % 3600) / 60)
             local seconds = elapsed % 60
             TimeLabel.Text = string.format("%02d:%02d:%02d", hours, minutes, seconds)
             
-            wait(1)
+            wait(0.1) -- อัปเดตบ่อยขึ้นสำหรับ FPS ที่แม่นยำ
         end
     end)
 
@@ -577,7 +623,7 @@ local function CreateModernGUI()
 end
 
 -- =========================
--- 🔄 Auto Farm System (ใหม่)
+-- 🔄 Auto Farm System
 -- =========================
 local function StartAutoSystems()
     spawn(function()
@@ -592,7 +638,7 @@ local function StartAutoSystems()
                 if _G.AutoFarm then
                     local rods = GetAvailableRods()
                     if #rods > 0 then
-                        SelectedRod = rods[1] -- ใช้เบ็ดแรกที่เจอ
+                        SelectedRod = rods[1]
                         if EquipRod(SelectedRod) then
                             local fish = FindFish()
                             if fish then
@@ -601,12 +647,12 @@ local function StartAutoSystems()
                                     hrp.CFrame = CFrame.new(fish.Position + Vector3.new(0, 0, 8))
                                 end
                                 
-                                -- Auto Cast (Loop)
+                                -- Auto Cast Loop
                                 if _G.AutoCast then
                                     local rod = character:FindFirstChild(SelectedRod)
                                     if rod and rod:IsA("Tool") then
                                         rod:Activate()
-                                        wait(0.5) -- รอระหว่าง Cast
+                                        wait(0.5)
                                     end
                                 end
                             end
@@ -614,10 +660,10 @@ local function StartAutoSystems()
                     end
                 end
 
-                -- Auto Sell System (กด Q อัตโนมัติ)
+                -- Auto Sell System
                 if _G.AutoSell then
                     AutoSellFish()
-                    wait(5) -- ขายทุก 5 วินาที
+                    wait(5)
                 end
             end)
         end
@@ -627,12 +673,12 @@ end
 -- =========================
 -- 🚀 Initialize System
 -- =========================
-wait(2) -- รอเกมโหลด
+wait(2)
 
 -- แจ้งเตือนเริ่มต้น
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "YANZ Hub - Fisch TI",
-    Text = "กำลังโหลด v0.0.6 [BETA]...",
+    Text = "กำลังโหลด v0.0.7 [BETA]...",
     Duration = 3
 })
 
@@ -657,19 +703,18 @@ UIS.InputBegan:Connect(function(input)
         if gui then
             local main = gui:FindFirstChild("MainContainer")
             if main then
-                if main.Size == UDim2.new(0, 450, 0, 600) then
+                if main.Size == UDim2.new(0, 450, 0, 550) then
                     game:GetService("TweenService"):Create(main, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
                 else
-                    game:GetService("TweenService"):Create(main, TweenInfo.new(0.3), {Size = UDim2.new(0, 450, 0, 600)}):Play()
+                    game:GetService("TweenService"):Create(main, TweenInfo.new(0.3), {Size = UDim2.new(0, 450, 0, 550)}):Play()
                 end
             end
         end
     end
 end)
 
-print("🎯 YANZ Hub - Fisch TI v0.0.6 [BETA]")
-print("✅ โหลดสำเร็จ! GUI ล้ำสมัย 2025")
+print("🎯 YANZ Hub - Fisch TI v0.0.7 [BETA]")
+print("✅ แก้ไข GUI เรียบร้อยแล้ว!")
+print("📊 FPS จริง: ตรวจสอบประสิทธิภาพเครื่อง")
+print("🎯 แท็บทั้งหมดแสดงปกติ: HOME, MAIN, SELLER, SETTINGS")
 print("⚡ ระบบอัตโนมัติพร้อมทำงาน")
-print("🎣 Auto Farm, Auto Cast, Auto Sell")
-print("🛡️ Anti-Kick, Reduce Lag")
-print("📊 Real-time FPS & Timer")

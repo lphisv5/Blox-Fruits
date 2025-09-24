@@ -1,7 +1,3 @@
---// YANZ HUB | V0.1.2 //--
---// Creator: @id2_lphisv4
---// Complete Bug-Free Version with Enhanced Features //--
-
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
@@ -9,12 +5,16 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Safety check and anti-detection
+-- Safety check for LocalPlayer
 if not LocalPlayer then
     LocalPlayer = Players.PlayerAdded:Wait()
 end
 
--- Enhanced GUI Creation with Safety Features
+-- Wait for character and humanoidRootPart
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
+
+-- Enhanced GUI Creation
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "REDZHubPro2025"
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
@@ -22,19 +22,17 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.DisplayOrder = 999
 
--- Main Container Frame (Enhanced Glassmorphism)
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
-MainFrame.Size = UDim2.new(0, 350, 0, 220) -- Increased size for better layout
+MainFrame.Size = UDim2.new(0, 350, 0, 250)
 MainFrame.Position = UDim2.new(0.35, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 MainFrame.BackgroundTransparency = 0.15
 MainFrame.ClipsDescendants = true
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = false -- We'll implement custom dragging
 
--- Enhanced Glass Effect
+-- Glass Effect
 local GlassEffect = Instance.new("Frame")
 GlassEffect.Parent = MainFrame
 GlassEffect.Size = UDim2.new(1, 0, 1, 0)
@@ -43,7 +41,7 @@ GlassEffect.BackgroundTransparency = 0.95
 GlassEffect.BorderSizePixel = 0
 GlassEffect.ZIndex = 0
 
--- Modern Rounded Corners
+-- Rounded Corners
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 16)
 UICorner.Parent = MainFrame
@@ -75,7 +73,7 @@ spawn(function()
     end
 end)
 
--- Enhanced Header Section
+-- Header Section
 local HeaderFrame = Instance.new("Frame")
 HeaderFrame.Parent = MainFrame
 HeaderFrame.Size = UDim2.new(1, 0, 0, 45)
@@ -88,13 +86,13 @@ local HeaderCorner = Instance.new("UICorner")
 HeaderCorner.CornerRadius = UDim.new(0, 16)
 HeaderCorner.Parent = HeaderFrame
 
--- Animated Title with Icon
+-- Animated Title
 local Title = Instance.new("TextLabel")
 Title.Parent = HeaderFrame
 Title.Size = UDim2.new(0.6, 0, 1, 0)
 Title.Position = UDim2.new(0.05, 0, 0, 0)
 Title.Font = Enum.Font.GothamBlack
-Title.Text = "YANZ HUB | V0.1.2 [BETA VERSION]"
+Title.Text = "YANZ HUB | V0.1.4 [BETA]"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 18
 Title.TextXAlignment = Enum.TextXAlignment.Left
@@ -108,7 +106,7 @@ VersionBadge.Parent = HeaderFrame
 VersionBadge.Size = UDim2.new(0.3, 0, 0.5, 0)
 VersionBadge.Position = UDim2.new(0.65, 0, 0.25, 0)
 VersionBadge.Font = Enum.Font.GothamMedium
-VersionBadge.Text = "v3.0.1 ULTRA"
+VersionBadge.Text = "v3.0.3 ULTRA"
 VersionBadge.TextColor3 = Color3.fromRGB(0, 255, 255)
 VersionBadge.TextSize = 12
 VersionBadge.BackgroundColor3 = Color3.fromRGB(0, 30, 40)
@@ -119,7 +117,7 @@ local BadgeCorner = Instance.new("UICorner")
 BadgeCorner.CornerRadius = UDim.new(0, 8)
 BadgeCorner.Parent = VersionBadge
 
--- Title Animation (Enhanced)
+-- Title Animation
 spawn(function()
     local colors = {
         Color3.fromRGB(255, 0, 255),
@@ -137,7 +135,7 @@ spawn(function()
     end
 end)
 
--- Control Buttons Factory Function
+-- Control Buttons Factory
 local function CreateControlButton(text, position, color, hoverColor)
     local button = Instance.new("TextButton")
     button.Parent = HeaderFrame
@@ -155,7 +153,6 @@ local function CreateControlButton(text, position, color, hoverColor)
     buttonCorner.CornerRadius = UDim.new(0, 6)
     buttonCorner.Parent = button
     
-    -- Hover Effects
     button.MouseEnter:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = hoverColor, Size = UDim2.new(0, 32, 0, 32)}):Play()
     end)
@@ -164,7 +161,6 @@ local function CreateControlButton(text, position, color, hoverColor)
         TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = color, Size = UDim2.new(0, 30, 0, 30)}):Play()
     end)
     
-    -- Click Effect
     button.MouseButton1Down:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(100, 100, 100)}):Play()
     end)
@@ -186,11 +182,11 @@ local MinButton = CreateControlButton("−", UDim2.new(0.8, 0, 0.15, 0),
 local SettingsBtn = CreateControlButton("⚙", UDim2.new(0.7, 0, 0.15, 0), 
     Color3.fromRGB(60, 150, 255), Color3.fromRGB(100, 180, 255))
 
--- Main Toggle Button (Enhanced)
+-- Toggle Button
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Parent = MainFrame
 ToggleButton.Size = UDim2.new(0.8, 0, 0, 45)
-ToggleButton.Position = UDim2.new(0.1, 0, 0.3, 0)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.25, 0)
 ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 ToggleButton.Font = Enum.Font.GothamBold
 ToggleButton.Text = "▶ START AUTO CLICK"
@@ -209,7 +205,7 @@ ToggleStroke.Color = Color3.fromRGB(255, 255, 255)
 ToggleStroke.Thickness = 1.5
 ToggleStroke.Transparency = 0.3
 
--- Enhanced Toggle Button Animations
+-- Toggle Button Animations
 ToggleButton.MouseEnter:Connect(function()
     TweenService:Create(ToggleButton, TweenInfo.new(0.3), {
         BackgroundColor3 = Color3.fromRGB(220, 80, 80),
@@ -224,11 +220,11 @@ ToggleButton.MouseLeave:Connect(function()
     }):Play()
 end)
 
--- Status Indicator
+-- Status Label
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Parent = MainFrame
 StatusLabel.Size = UDim2.new(0.6, 0, 0, 20)
-StatusLabel.Position = UDim2.new(0.2, 0, 0.55, 0)
+StatusLabel.Position = UDim2.new(0.2, 0, 0.45, 0)
 StatusLabel.Font = Enum.Font.GothamMedium
 StatusLabel.Text = "Status: Ready"
 StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -236,7 +232,19 @@ StatusLabel.TextSize = 12
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
 
--- Set Position Button (Enhanced)
+-- Position Label
+local PositionLabel = Instance.new("TextLabel")
+PositionLabel.Parent = MainFrame
+PositionLabel.Size = UDim2.new(0.8, 0, 0, 20)
+PositionLabel.Position = UDim2.new(0.1, 0, 0.55, 0)
+PositionLabel.Font = Enum.Font.GothamMedium
+PositionLabel.Text = "Position: X: 0, Y: 0, Z: 0"
+PositionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+PositionLabel.TextSize = 12
+PositionLabel.BackgroundTransparency = 1
+PositionLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+-- Set Position Button
 local SetPosButton = Instance.new("TextButton")
 SetPosButton.Parent = MainFrame
 SetPosButton.Size = UDim2.new(0.6, 0, 0, 35)
@@ -267,16 +275,16 @@ SetPosButton.MouseLeave:Connect(function()
     }):Play()
 end)
 
--- Enhanced Settings Panel - FIXED POSITION
+-- Settings Panel
 local SettingsFrame = Instance.new("Frame")
-SettingsFrame.Parent = ScreenGui -- เปลี่ยนจาก MainFrame เป็น ScreenGui เพื่อให้อยู่บนสุด
-SettingsFrame.Size = UDim2.new(0, 320, 0, 150) -- ปรับขนาดให้พอดี
-SettingsFrame.Position = UDim2.new(0.36, 0, 0.55, 0) -- ตำแหน่งใหม่ที่อยู่ด้านล่างของ GUI หลัก
+SettingsFrame.Parent = ScreenGui
+SettingsFrame.Size = UDim2.new(0, 320, 0, 150)
+SettingsFrame.Position = UDim2.new(0.36, 0, 0.55, 0)
 SettingsFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 SettingsFrame.BackgroundTransparency = 0.1
 SettingsFrame.Visible = false
 SettingsFrame.BorderSizePixel = 0
-SettingsFrame.ZIndex = 1000 -- ให้มี ZIndex สูงสุด
+SettingsFrame.ZIndex = 1000
 
 local SettingsCorner = Instance.new("UICorner")
 SettingsCorner.CornerRadius = UDim.new(0, 12)
@@ -308,26 +316,25 @@ local speeds = {
     {label = "SLOW", value = 1.5}
 }
 
-_G.clickDelay = _G.clickDelay or 0.2 -- Default delay
+_G.clickDelay = _G.clickDelay or 0.2
 
 for i, speedData in ipairs(speeds) do
     local speedButton = Instance.new("TextButton")
     speedButton.Parent = SettingsFrame
-    speedButton.Size = UDim2.new(0.9, 0, 0, 25) -- ปรับขนาดให้ใหญ่ขึ้น
-    speedButton.Position = UDim2.new(0.05, 0, 0.15 + (i-1)*0.22, 0) -- ปรับตำแหน่ง
+    speedButton.Size = UDim2.new(0.9, 0, 0, 25)
+    speedButton.Position = UDim2.new(0.05, 0, 0.15 + (i-1)*0.22, 0)
     speedButton.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
     speedButton.Font = Enum.Font.GothamMedium
     speedButton.Text = speedData.label .. " (" .. speedData.value .. "s)"
     speedButton.TextColor3 = Color3.fromRGB(200, 200, 200)
     speedButton.TextSize = 12
     speedButton.AutoButtonColor = false
-    speedButton.ZIndex = 1001 -- ให้ปุ่มมี ZIndex สูง
+    speedButton.ZIndex = 1001
     
     local speedCorner = Instance.new("UICorner")
     speedCorner.CornerRadius = UDim.new(0, 6)
     speedCorner.Parent = speedButton
     
-    -- Speed button animations
     speedButton.MouseEnter:Connect(function()
         if _G.clickDelay ~= speedData.value then
             TweenService:Create(speedButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 100)}):Play()
@@ -345,7 +352,6 @@ for i, speedData in ipairs(speeds) do
         StatusLabel.Text = "Delay: " .. speedData.value .. "s"
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
         
-        -- Update all speed buttons appearance
         for j, btnData in ipairs(speeds) do
             local btn = SettingsFrame:FindFirstChildWhichIsA("TextButton", true)
             if btn and btn.Text:find(btnData.label) then
@@ -364,13 +370,11 @@ for i, speedData in ipairs(speeds) do
         end
         
         wait(0.5)
-        -- Hide settings panel
         TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {Position = UDim2.new(0.36, 0, 0.55, 0)}):Play()
         wait(0.3)
         SettingsFrame.Visible = false
     end)
     
-    -- Set initial appearance for current delay
     if speedData.value == _G.clickDelay then
         speedButton.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
         speedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -384,18 +388,38 @@ _G.dragging = false
 _G.dragStartPos = nil
 _G.startPos = nil
 
--- Enhanced Safe Click Function
+-- Real-Time Position Update
+if humanoidRootPart then
+    RunService.RenderStepped:Connect(function()
+        local pos = humanoidRootPart.Position
+        PositionLabel.Text = string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
+    end)
+else
+    PositionLabel.Text = "Position: Waiting for character..."
+    PositionLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    
+    LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+        humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
+        if humanoidRootPart then
+            PositionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            RunService.RenderStepped:Connect(function()
+                local pos = humanoidRootPart.Position
+                PositionLabel.Text = string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
+            end)
+        end
+    end)
+end
+
+-- Safe Click Function
 local function SafeClick(pos)
     if not pos or not pos.X or not pos.Y then return end
     
-    -- Input validation
     local viewportSize = workspace.CurrentCamera.ViewportSize
     if pos.X < 0 or pos.Y < 0 or pos.X > viewportSize.X or pos.Y > viewportSize.Y then
         warn("⚠️ Invalid click position")
         return
     end
     
-    -- Simulate mouse click
     local success, errorMsg = pcall(function()
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, game, 1)
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 1)
@@ -406,12 +430,11 @@ local function SafeClick(pos)
     end
 end
 
--- Enhanced Click Loop with Safety
+-- Click Loop
 local function ClickLoop()
     if _G.autoClickPos and _G.autoClickPos.X and _G.autoClickPos.Y then
         SafeClick(_G.autoClickPos)
     else
-        -- Default to screen center if no position set
         local viewportSize = workspace.CurrentCamera.ViewportSize
         local centerPos = {
             X = viewportSize.X / 2,
@@ -421,7 +444,45 @@ local function ClickLoop()
     end
 end
 
--- Set Position Function (Enhanced)
+-- Emergency Stop Toggle (F6)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F6 then
+        _G.isLoopRunning = not _G.isLoopRunning
+        if _G.isLoopRunning then
+            -- Resume auto-clicking
+            ToggleButton.Text = "STOP AUTO CLICK"
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
+            StatusLabel.Text = "Auto Clicking Active"
+            StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            
+            spawn(function()
+                while _G.isLoopRunning do
+                    if _G.isLoopRunning then
+                        ClickLoop()
+                    end
+                    wait(_G.clickDelay)
+                end
+            end)
+        else
+            -- Stop auto-clicking
+            ToggleButton.Text = "START AUTO CLICK"
+            ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+            StatusLabel.Text = "Emergency Stopped (F6)"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            
+            wait(2)
+            if not _G.isLoopRunning then
+                StatusLabel.Text = "Status: Ready"
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            end
+
+
+        end
+    end
+end)
+
+-- Set Position Function
 SetPosButton.MouseButton1Click:Connect(function()
     StatusLabel.Text = "🖱️ Click anywhere to set position..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
@@ -445,7 +506,6 @@ SetPosButton.MouseButton1Click:Connect(function()
         end
     end)
     
-    -- Auto-cancel after 10 seconds
     delay(10, function()
         if connection then
             connection:Disconnect()
@@ -460,18 +520,16 @@ SetPosButton.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Toggle Auto Click Function
+-- Toggle Auto Click
 ToggleButton.MouseButton1Click:Connect(function()
     _G.isLoopRunning = not _G.isLoopRunning
     
     if _G.isLoopRunning then
-        -- Start auto-clicking
         ToggleButton.Text = "STOP AUTO CLICK"
         ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
         StatusLabel.Text = "Auto Clicking Active"
         StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
         
-        -- Start click loop in a separate thread
         spawn(function()
             while _G.isLoopRunning do
                 if _G.isLoopRunning then
@@ -481,7 +539,6 @@ ToggleButton.MouseButton1Click:Connect(function()
             end
         end)
     else
-        -- Stop auto-clicking
         ToggleButton.Text = "START AUTO CLICK"
         ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
         StatusLabel.Text = "Auto Clicking Stopped"
@@ -495,11 +552,10 @@ ToggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Close Button Function
+-- Close Button
 CloseButton.MouseButton1Click:Connect(function()
     _G.isLoopRunning = false
     
-    -- Fade out animation
     TweenService:Create(MainFrame, TweenInfo.new(0.5), {
         BackgroundTransparency = 1,
         Size = UDim2.new(0, 0, 0, 0)
@@ -509,7 +565,6 @@ CloseButton.MouseButton1Click:Connect(function()
         BackgroundTransparency = 1
     }):Play()
     
-    -- Also hide settings frame
     if SettingsFrame then
         TweenService:Create(SettingsFrame, TweenInfo.new(0.5), {
             BackgroundTransparency = 1
@@ -526,54 +581,50 @@ MinButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     
     if isMinimized then
-        -- Minimize
         TweenService:Create(MainFrame, TweenInfo.new(0.4), {
             Size = UDim2.new(0, 350, 0, 45)
         }):Play()
         
-        -- Hide content
         ToggleButton.Visible = false
         SetPosButton.Visible = false
         StatusLabel.Visible = false
+        PositionLabel.Visible = false
         SettingsFrame.Visible = false
         
         MinButton.Text = "+"
     else
-        -- Restore
         TweenService:Create(MainFrame, TweenInfo.new(0.4), {
-            Size = UDim2.new(0, 350, 0, 220)
+            Size = UDim2.new(0, 350, 0, 250)
         }):Play()
         
-        -- Show content with delay
         wait(0.3)
         ToggleButton.Visible = true
         SetPosButton.Visible = true
         StatusLabel.Visible = true
+        PositionLabel.Visible = true
         
         MinButton.Text = "−"
     end
 end)
 
--- Settings Panel Toggle - FIXED ANIMATION
+-- Settings Panel Toggle
 SettingsBtn.MouseButton1Click:Connect(function()
     if SettingsFrame.Visible then
-        -- Hide settings
         TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {
             Position = UDim2.new(0.36, 0, 0.55, 0)
         }):Play()
         wait(0.3)
         SettingsFrame.Visible = false
     else
-        -- Show settings
         SettingsFrame.Visible = true
         SettingsFrame.Position = UDim2.new(0.36, 0, 0.55, 0)
         TweenService:Create(SettingsFrame, TweenInfo.new(0.3), {
-            Position = UDim2.new(0.36, 0, 0.52, 0) -- เลื่อนขึ้นเล็กน้อยเมื่อแสดง
+            Position = UDim2.new(0.36, 0, 0.52, 0)
         }):Play()
     end
 end)
 
--- Enhanced Drag Functionality
+-- Drag Functionality
 local function EnableDragging(frame)
     frame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -606,7 +657,6 @@ local function EnableDragging(frame)
     end)
 end
 
--- Enable dragging on header
 EnableDragging(MainFrame)
 
 -- Fade In Animation
@@ -623,7 +673,7 @@ spawn(function()
     TweenService:Create(SetPosButton, TweenInfo.new(0.8), {BackgroundTransparency = 0}):Play()
 end)
 
--- Auto-cleanup on player leave
+-- Auto-cleanup
 game:GetService("Players").PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then
         _G.isLoopRunning = false
@@ -633,9 +683,8 @@ game:GetService("Players").PlayerRemoving:Connect(function(player)
     end
 end)
 
--- Final initialization message
-print("🔥 REDZ HUB Pro 2025 Loaded Successfully!")
-print("✅ Features: Cyber UI, Auto Click, Position Set, Speed Control")
-print("🎮 Ready to use!")
+print("YANZ HUB | V0.1.4 [BETA] Loaded Successfully!")
+print("Features: Cyber UI, Auto Click, Position Set, Speed Control, Real-Time Position Tracking, Emergency Stop (F6)")
+print("Ready to use!")
 
 return ScreenGui

@@ -190,78 +190,26 @@ local function createButton(parent, text, position, callback)
     end)
 end
 
--- Function to Create Dropdown
-local function createDropdown(parent, text, position, items, callback)
-    local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, -10, 0, 35)
-    DropdownFrame.Position = UDim2.new(0, 5, 0, position)
-    DropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    local DropdownCorner = Instance.new("UICorner")
-    DropdownCorner.CornerRadius = UDim.new(0, 6)
-    DropdownCorner.Parent = DropdownFrame
-    DropdownFrame.Parent = parent
-    
-    local DropdownButton = Instance.new("TextButton")
-    DropdownButton.Size = UDim2.new(1, 0, 1, 0)
-    DropdownButton.BackgroundTransparency = 1
-    DropdownButton.Text = text .. ": Select"
-    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownButton.TextSize = 14
-    DropdownButton.Font = Enum.Font.Gotham
-    DropdownButton.Parent = DropdownFrame
-    
-    local DropdownList = Instance.new("Frame")
-    DropdownList.Size = UDim2.new(1, 0, 0, #items * 35)
-    DropdownList.Position = UDim2.new(0, 0, 1, 5)
-    DropdownList.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    DropdownList.Visible = false
-    local ListCorner = Instance.new("UICorner")
-    ListCorner.CornerRadius = UDim.new(0, 6)
-    ListCorner.Parent = DropdownList
-    DropdownList.Parent = DropdownFrame
-    
-    local ListLayout = Instance.new("UIListLayout")
-    ListLayout.FillDirection = Enum.FillDirection.Vertical
-    ListLayout.Padding = UDim.new(0, 5)
-    ListLayout.Parent = DropdownList
-    
-    for i, item in ipairs(items) do
-        local ItemButton = Instance.new("TextButton")
-        ItemButton.Size = UDim2.new(1, 0, 0, 30)
-        ItemButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        ItemButton.Text = item
-        ItemButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        ItemButton.TextSize = 14
-        ItemButton.Font = Enum.Font.Gotham
-        local ItemCorner = Instance.new("UICorner")
-        ItemCorner.CornerRadius = UDim.new(0, 6)
-        ItemCorner.Parent = ItemButton
-        ItemButton.Parent = DropdownList
-        ItemButton.MouseButton1Click:Connect(function()
-            DropdownButton.Text = text .. ": " .. item
-            DropdownList.Visible = false
-            callback(item)
-        end)
-    end
-    
-    DropdownButton.MouseButton1Click:Connect(function()
-        DropdownList.Visible = not DropdownList.Visible
-        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-        local tween = TweenService:Create(DropdownFrame, tweenInfo, {BackgroundColor3 = DropdownList.Visible and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(40, 40, 40)})
-        tween:Play()
-    end)
-end
-
--- Enhanced Pixel Scan Function
+-- Enhanced Pixel Scan Function (with Compatibility Check)
 local function isColorMatch(pixelColor, targetColor, tolerance)
+    if not syn or not syn.getpixelcolor then return false end
     local r, g, b = pixelColor.r, pixelColor.g, pixelColor.b
     local tr, tg, tb = targetColor.r, targetColor.g, targetColor.b
     return math.abs(r - tr) <= tolerance and math.abs(g - tg) <= tolerance and math.abs(b - tb) <= tolerance
 end
 
+local function getPixelColorSafe(x, y)
+    if not syn or not syn.getpixelcolor then
+        warn("Pixel color detection not supported by this executor. Please use a compatible executor or disable pixel-based features.")
+        return Color3.fromRGB(0, 0, 0) -- Return black as default
+    end
+    return syn.getpixelcolor(x, y)
+end
+
 -- Auto Farm Fish with Hold Click and x2.0 Luck Boost Detection
 local AutoFarmFishToggle = false
 local function pixelScanForFishBar()
+    if not syn or not syn.getpixelcolor then return end
     local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
     local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Adjust for green bar
     local chargeRegion = {x1 = 850, y1 = 380, x2 = 950, y2 = 400} -- Adjust for "CHARGE" text
@@ -275,7 +223,7 @@ local function pixelScanForFishBar()
         local chargeDetected = false
         for x = chargeRegion.x1, chargeRegion.x2, 5 do
             for y = chargeRegion.y1, chargeRegion.y2, 5 do
-                local pixelColor = syn.getpixelcolor(x, y)
+                local pixelColor = getPixelColorSafe(x, y)
                 if isColorMatch(pixelColor, chargeColor, tolerance) then
                     chargeDetected = true
                     break
@@ -290,7 +238,7 @@ local function pixelScanForFishBar()
             local luckBoostDetected = false
             for x = barRegion.x1, barRegion.x2, 3 do
                 for y = barRegion.y1, barRegion.y2, 3 do
-                    local pixelColor = syn.getpixelcolor(x, y)
+                    local pixelColor = getPixelColorSafe(x, y)
                     if isColorMatch(pixelColor, luckBoostColor, tolerance) and x >= barRegion.x2 - 10 then -- Rightmost part for x2.0 Luck Boost
                         luckBoostDetected = true
                         break
@@ -311,7 +259,7 @@ local function pixelScanForFishBar()
                     luckBoostDetected = false
                     for x = barRegion.x1, barRegion.x2, 3 do
                         for y = barRegion.y1, barRegion.y2, 3 do
-                            local pixelColor = syn.getpixelcolor(x, y)
+                            local pixelColor = getPixelColorSafe(x, y)
                             if isColorMatch(pixelColor, luckBoostColor, tolerance) and x >= barRegion.x2 - 10 then
                                 luckBoostDetected = true
                                 break
@@ -332,7 +280,7 @@ local function pixelScanForFishBar()
                         print("Green bar disappeared, released click!")
                         break
                     end
-                    wait(0.005) -- High precision check
+                    wait(0.005)
                 end
             end
         end
@@ -344,6 +292,7 @@ end
 -- Auto Click Fast with Professional Text Detection
 local AutoClickFastToggle = false
 local function autoClickFast()
+    if not syn or not syn.getpixelcolor then return end
     local screenWidth, screenHeight = 1920, 1080 -- Adjust to your resolution
     local textRegion = {x1 = 850, y1 = 430, x2 = 1050, y2 = 450} -- Adjust for "Click Fast! (000)" below bar
     local barRegion = {x1 = 800, y1 = 400, x2 = 1120, y2 = 420} -- Bar region for new bar detection
@@ -358,9 +307,9 @@ local function autoClickFast()
         local textDetected = false
         local pixelCount = 0
         local threshold = 50 -- Number of matching pixels to confirm text
-        for x = textRegion.x1, textRegion.x2, 2 do -- High precision scan
+        for x = textRegion.x1, textRegion.x2, 2 do
             for y = textRegion.y1, textRegion.y2, 2 do
-                local pixelColor = syn.getpixelcolor(x, y)
+                local pixelColor = getPixelColorSafe(x, y)
                 if isColorMatch(pixelColor, clickFastColor, tolerance) then
                     pixelCount = pixelCount + 1
                     if pixelCount >= threshold then
@@ -383,7 +332,7 @@ local function autoClickFast()
                 pixelCount = 0
                 for x = textRegion.x1, textRegion.x2, 2 do
                     for y = textRegion.y1, textRegion.y2, 2 do
-                        local pixelColor = syn.getpixelcolor(x, y)
+                        local pixelColor = getPixelColorSafe(x, y)
                         if isColorMatch(pixelColor, clickFastColor, tolerance) then
                             pixelCount = pixelCount + 1
                             if pixelCount >= threshold then
@@ -399,7 +348,7 @@ local function autoClickFast()
                 local newBarDetected = false
                 for x = barRegion.x1, barRegion.x2, 3 do
                     for y = barRegion.y1, barRegion.y2, 3 do
-                        local pixelColor = syn.getpixelcolor(x, y)
+                        local pixelColor = getPixelColorSafe(x, y)
                         if isColorMatch(pixelColor, greenColor, tolerance) or
                            isColorMatch(pixelColor, chargeColor, tolerance) then
                             newBarDetected = true
@@ -414,8 +363,7 @@ local function autoClickFast()
                     break
                 end
                 
-                syn.mouse_click(clickPosition.x, clickPosition.y, 1)
-                wait(0.01)
+                wait(0.01) -- No automatic click, just monitoring
             end
         end
         
@@ -494,6 +442,7 @@ end)
 local AutoSellToggle = false
 local AutoSellAllToggle = false
 local function autoSell()
+    if not syn or not syn.getpixelcolor then return end
     local sellTextRegion = {x1 = 850, y1 = 500, x2 = 1050, y2 = 550} -- Adjust for "Would you like to sell..." text
     local sellTextColor = Color3.fromRGB(255, 255, 255) -- White text (adjust)
     local tolerance = 10
@@ -503,7 +452,7 @@ local function autoSell()
         local textDetected = false
         for x = sellTextRegion.x1, sellTextRegion.x2, 5 do
             for y = sellTextRegion.y1, sellTextRegion.y2, 5 do
-                local pixelColor = syn.getpixelcolor(x, y)
+                local pixelColor = getPixelColorSafe(x, y)
                 if isColorMatch(pixelColor, sellTextColor, tolerance) then
                     textDetected = true
                     break
@@ -521,7 +470,7 @@ local function autoSell()
             syn.mouse_click(950, 600, 1) -- Click Yes button
         end
         
-        wait(math.random(0.5, 1.0))
+        wait(math.random(1.0, 2.0)) -- Increased delay to prevent spam
     end
 end
 

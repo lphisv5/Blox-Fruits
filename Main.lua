@@ -103,7 +103,7 @@ UICorner3.CornerRadius = UDim.new(0, 10)
 UICorner3.Parent = SettingsFrame
 
 -- Speed buttons
-local speeds = {0.1, 0.2, 0.5}
+local speeds = {00.01, 0.1, 0.2, 0.5}
 _G.clickDelay = 0.2
 
 for i, v in ipairs(speeds) do

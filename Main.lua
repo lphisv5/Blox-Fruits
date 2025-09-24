@@ -1,6 +1,6 @@
 --[[
-YANZ Hub - Fisch TI | v0.0.8 [BETA VERSION]
-GUI แนวนอน - เรียงแท็บใหม่ตามที่ต้องการ
+YANZ Hub - Fisch TI | v0.0.9 [BETA VERSION]
+แก้ไขปัญหาแท็บไม่แสดง - แสดงครบทุกแท็บ
 ]]
 
 local Players = game:GetService("Players")
@@ -138,299 +138,220 @@ local function ServerHop()
 end
 
 -- =========================
--- 🖼️ Horizontal GUI System
+-- 🖼️ Fixed Horizontal GUI System
 -- =========================
-local function CreateHorizontalGUI()
+local function CreateFixedGUI()
     -- สร้าง GUI หลัก
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "YANZHubGUI"
     ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
     ScreenGui.ResetOnSpawn = false
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-    -- Main Container (แนวนอน)
+    -- Main Container
     local MainContainer = Instance.new("Frame")
-    MainContainer.Size = UDim2.new(0, 600, 0, 400) -- กว้างมากขึ้นสำหรับแนวนอน
-    MainContainer.Position = UDim2.new(0.5, -300, 0.5, -200)
-    MainContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-    MainContainer.BackgroundTransparency = 0.05
+    MainContainer.Size = UDim2.new(0, 500, 0, 350)
+    MainContainer.Position = UDim2.new(0.5, -250, 0.5, -175)
+    MainContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     MainContainer.BorderSizePixel = 0
     MainContainer.ClipsDescendants = true
     MainContainer.Active = true
     MainContainer.Draggable = true
     MainContainer.Parent = ScreenGui
 
-    -- Gradient Background
-    local UIGradient = Instance.new("UIGradient")
-    UIGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 50)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 25))
-    })
-    UIGradient.Rotation = 45
-    UIGradient.Parent = MainContainer
-
-    -- Glass Effect
-    local GlassFrame = Instance.new("Frame")
-    GlassFrame.Size = UDim2.new(1, 0, 1, 0)
-    GlassFrame.BackgroundTransparency = 0.92
-    GlassFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    GlassFrame.BorderSizePixel = 0
-    GlassFrame.Parent = MainContainer
-
-    -- Header (ด้านบน)
+    -- Header
     local Header = Instance.new("Frame")
-    Header.Size = UDim2.new(1, 0, 0, 60)
-    Header.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
-    Header.BackgroundTransparency = 0.3
+    Header.Size = UDim2.new(1, 0, 0, 40)
+    Header.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
     Header.BorderSizePixel = 0
     Header.Parent = MainContainer
 
-    local HeaderGradient = Instance.new("UIGradient")
-    HeaderGradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 100, 200)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 70, 150))
-    })
-    HeaderGradient.Parent = Header
-
     -- Title
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, -100, 0, 30)
-    TitleLabel.Position = UDim2.new(0, 15, 0, 5)
-    TitleLabel.Text = "YANZ Hub - Fisch TI | v0.0.8 [BETA]"
+    TitleLabel.Size = UDim2.new(1, -80, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 10, 0, 0)
+    TitleLabel.Text = "YANZ Hub - Fisch TI | v0.0.9 [BETA]"
     TitleLabel.TextColor3 = Color3.new(1, 1, 1)
-    TitleLabel.TextSize = 16
+    TitleLabel.TextSize = 14
     TitleLabel.Font = Enum.Font.GothamBold
     TitleLabel.BackgroundTransparency = 1
     TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
     TitleLabel.Parent = Header
 
-    -- Stats Bar (FPS และ Timer)
-    local StatsBar = Instance.new("Frame")
-    StatsBar.Size = UDim2.new(1, -30, 0, 20)
-    StatsBar.Position = UDim2.new(0, 15, 0, 35)
-    StatsBar.BackgroundTransparency = 1
-    StatsBar.Parent = Header
-
-    local FPSLabel = Instance.new("TextLabel")
-    FPSLabel.Size = UDim2.new(0.3, 0, 1, 0)
-    FPSLabel.Text = "FPS: 60"
-    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-    FPSLabel.TextSize = 12
-    FPSLabel.Font = Enum.Font.Gotham
-    FPSLabel.BackgroundTransparency = 1
-    FPSLabel.TextXAlignment = Enum.TextXAlignment.Left
-    FPSLabel.Parent = StatsBar
-
-    local TimeLabel = Instance.new("TextLabel")
-    TimeLabel.Size = UDim2.new(0.4, 0, 1, 0)
-    TimeLabel.Position = UDim2.new(0.3, 0, 0, 0)
-    TimeLabel.Text = "00:00:00"
-    TimeLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    TimeLabel.TextSize = 12
-    TimeLabel.Font = Enum.Font.Gotham
-    TimeLabel.BackgroundTransparency = 1
-    TimeLabel.TextXAlignment = Enum.TextXAlignment.Center
-    TimeLabel.Parent = StatsBar
-
-    local StatusLabel = Instance.new("TextLabel")
-    StatusLabel.Size = UDim2.new(0.3, 0, 1, 0)
-    StatusLabel.Position = UDim2.new(0.7, 0, 0, 0)
-    StatusLabel.Text = "🟢 ONLINE"
-    StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-    StatusLabel.TextSize = 12
-    StatusLabel.Font = Enum.Font.Gotham
-    StatusLabel.BackgroundTransparency = 1
-    StatusLabel.TextXAlignment = Enum.TextXAlignment.Right
-    StatusLabel.Parent = StatsBar
+    -- Stats
+    local StatsLabel = Instance.new("TextLabel")
+    StatsLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    StatsLabel.Position = UDim2.new(0.5, 0, 0, 0)
+    StatsLabel.Text = "FPS: 60 | 00:00:00"
+    StatsLabel.TextColor3 = Color3.new(0, 1, 1)
+    StatsLabel.TextSize = 12
+    StatsLabel.Font = Enum.Font.Gotham
+    StatsLabel.BackgroundTransparency = 1
+    StatsLabel.TextXAlignment = Enum.TextXAlignment.Right
+    StatsLabel.Parent = Header
 
     -- Close Button
     local CloseButton = Instance.new("TextButton")
     CloseButton.Size = UDim2.new(0, 30, 0, 30)
-    CloseButton.Position = UDim2.new(1, -35, 0, 15)
-    CloseButton.Text = "×"
+    CloseButton.Position = UDim2.new(1, -35, 0, 5)
+    CloseButton.Text = "X"
     CloseButton.TextColor3 = Color3.new(1, 1, 1)
-    CloseButton.TextSize = 20
+    CloseButton.TextSize = 14
     CloseButton.Font = Enum.Font.GothamBold
     CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     CloseButton.BorderSizePixel = 0
     CloseButton.Parent = Header
 
-    -- Tabs Container (แนวนอน - ด้านล่าง Header)
+    -- Tabs Container (แนวนอน)
     local TabsContainer = Instance.new("Frame")
-    TabsContainer.Size = UDim2.new(1, 0, 0, 40)
-    TabsContainer.Position = UDim2.new(0, 0, 0, 60)
-    TabsContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+    TabsContainer.Size = UDim2.new(1, 0, 0, 35)
+    TabsContainer.Position = UDim2.new(0, 0, 0, 40)
+    TabsContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
     TabsContainer.BorderSizePixel = 0
     TabsContainer.Parent = MainContainer
 
-    -- Content Container (พื้นที่แสดงเนื้อหา)
-    local ContentContainer = Instance.new("ScrollingFrame")
-    ContentContainer.Size = UDim2.new(1, -10, 1, -110)
-    ContentContainer.Position = UDim2.new(0, 5, 0, 110)
-    ContentContainer.BackgroundTransparency = 1
-    ContentContainer.BorderSizePixel = 0
-    ContentContainer.ScrollBarThickness = 6
-    ContentContainer.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 150)
-    ContentContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    ContentContainer.Parent = MainContainer
+    -- Content Area
+    local ContentFrame = Instance.new("Frame")
+    ContentFrame.Size = UDim2.new(1, 0, 1, -75)
+    ContentFrame.Position = UDim2.new(0, 0, 0, 75)
+    ContentFrame.BackgroundTransparency = 1
+    ContentFrame.Parent = MainContainer
 
-    local ContentLayout = Instance.new("UIListLayout")
-    ContentLayout.Padding = UDim.new(0, 10)
-    ContentLayout.Parent = ContentContainer
-
-    -- Tabs System (เรียงตามที่ต้องการ: HOME → MAIN → SETTINGS)
+    -- Tabs System (ง่ายๆ แต่ได้ผล)
     local Tabs = {}
     local CurrentTab = nil
 
     local function CreateTab(name)
+        -- Tab Button
         local tabButton = Instance.new("TextButton")
-        tabButton.Size = UDim2.new(0, 120, 1, 0) -- กว้างขึ้นสำหรับแนวนอน
+        tabButton.Size = UDim2.new(0, 100, 1, 0)
         tabButton.Text = name
         tabButton.TextColor3 = Color3.new(1, 1, 1)
         tabButton.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
         tabButton.BorderSizePixel = 0
-        tabButton.TextSize = 14
+        tabButton.TextSize = 12
         tabButton.Font = Enum.Font.Gotham
         tabButton.Parent = TabsContainer
 
-        local tabContent = Instance.new("Frame")
-        tabContent.Size = UDim2.new(1, 0, 0, 0)
+        -- Tab Content
+        local tabContent = Instance.new("ScrollingFrame")
+        tabContent.Size = UDim2.new(1, 0, 1, 0)
+        tabContent.Position = UDim2.new(0, 0, 0, 0)
         tabContent.BackgroundTransparency = 1
+        tabContent.BorderSizePixel = 0
+        tabContent.ScrollBarThickness = 6
+        tabContent.AutomaticCanvasSize = Enum.AutomaticSize.Y
         tabContent.Visible = false
-        tabContent.AutomaticSize = Enum.AutomaticSize.Y
-        tabContent.Parent = ContentContainer
+        tabContent.Parent = ContentFrame
 
-        local tabLayout = Instance.new("UIListLayout")
-        tabLayout.Padding = UDim.new(0, 8)
-        tabLayout.Parent = tabContent
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 8)
+        layout.Parent = tabContent
 
-        Tabs[name] = {button = tabButton, content = tabContent}
+        Tabs[name] = {
+            button = tabButton,
+            content = tabContent,
+            elements = {}
+        }
 
         tabButton.MouseButton1Click:Connect(function()
+            -- ซ่อนแท็บเก่า
             if CurrentTab then
                 CurrentTab.content.Visible = false
                 CurrentTab.button.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
             end
+            
+            -- แสดงแท็บใหม่
             CurrentTab = Tabs[name]
             CurrentTab.content.Visible = true
             CurrentTab.button.BackgroundColor3 = Color3.fromRGB(60, 100, 200)
-            ContentContainer.CanvasPosition = Vector2.new(0, 0)
+            CurrentTab.content.CanvasPosition = Vector2.new(0, 0)
         end)
 
-        return tabContent
+        return Tabs[name]
     end
 
-    -- Modern Button Function
-    local function CreateModernButton(parent, text, callback)
+    -- Function สร้างปุ่ม
+    local function AddButton(tab, text, callback)
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, -10, 0, 40)
-        button.Position = UDim2.new(0, 5, 0, 0)
+        button.Size = UDim2.new(1, -20, 0, 35)
+        button.Position = UDim2.new(0, 10, 0, 0)
         button.Text = text
         button.TextColor3 = Color3.new(1, 1, 1)
         button.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
         button.BorderSizePixel = 0
-        button.TextSize = 13
+        button.TextSize = 12
         button.Font = Enum.Font.Gotham
-        button.AutoButtonColor = false
-        button.Parent = parent
-
-        button.MouseEnter:Connect(function()
-            game:GetService("TweenService"):Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 100, 200)}):Play()
-        end)
-
-        button.MouseLeave:Connect(function()
-            game:GetService("TweenService"):Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 70)}):Play()
-        end)
-
+        button.Parent = tab.content
+        
         button.MouseButton1Click:Connect(function()
             pcall(callback)
-            game:GetService("TweenService"):Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(80, 120, 220)}):Play()
-            wait(0.1)
-            game:GetService("TweenService"):Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(50, 50, 70)}):Play()
         end)
-
+        
+        table.insert(tab.elements, button)
         return button
     end
 
-    -- Modern Toggle Function
-    local function CreateModernToggle(parent, text, default, callback)
+    -- Function สร้าง Toggle
+    local function AddToggle(tab, text, default, callback)
         local toggleFrame = Instance.new("Frame")
-        toggleFrame.Size = UDim2.new(1, -10, 0, 40)
-        toggleFrame.Position = UDim2.new(0, 5, 0, 0)
+        toggleFrame.Size = UDim2.new(1, -20, 0, 35)
+        toggleFrame.Position = UDim2.new(0, 10, 0, 0)
         toggleFrame.BackgroundTransparency = 1
-        toggleFrame.Parent = parent
+        toggleFrame.Parent = tab.content
+
+        local toggleText = Instance.new("TextLabel")
+        toggleText.Size = UDim2.new(0.7, 0, 1, 0)
+        toggleText.Text = text
+        toggleText.TextColor3 = Color3.new(1, 1, 1)
+        toggleText.TextSize = 12
+        toggleText.Font = Enum.Font.Gotham
+        toggleText.BackgroundTransparency = 1
+        toggleText.TextXAlignment = Enum.TextXAlignment.Left
+        toggleText.Parent = toggleFrame
 
         local toggleButton = Instance.new("TextButton")
-        toggleButton.Size = UDim2.new(1, -60, 1, 0)
-        toggleButton.Text = "  " .. text
-        toggleButton.TextColor3 = Color3.new(1, 1, 1)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+        toggleButton.Size = UDim2.new(0.3, 0, 0.6, 0)
+        toggleButton.Position = UDim2.new(0.7, 0, 0.2, 0)
+        toggleButton.Text = default and "ON" or "OFF"
+        toggleButton.TextColor3 = default and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+        toggleButton.BackgroundColor3 = default and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
         toggleButton.BorderSizePixel = 0
-        toggleButton.TextSize = 13
-        toggleButton.Font = Enum.Font.Gotham
-        toggleButton.TextXAlignment = Enum.TextXAlignment.Left
-        toggleButton.AutoButtonColor = false
+        toggleButton.TextSize = 11
+        toggleButton.Font = Enum.Font.GothamBold
         toggleButton.Parent = toggleFrame
 
-        local toggleSwitch = Instance.new("Frame")
-        toggleSwitch.Size = UDim2.new(0, 40, 0, 20)
-        toggleSwitch.Position = UDim2.new(1, -45, 0.5, -10)
-        toggleSwitch.BackgroundColor3 = default and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(100, 100, 100)
-        toggleSwitch.BorderSizePixel = 0
-        toggleSwitch.Parent = toggleFrame
-
-        local toggleCircle = Instance.new("Frame")
-        toggleCircle.Size = UDim2.new(0, 16, 0, 16)
-        toggleCircle.Position = UDim2.new(0, default and 20 or 2, 0.5, -8)
-        toggleCircle.BackgroundColor3 = Color3.new(1, 1, 1)
-        toggleCircle.BorderSizePixel = 0
-        toggleCircle.Parent = toggleSwitch
-
-        local currentState = default
-
-        local function UpdateToggle()
-            game:GetService("TweenService"):Create(toggleSwitch, TweenInfo.new(0.2), {
-                BackgroundColor3 = currentState and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(100, 100, 100)
-            }):Play()
-            
-            game:GetService("TweenService"):Create(toggleCircle, TweenInfo.new(0.2), {
-                Position = UDim2.new(0, currentState and 20 or 2, 0.5, -8)
-            }):Play()
-        end
+        local state = default
 
         toggleButton.MouseButton1Click:Connect(function()
-            currentState = not currentState
-            UpdateToggle()
-            pcall(function() callback(currentState) end)
+            state = not state
+            toggleButton.Text = state and "ON" or "OFF"
+            toggleButton.TextColor3 = state and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+            toggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
+            pcall(function() callback(state) end)
         end)
 
-        toggleButton.MouseEnter:Connect(function()
-            game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 80)}):Play()
-        end)
-
-        toggleButton.MouseLeave:Connect(function()
-            game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 70)}):Play()
-        end)
-
-        return {setState = function(state)
-            currentState = state
-            UpdateToggle()
+        table.insert(tab.elements, toggleFrame)
+        return {setState = function(newState)
+            state = newState
+            toggleButton.Text = state and "ON" or "OFF"
+            toggleButton.TextColor3 = state and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+            toggleButton.BackgroundColor3 = state and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(100, 0, 0)
         end}
     end
 
-    -- Text Input Function
-    local function CreateTextInput(parent, text, default, callback)
+    -- Function สร้าง Input
+    local function AddInput(tab, text, default, callback)
         local inputFrame = Instance.new("Frame")
-        inputFrame.Size = UDim2.new(1, -10, 0, 40)
-        inputFrame.Position = UDim2.new(0, 5, 0, 0)
+        inputFrame.Size = UDim2.new(1, -20, 0, 35)
+        inputFrame.Position = UDim2.new(0, 10, 0, 0)
         inputFrame.BackgroundTransparency = 1
-        inputFrame.Parent = parent
+        inputFrame.Parent = tab.content
 
         local inputLabel = Instance.new("TextLabel")
         inputLabel.Size = UDim2.new(0.4, 0, 1, 0)
         inputLabel.Text = text
         inputLabel.TextColor3 = Color3.new(1, 1, 1)
-        inputLabel.TextSize = 13
+        inputLabel.TextSize = 12
         inputLabel.Font = Enum.Font.Gotham
         inputLabel.BackgroundTransparency = 1
         inputLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -443,7 +364,7 @@ local function CreateHorizontalGUI()
         textBox.TextColor3 = Color3.new(0, 0, 0)
         textBox.BackgroundColor3 = Color3.new(1, 1, 1)
         textBox.BorderSizePixel = 0
-        textBox.TextSize = 12
+        textBox.TextSize = 11
         textBox.Font = Enum.Font.Gotham
         textBox.Parent = inputFrame
 
@@ -451,17 +372,35 @@ local function CreateHorizontalGUI()
             pcall(function() callback(textBox.Text) end)
         end)
 
+        table.insert(tab.elements, inputFrame)
         return textBox
     end
 
+    -- Function สร้าง Label
+    local function AddLabel(tab, text, color)
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -20, 0, 20)
+        label.Position = UDim2.new(0, 10, 0, 0)
+        label.Text = text
+        label.TextColor3 = color or Color3.new(1, 1, 1)
+        label.TextSize = 12
+        label.Font = Enum.Font.GothamBold
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.Parent = tab.content
+        
+        table.insert(tab.elements, label)
+        return label
+    end
+
     -- =========================
-    -- 📱 สร้างแท็บตามลำดับที่ต้องการ
+    -- 📱 สร้างแท็บทั้งหมด (ง่ายๆ แต่ได้ผล)
     -- =========================
 
-    -- 🏠 TAB - HOME (แรกสุด)
+    -- 🏠 TAB - HOME
     local HomeTab = CreateTab("HOME")
     
-    CreateModernButton(HomeTab, "📋 Discord - คัดลอกลิงก์", function()
+    AddButton(HomeTab, "📋 Discord - คัดลอกลิงก์", function()
         setclipboard("https://discord.com/invite/mNGeUVcjKB")
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "YANZ Hub",
@@ -470,14 +409,23 @@ local function CreateHorizontalGUI()
         })
     end)
 
-    -- ⚙️ TAB - MAIN (ที่สอง)
+    AddButton(HomeTab, "🔄 อัปเดต Rod List", function()
+        local rods = GetAvailableRods()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "YANZ Hub",
+            Text = "พบเบ็ด " .. #rods .. " อันในกระเป๋า",
+            Duration = 3
+        })
+    end)
+
+    -- ⚙️ TAB - MAIN
     local MainTab = CreateTab("MAIN")
     
-    local autoFarmToggle = CreateModernToggle(MainTab, "Auto Farm Fish", _G.AutoFarm, function(state)
+    local autoFarmToggle = AddToggle(MainTab, "Auto Farm Fish", _G.AutoFarm, function(state)
         _G.AutoFarm = state
     end)
 
-    CreateModernButton(MainTab, "Save", function()
+    AddButton(MainTab, "Save", function()
         if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
             SavedPos = Player.Character.HumanoidRootPart.Position
             game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -488,67 +436,54 @@ local function CreateHorizontalGUI()
         end
     end)
 
-    CreateModernButton(MainTab, "TP To Save", function()
+    AddButton(MainTab, "TP To Save", function()
         if SavedPos and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
             Player.Character.HumanoidRootPart.CFrame = CFrame.new(SavedPos)
         end
     end)
 
-    local afkToggle = CreateModernToggle(MainTab, "AFK", _G.AFK, function(state)
+    local afkToggle = AddToggle(MainTab, "AFK", _G.AFK, function(state)
         _G.AFK = state
     end)
 
-    -- 🔧 TAB - SETTING (สุดท้าย)
+    -- 🔧 TAB - SETTING
     local SettingsTab = CreateTab("SETTING")
     
-    local infiniteJumpToggle = CreateModernToggle(SettingsTab, "กระโดดไม่จำกัด", _G.InfiniteJump, function(state)
+    local infiniteJumpToggle = AddToggle(SettingsTab, "กระโดดไม่จำกัด", _G.InfiniteJump, function(state)
         _G.InfiniteJump = state
     end)
 
-    local walkSpeedInput = CreateTextInput(SettingsTab, "วิ่งเร็ว %", WalkSpeed, function(value)
+    local walkSpeedInput = AddInput(SettingsTab, "วิ่งเร็ว %", WalkSpeed, function(value)
         local num = tonumber(value)
         if num and num >= 16 and num <= 100 then
             WalkSpeed = num
         end
     end)
 
-    local noClipToggle = CreateModernToggle(SettingsTab, "เดินทะลุ", _G.NoClip, function(state)
+    local noClipToggle = AddToggle(SettingsTab, "เดินทะลุ", _G.NoClip, function(state)
         _G.NoClip = state
     end)
 
-    local flyToggle = CreateModernToggle(SettingsTab, "Fly", _G.Fly, function(state)
+    local flyToggle = AddToggle(SettingsTab, "Fly", _G.Fly, function(state)
         _G.Fly = state
     end)
 
     -- Server Section
-    local serverLabel = Instance.new("TextLabel")
-    serverLabel.Size = UDim2.new(1, -10, 0, 20)
-    serverLabel.Position = UDim2.new(0, 5, 0, 0)
-    serverLabel.Text = "====== Server ======"
-    serverLabel.TextColor3 = Color3.fromRGB(0, 255, 255)
-    serverLabel.TextSize = 12
-    serverLabel.Font = Enum.Font.GothamBold
-    serverLabel.BackgroundTransparency = 1
-    serverLabel.TextXAlignment = Enum.TextXAlignment.Center
-    serverLabel.Parent = SettingsTab
+    AddLabel(SettingsTab, "====== Server =====", Color3.fromRGB(0, 255, 255))
 
-    CreateModernButton(SettingsTab, "Rejoin", function()
+    AddButton(SettingsTab, "Rejoin", function()
         TeleportService:Teleport(game.PlaceId)
     end)
 
-    CreateModernButton(SettingsTab, "Server Hop", function()
+    AddButton(SettingsTab, "Server Hop", function()
         ServerHop()
     end)
 
-    local serverIdInput = CreateTextInput(SettingsTab, "Join ID", "", function(value)
-        if value and value ~= "" then
-            pcall(function()
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, value)
-            end)
-        end
+    local serverIdInput = AddInput(SettingsTab, "Join ID", "", function(value)
+        -- Handle in button
     end)
 
-    CreateModernButton(SettingsTab, "Join Server ID", function()
+    AddButton(SettingsTab, "Join Server ID", function()
         local serverId = serverIdInput.Text
         if serverId and serverId ~= "" then
             pcall(function()
@@ -558,30 +493,21 @@ local function CreateHorizontalGUI()
     end)
 
     -- GUI RGB Section
-    local rgbLabel = Instance.new("TextLabel")
-    rgbLabel.Size = UDim2.new(1, -10, 0, 20)
-    rgbLabel.Position = UDim2.new(0, 5, 0, 0)
-    rgbLabel.Text = "====== GUI RGB ======"
-    rgbLabel.TextColor3 = Color3.fromRGB(255, 0, 255)
-    rgbLabel.TextSize = 12
-    rgbLabel.Font = Enum.Font.GothamBold
-    rgbLabel.BackgroundTransparency = 1
-    rgbLabel.TextXAlignment = Enum.TextXAlignment.Center
-    rgbLabel.Parent = SettingsTab
+    AddLabel(SettingsTab, "====== GUI RGB =====", Color3.fromRGB(255, 0, 255))
 
-    local rgbAllToggle = CreateModernToggle(SettingsTab, "RGB GUI ALL", _G.RGB_GUI_ALL, function(state)
+    local rgbAllToggle = AddToggle(SettingsTab, "RGB GUI ALL", _G.RGB_GUI_ALL, function(state)
         _G.RGB_GUI_ALL = state
     end)
 
-    local rgbGuiToggle = CreateModernToggle(SettingsTab, "RGB GUI", _G.RGB_GUI, function(state)
+    local rgbGuiToggle = AddToggle(SettingsTab, "RGB GUI", _G.RGB_GUI, function(state)
         _G.RGB_GUI = state
     end)
 
-    local rgbNameToggle = CreateModernToggle(SettingsTab, "RGB NAME", _G.RGB_NAME, function(state)
+    local rgbNameToggle = AddToggle(SettingsTab, "RGB NAME", _G.RGB_NAME, function(state)
         _G.RGB_NAME = state
     end)
 
-    local rgbEdgeToggle = CreateModernToggle(SettingsTab, "RGB GUI EDGE", _G.RGB_GUI_EDGE, function(state)
+    local rgbEdgeToggle = AddToggle(SettingsTab, "RGB GUI EDGE", _G.RGB_GUI_EDGE, function(state)
         _G.RGB_GUI_EDGE = state
     end)
 
@@ -594,16 +520,10 @@ local function CreateHorizontalGUI()
 
     -- ปุ่มปิด
     CloseButton.MouseButton1Click:Connect(function()
-        game:GetService("TweenService"):Create(MainContainer, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-        wait(0.3)
         ScreenGui:Destroy()
     end)
 
-    -- Animation เมื่อเปิด
-    MainContainer.Size = UDim2.new(0, 0, 0, 0)
-    game:GetService("TweenService"):Create(MainContainer, TweenInfo.new(0.5), {Size = UDim2.new(0, 600, 0, 400)}):Play()
-
-    -- Update Real FPS และ Timer
+    -- Update Stats
     spawn(function()
         local frameCount = 0
         local lastTime = tick()
@@ -617,24 +537,13 @@ local function CreateHorizontalGUI()
                 frameCount = 0
                 lastTime = currentTime
                 
-                FPSLabel.Text = "FPS: " .. RealFPS
+                local elapsed = os.time() - StartTime
+                local hours = math.floor(elapsed / 3600)
+                local minutes = math.floor((elapsed % 3600) / 60)
+                local seconds = elapsed % 60
                 
-                if RealFPS >= 100 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                elseif RealFPS >= 60 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-                elseif RealFPS >= 30 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 165, 0)
-                else
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                end
+                StatsLabel.Text = string.format("FPS: %d | %02d:%02d:%02d", RealFPS, hours, minutes, seconds)
             end
-            
-            local elapsed = os.time() - StartTime
-            local hours = math.floor(elapsed / 3600)
-            local minutes = math.floor((elapsed % 3600) / 60)
-            local seconds = elapsed % 60
-            TimeLabel.Text = string.format("%02d:%02d:%02d", hours, minutes, seconds)
             
             wait(0.1)
         end
@@ -644,7 +553,7 @@ local function CreateHorizontalGUI()
 end
 
 -- =========================
--- 🔄 Auto Farm System
+-- 🔄 Auto Systems
 -- =========================
 local function StartAutoSystems()
     -- Auto Farm
@@ -711,43 +620,42 @@ local function StartAutoSystems()
 end
 
 -- =========================
--- 🚀 Initialize System
+-- 🚀 Initialize
 -- =========================
-wait(2)
+wait(1)
 
+-- แจ้งเตือนเริ่มต้น
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "YANZ Hub - Fisch TI",
-    Text = "กำลังโหลด v0.0.8 [BETA]...",
+    Text = "กำลังโหลด v0.0.9 [BETA]...",
     Duration = 3
 })
 
-CreateHorizontalGUI()
+-- สร้าง GUI
+CreateFixedGUI()
+
+-- เริ่มระบบอัตโนมัติ
 StartAutoSystems()
 
+-- แจ้งเตือนสำเร็จ
 wait(1)
 game:GetService("StarterGui"):SetCore("SendNotification", {
     Title = "YANZ Hub - Fisch TI",
-    Text = "โหลดสำเร็จ! กด RightShift เพื่อเปิด/ปิด GUI",
+    Text = "โหลดสำเร็จ! แท็บแสดงครบถ้วน",
     Duration = 5
 })
 
+-- Keybind สำหรับเปิด/ปิด GUI
 UIS.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.RightShift then
         local gui = game.Players.LocalPlayer.PlayerGui:FindFirstChild("YANZHubGUI")
         if gui then
-            local main = gui:FindFirstChild("MainContainer")
-            if main then
-                if main.Size == UDim2.new(0, 600, 0, 400) then
-                    game:GetService("TweenService"):Create(main, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-                else
-                    game:GetService("TweenService"):Create(main, TweenInfo.new(0.3), {Size = UDim2.new(0, 600, 0, 400)}):Play()
-                end
-            end
+            gui.Enabled = not gui.Enabled
         end
     end
 end)
 
-print("🎯 YANZ Hub - Fisch TI v0.0.8 [BETA]")
-print("✅ GUI แนวนอน - เรียงแท็บ: HOME → MAIN → SETTING")
+print("🎯 YANZ Hub - Fisch TI v0.0.9 [BETA]")
+print("✅ แก้ไขเรียบร้อย! แท็บแสดงครบ: HOME, MAIN, SETTING")
 print("📊 FPS จริง + Timer เรียลไทม์")
-print("⚡ ระบบอัตโนมัติครบถ้วน")
+print("⚡ ระบบอัตโนมัติพร้อมทำงาน")

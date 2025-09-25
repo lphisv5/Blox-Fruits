@@ -1,157 +1,244 @@
--- LocalScript: Full Third Sea Auto Farm (Study)
+-- Roblox Lua Script for a Complete GUI
+-- Place this script in StarterGui > StarterPlayerGui (LocalScript) for client-side GUI
+-- This creates a full GUI with buttons, text input, labels, a scrollbar, and events
+
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local playerGui = player:WaitForChild("PlayerGui")
 
--- ===== CONFIG =====
-local flyHeight = 10          -- ความสูงลอยตัว
-local attackSpeed = 0.001      -- ระยะเวลาระหว่างตี (ตัวอย่างศึกษา)
-local autoFarm = false
-local targetName = nil
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "CompleteGUI"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
 
--- ===== รายชื่อมอนสเตอร์ Third Sea (รวมทุกเกาะ) =====
-local monsters = {
-    -- Port Town
-    "Stone Pirate", "Millionaire Pistol", "Billionaire",
-    -- Hydra Island
-    "Dragon Crew Warrior", "Dragon Crew Archer", "Hydra Enforcer", "Kilo Admiral",
-    -- Great Tree
-    "Marine Commodore", "Marine Rear Admiral", "Fishman Raider", "Fishman Captain",
-    -- Floating Turtle
-    "Forest Pirate", "Jungle Pirate", "Musketeer Pirate", "Mythological Pirate Captain", "Elephant",
-    -- Haunted Castle
-    "Beautiful Pirate", "Death King", "Uzoth", "Soul Reaper", "Cursed Skeleton",
-    "Crypt Master", "Dark Blade", "Dark Dagger", "Deandre", "Diablo",
-    -- Sea of Treats
-    "Urban Cake Prince", "Dough King", "Cocoa Warrior", "Scout", "Chef", "Guard",
-    -- Tiki Outpost
-    "Tiki Warrior", "Tiki Shaman", "Barista", "Cousin Banana (Hungry Man quest spawn)",
-    "Temple of Time (NPC variant)", "Ghost (various haunted spawns)"
-}
+-- Main Frame (like a window)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 400, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
+mainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.Parent = screenGui
 
--- ===== GUI =====
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+-- Title Label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, 0, 0, 50)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundColor3 = Color3.fromRGB(73, 175, 80)
+titleLabel.Text = "Complete Roblox GUI - Just GUI"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.Parent = mainFrame
 
--- Frame
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,300,0,150)
-frame.Position = UDim2.new(0,10,0,10)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-frame.Parent = ScreenGui
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 10)
+closeButton.BackgroundColor3 = Color3.fromRGB(244, 67, 54)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextScaled = true
+closeButton.Font = Enum.Font.SourceSansBold
+closeButton.Parent = mainFrame
 
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,0,0,25)
-title.Position = UDim2.new(0,0,0,0)
-title.BackgroundTransparency = 1
-title.Text = "Third Sea Auto Farm"
-title.TextColor3 = Color3.fromRGB(255,255,255)
-title.Parent = frame
+-- Counter Label and Button
+local counterLabel = Instance.new("TextLabel")
+counterLabel.Name = "CounterLabel"
+counterLabel.Size = UDim2.new(1, -20, 0, 30)
+counterLabel.Position = UDim2.new(0, 10, 0, 70)
+counterLabel.BackgroundTransparency = 1
+counterLabel.Text = "Counter: 0"
+counterLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+counterLabel.TextScaled = true
+counterLabel.Font = Enum.Font.SourceSans
+counterLabel.Parent = mainFrame
 
--- Dropdown (Selection)
-local dropdown = Instance.new("TextButton")
-dropdown.Size = UDim2.new(0.8,0,0,30)
-dropdown.Position = UDim2.new(0.1,0,0,35)
-dropdown.Text = "Select Monster"
-dropdown.BackgroundColor3 = Color3.fromRGB(70,70,70)
-dropdown.TextColor3 = Color3.fromRGB(255,255,255)
-dropdown.Parent = frame
+local incrementButton = Instance.new("TextButton")
+incrementButton.Name = "IncrementButton"
+incrementButton.Size = UDim2.new(0, 150, 0, 40)
+incrementButton.Position = UDim2.new(0, 10, 0, 110)
+incrementButton.BackgroundColor3 = Color3.fromRGB(33, 150, 243)
+incrementButton.Text = "Increment Counter"
+incrementButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+incrementButton.TextScaled = true
+incrementButton.Font = Enum.Font.SourceSansBold
+incrementButton.Parent = mainFrame
 
-local listFrame = Instance.new("Frame")
-listFrame.Size = UDim2.new(0.8,0,0,100)
-listFrame.Position = UDim2.new(0.1,0,0,70)
-listFrame.BackgroundColor3 = Color3.fromRGB(50,50,50)
-listFrame.Visible = false
-listFrame.Parent = frame
+-- Text Input and Save Button
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Name = "NameLabel"
+nameLabel.Size = UDim2.new(1, -20, 0, 20)
+nameLabel.Position = UDim2.new(0, 10, 0, 170)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Text = "Enter Your Name:"
+nameLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+nameLabel.TextScaled = true
+nameLabel.Font = Enum.Font.SourceSans
+nameLabel.Parent = mainFrame
 
--- เพิ่มรายการลง Dropdown
-for i, name in ipairs(monsters) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1,0,0,20)
-    btn.Position = UDim2.new(0,0,0,(i-1)*20)
-    btn.Text = name
-    btn.BackgroundColor3 = Color3.fromRGB(80,80,80)
-    btn.TextColor3 = Color3.fromRGB(255,255,255)
-    btn.Parent = listFrame
-    btn.MouseButton1Click:Connect(function()
-        targetName = name
-        dropdown.Text = "Target: " .. name
-        listFrame.Visible = false
-    end)
-end
+local nameTextBox = Instance.new("TextBox")
+nameTextBox.Name = "NameTextBox"
+nameTextBox.Size = UDim2.new(1, -20, 0, 30)
+nameTextBox.Position = UDim2.new(0, 10, 0, 200)
+nameTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+nameTextBox.Text = "Type your name here..."
+nameTextBox.TextColor3 = Color3.fromRGB(128, 128, 128)
+nameTextBox.TextScaled = true
+nameTextBox.Font = Enum.Font.SourceSans
+nameTextBox.Parent = mainFrame
 
-dropdown.MouseButton1Click:Connect(function()
-    listFrame.Visible = not listFrame.Visible
-end)
+local saveButton = Instance.new("TextButton")
+saveButton.Name = "SaveButton"
+saveButton.Size = UDim2.new(0, 100, 0, 30)
+saveButton.Position = UDim2.new(0, 10, 0, 240)
+saveButton.BackgroundColor3 = Color3.fromRGB(255, 152, 0)
+saveButton.Text = "Save"
+saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+saveButton.TextScaled = true
+saveButton.Font = Enum.Font.SourceSansBold
+saveButton.Parent = mainFrame
 
--- Toggle Auto Farm
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0.8,0,0,30)
-toggleButton.Position = UDim2.new(0.1,0,0,120)
-toggleButton.Text = "Auto Farm: OFF"
-toggleButton.BackgroundColor3 = Color3.fromRGB(70,70,70)
-toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
-toggleButton.Parent = frame
+-- Text Area with ScrollingFrame
+local textAreaLabel = Instance.new("TextLabel")
+textAreaLabel.Name = "TextAreaLabel"
+textAreaLabel.Size = UDim2.new(1, -20, 0, 20)
+textAreaLabel.Position = UDim2.new(0, 10, 0, 290)
+textAreaLabel.BackgroundTransparency = 1
+textAreaLabel.Text = "Log Messages:"
+textAreaLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+textAreaLabel.TextScaled = true
+textAreaLabel.Font = Enum.Font.SourceSans
+textAreaLabel.Parent = mainFrame
 
-toggleButton.MouseButton1Click:Connect(function()
-    autoFarm = not autoFarm
-    toggleButton.Text = "Auto Farm: " .. (autoFarm and "ON" or "OFF")
-end)
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Name = "ScrollingFrame"
+scrollingFrame.Size = UDim2.new(1, -20, 0, 150)
+scrollingFrame.Position = UDim2.new(0, 10, 0, 320)
+scrollingFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+scrollingFrame.BorderSizePixel = 1
+scrollingFrame.ScrollBarThickness = 10
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 200)  -- Will be updated dynamically
+scrollingFrame.Parent = mainFrame
 
--- ===== FUNCTIONS =====
-local function findMonster(name)
-    for _, npc in pairs(workspace:GetChildren()) do
-        if npc:IsA("Model") and npc.Name == name then
-            local humanoid = npc:FindFirstChild("Humanoid")
-            if humanoid then
-                return npc
-            end
+-- Sample log text
+local logText = Instance.new("TextLabel")
+logText.Name = "LogText"
+logText.Size = UDim2.new(1, -10, 0, 20)
+logText.Position = UDim2.new(0, 5, 0, 0)
+logText.BackgroundTransparency = 1
+logText.Text = "Welcome to the Complete GUI! (Scroll to see more)"
+logText.TextColor3 = Color3.fromRGB(0, 0, 0)
+logText.TextScaled = true
+logText.TextXAlignment = Enum.TextXAlignment.Left
+logText.Font = Enum.Font.SourceSans
+logText.Parent = scrollingFrame
+
+-- Clear Button for Log
+local clearButton = Instance.new("TextButton")
+clearButton.Name = "ClearButton"
+clearButton.Size = UDim2.new(0, 80, 0, 30)
+clearButton.Position = UDim2.new(1, -90, 0, 290)
+clearButton.BackgroundColor3 = Color3.fromRGB(158, 158, 158)
+clearButton.Text = "Clear Log"
+clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+clearButton.TextScaled = true
+clearButton.Font = Enum.Font.SourceSansBold
+clearButton.Parent = mainFrame
+
+-- Variables
+local counter = 0
+local logEntries = {}
+
+-- Function to add log entry
+local function addLog(text)
+    table.insert(logEntries, text)
+    
+    -- Clear existing children
+    for _, child in pairs(scrollingFrame:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
         end
     end
+    
+    -- Recreate labels
+    local canvasHeight = 0
+    for i, entry in ipairs(logEntries) do
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -10, 0, 20)
+        label.Position = UDim2.new(0, 5, 0, canvasHeight)
+        label.BackgroundTransparency = 1
+        label.Text = tostring(i) .. ": " .. entry
+        label.TextColor3 = Color3.fromRGB(0, 0, 0)
+        label.TextScaled = true
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Font = Enum.Font.SourceSans
+        label.Parent = scrollingFrame
+        canvasHeight = canvasHeight + 25
+    end
+    
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, canvasHeight)
 end
 
-local function tpToMonster(monster)
-    if monster and monster:FindFirstChild("HumanoidRootPart") then
-        humanoidRootPart.CFrame = monster.HumanoidRootPart.CFrame + Vector3.new(0, flyHeight, 0)
+-- Function to update counter
+local function updateCounter()
+    counter = counter + 1
+    counterLabel.Text = "Counter: " .. counter
+    addLog("Counter incremented to " .. counter)
+end
+
+-- Function to save name
+local function saveName()
+    local name = nameTextBox.Text
+    if name ~= "" and name ~= "Type your name here..." then
+        addLog("Saved name: " .. name)
+        nameTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+    else
+        addLog("Please enter a valid name!")
     end
 end
 
-local function getMonsterInfo(monster)
-    if monster and monster:FindFirstChild("Humanoid") then
-        local humanoid = monster.Humanoid
-        local level = monster:FindFirstChild("Level") and monster.Level.Value or "Unknown"
-        local armor = monster:FindFirstChild("Armor") and monster.Armor.Value or "Unknown"
-        local hp = humanoid.Health
-        local pos = monster:FindFirstChild("HumanoidRootPart") and monster.HumanoidRootPart.Position or Vector3.new(0,0,0)
-        return level, armor, hp, pos
-    end
-    return nil,nil,nil,nil
+-- Function to clear log
+local function clearLog()
+    logEntries = {}
+    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    addLog("Log cleared.")
 end
 
-local function attackMonster(monster)
-    if monster and monster:FindFirstChild("Humanoid") then
-        monster.Humanoid:TakeDamage(1) -- ตัวอย่างศึกษา
-    end
+-- Function to close GUI
+local function closeGUI()
+    screenGui:Destroy()
 end
 
--- ===== AUTO FARM LOOP =====
-RunService.RenderStepped:Connect(function()
-    if autoFarm and targetName then
-        local target = findMonster(targetName)
-        if target then
-            tpToMonster(target)
-            local level, armor, hp, pos = getMonsterInfo(target)
-            print(string.format("Target: %s | Level: %s | Armor: %s | HP: %.1f | Pos: %.1f, %.1f, %.1f",
-                target.Name, level, armor, hp, pos.X, pos.Y, pos.Z))
-            attackMonster(target)
-            wait(attackSpeed)
-        end
+-- Event Connections
+closeButton.MouseButton1Click:Connect(closeGUI)
+incrementButton.MouseButton1Click:Connect(updateCounter)
+saveButton.MouseButton1Click:Connect(saveName)
+clearButton.MouseButton1Click:Connect(clearLog)
+
+-- Placeholder text event
+nameTextBox.Focused:Connect(function()
+    if nameTextBox.Text == "Type your name here..." then
+        nameTextBox.Text = ""
+        nameTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
     end
 end)
 
-print("Third Sea Auto Farm Loaded. Use GUI to select monster and toggle Auto Farm.")
+nameTextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        saveName()
+    end
+end)
+
+-- Initial log
+addLog("GUI loaded successfully on " .. os.date("%B %d, %Y"))
+
+-- Tween for entrance animation
+local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local tween = TweenService:Create(mainFrame, tweenInfo, {Position = UDim2.new(0.5, -200, 0.5, -250)})
+tween:Play()

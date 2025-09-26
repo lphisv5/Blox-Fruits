@@ -1,244 +1,423 @@
--- Roblox Lua Script for a Complete GUI
--- Place this script in StarterGui > StarterPlayerGui (LocalScript) for client-side GUI
--- This creates a full GUI with buttons, text input, labels, a scrollbar, and events
-
+-- Services
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
 
--- Create ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "CompleteGUI"
-screenGui.Parent = playerGui
-screenGui.ResetOnSpawn = false
+-- Local Player
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Main Frame (like a window)
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 400, 0, 500)
-mainFrame.Position = UDim2.new(0.5, -200, 0.5, -250)
-mainFrame.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-mainFrame.BorderSizePixel = 2
-mainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-mainFrame.Parent = screenGui
+-- Configuration (Updated 2025-09-27)
+local Config = {
+    Quests = {
+        {Level = {0, 10}, Mob = "Bandit [Lv. 5]", MobName = "Bandit", QuestName = "BanditQuest1", QuestLevel = 1, CFrame = CFrame.new(1062.64697265625, 16.516624450683594, 1546.55224609375)},
+        {Level = {11, 20}, Mob = "Monkey [Lv. 14]", MobName = "Monkey", QuestName = "JungleQuest", QuestLevel = 1, CFrame = CFrame.new(-1615.1883544921875, 36.85209655761719, 150.80490112304688)},
+        -- Placeholder for future levels (e.g., 21-30, etc.)
+    },
+    TeleportLocations = {
+        {Name = "Pirate Island", CFrame = CFrame.new(1041.8861083984375, 16.273563385009766, 1424.93701171875)},
+        {Name = "Marine Island", CFrame = CFrame.new(-2896.6865234375, 41.488861083984375, 2009.27490234375)},
+        {Name = "Colosseum", CFrame = CFrame.new(-1541.0882568359375, 7.389348983764648, -2987.40576171875)},
+        {Name = "Desert", CFrame = CFrame.new(1094.3209228515625, 6.569626808166504, 4231.6357421875)},
+        {Name = "Fountain City", CFrame = CFrame.new(5529.7236328125, 429.35748291015625, 4245.5498046875)},
+        {Name = "Jungle", CFrame = CFrame.new(-1615.1883544921875, 36.85209655761719, 150.80490112304688)},
+        {Name = "Marine Fort", CFrame = CFrame.new(-4846.14990234375, 20.652048110961914, 4393.65087890625)},
+        {Name = "Middle Town", CFrame = CFrame.new(-705.99755859375, 7.852255344390869, 1547.5216064453125)},
+        {Name = "Prison", CFrame = CFrame.new(4841.84423828125, 5.651970863342285, 741.329833984375)},
+        {Name = "Pirate Village", CFrame = CFrame.new(-1146.42919921875, 4.752060890197754, 3818.503173828125)},
+        {Name = "Sky Island 1", CFrame = CFrame.new(-4967.8369140625, 717.6719970703125, -2623.84326171875)},
+        {Name = "Sky Island 2", CFrame = CFrame.new(-7876.0771484375, 5545.58154296875, -381.19927978515625)},
+        {Name = "Snow Island", CFrame = CFrame.new(1100.361328125, 5.290674209594727, -1151.5418701171875)},
+        {Name = "Underwater City", CFrame = CFrame.new(61135.29296875, 18.47164535522461, 1597.6827392578125)},
+        {Name = "Magma Village", CFrame = CFrame.new(-5248.27197265625, 8.699088096618652, 8452.890625)},
+    },
+    StatTypes = {"Melee", "Defense", "Sword", "Gun", "Demon Fruit"},
+}
 
--- Title Label
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "Title"
-titleLabel.Size = UDim2.new(1, 0, 0, 50)
-titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.BackgroundColor3 = Color3.fromRGB(73, 175, 80)
-titleLabel.Text = "Complete Roblox GUI - Just GUI"
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextScaled = true
-titleLabel.Font = Enum.Font.SourceSansBold
-titleLabel.Parent = mainFrame
+-- Global Variables
+local Tools = {}
+local SelectedWeapon = nil
+local AutoFarm = false
+local AutoStat = {}
+local CurrentQuest = nil
+local ActiveTweens = {}
+local AutoEquip = false
 
--- Close Button
-local closeButton = Instance.new("TextButton")
-closeButton.Name = "CloseButton"
-closeButton.Size = UDim2.new(0, 30, 0, 30)
-closeButton.Position = UDim2.new(1, -35, 0, 10)
-closeButton.BackgroundColor3 = Color3.fromRGB(244, 67, 54)
-closeButton.Text = "X"
-closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-closeButton.TextScaled = true
-closeButton.Font = Enum.Font.SourceSansBold
-closeButton.Parent = mainFrame
+-- Initialize UI Library
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/DummyUi-leak-by-x2zu/fetching-main/Tools/Framework.luau"))()
 
--- Counter Label and Button
-local counterLabel = Instance.new("TextLabel")
-counterLabel.Name = "CounterLabel"
-counterLabel.Size = UDim2.new(1, -20, 0, 30)
-counterLabel.Position = UDim2.new(0, 10, 0, 70)
-counterLabel.BackgroundTransparency = 1
-counterLabel.Text = "Counter: 0"
-counterLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-counterLabel.TextScaled = true
-counterLabel.Font = Enum.Font.SourceSans
-counterLabel.Parent = mainFrame
+-- Create Main Window
+local Window = Library:Window({
+    Title = "YANZ HUB",
+    Desc = "YANZ HUB - Blox Fruits Autofarm & More",
+    Icon = 105059922903197,
+    Theme = "Dark",
+    Config = {
+        Keybind = Enum.KeyCode.LeftControl,
+        Size = UDim2.new(0, 500, 0, 400)
+    },
+    CloseUIButton = {
+        Enabled = true,
+        Text = "YANZ"
+    }
+})
 
-local incrementButton = Instance.new("TextButton")
-incrementButton.Name = "IncrementButton"
-incrementButton.Size = UDim2.new(0, 150, 0, 40)
-incrementButton.Position = UDim2.new(0, 10, 0, 110)
-incrementButton.BackgroundColor3 = Color3.fromRGB(33, 150, 243)
-incrementButton.Text = "Increment Counter"
-incrementButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-incrementButton.TextScaled = true
-incrementButton.Font = Enum.Font.SourceSansBold
-incrementButton.Parent = mainFrame
+-- Sidebar Vertical Separator
+local SidebarLine = Instance.new("Frame")
+SidebarLine.Size = UDim2.new(0, 1, 1, 0)
+SidebarLine.Position = UDim2.new(0, 140, 0, 0)
+SidebarLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SidebarLine.BorderSizePixel = 0
+SidebarLine.ZIndex = 5
+SidebarLine.Name = "SidebarLine"
+SidebarLine.Parent = CoreGui
 
--- Text Input and Save Button
-local nameLabel = Instance.new("TextLabel")
-nameLabel.Name = "NameLabel"
-nameLabel.Size = UDim2.new(1, -20, 0, 20)
-nameLabel.Position = UDim2.new(0, 10, 0, 170)
-nameLabel.BackgroundTransparency = 1
-nameLabel.Text = "Enter Your Name:"
-nameLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-nameLabel.TextScaled = true
-nameLabel.Font = Enum.Font.SourceSans
-nameLabel.Parent = mainFrame
+-- Utility Functions
+local function Notify(Title, Desc, Time)
+    local timestamp = os.date("%Y-%m-%d %I:%M %p +07")
+    Window:Notify({
+        Title = Title,
+        Desc = string.format("%s\n[Time: %s]", Desc, timestamp),
+        Time = Time or 3
+    })
+end
 
-local nameTextBox = Instance.new("TextBox")
-nameTextBox.Name = "NameTextBox"
-nameTextBox.Size = UDim2.new(1, -20, 0, 30)
-nameTextBox.Position = UDim2.new(0, 10, 0, 200)
-nameTextBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-nameTextBox.Text = "Type your name here..."
-nameTextBox.TextColor3 = Color3.fromRGB(128, 128, 128)
-nameTextBox.TextScaled = true
-nameTextBox.Font = Enum.Font.SourceSans
-nameTextBox.Parent = mainFrame
+local function StopTweens()
+    for _, tween in pairs(ActiveTweens) do
+        tween:Cancel()
+    end
+    ActiveTweens = {}
+end
 
-local saveButton = Instance.new("TextButton")
-saveButton.Name = "SaveButton"
-saveButton.Size = UDim2.new(0, 100, 0, 30)
-saveButton.Position = UDim2.new(0, 10, 0, 240)
-saveButton.BackgroundColor3 = Color3.fromRGB(255, 152, 0)
-saveButton.Text = "Save"
-saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-saveButton.TextScaled = true
-saveButton.Font = Enum.Font.SourceSansBold
-saveButton.Parent = mainFrame
+local function TP(TargetCFrame)
+    if not Character or not HumanoidRootPart then
+        Notify("Error", "Character or HumanoidRootPart not found.")
+        return
+    end
+    StopTweens()
+    local Distance = (TargetCFrame.Position - HumanoidRootPart.Position).Magnitude
+    local Speed = Distance < 10 and 1000 or Distance < 170 and 350 or Distance < 1000 and 350 or 300
+    if Distance < 170 then
+        HumanoidRootPart.CFrame = TargetCFrame
+        return
+    end
+    local Tween = TweenService:Create(
+        HumanoidRootPart,
+        TweenInfo.new(Distance / Speed, Enum.EasingStyle.Linear),
+        {CFrame = TargetCFrame}
+    )
+    table.insert(ActiveTweens, Tween)
+    Tween:Play()
+end
 
--- Text Area with ScrollingFrame
-local textAreaLabel = Instance.new("TextLabel")
-textAreaLabel.Name = "TextAreaLabel"
-textAreaLabel.Size = UDim2.new(1, -20, 0, 20)
-textAreaLabel.Position = UDim2.new(0, 10, 0, 290)
-textAreaLabel.BackgroundTransparency = 1
-textAreaLabel.Text = "Log Messages:"
-textAreaLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-textAreaLabel.TextScaled = true
-textAreaLabel.Font = Enum.Font.SourceSans
-textAreaLabel.Parent = mainFrame
-
-local scrollingFrame = Instance.new("ScrollingFrame")
-scrollingFrame.Name = "ScrollingFrame"
-scrollingFrame.Size = UDim2.new(1, -20, 0, 150)
-scrollingFrame.Position = UDim2.new(0, 10, 0, 320)
-scrollingFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-scrollingFrame.BorderSizePixel = 1
-scrollingFrame.ScrollBarThickness = 10
-scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 200)  -- Will be updated dynamically
-scrollingFrame.Parent = mainFrame
-
--- Sample log text
-local logText = Instance.new("TextLabel")
-logText.Name = "LogText"
-logText.Size = UDim2.new(1, -10, 0, 20)
-logText.Position = UDim2.new(0, 5, 0, 0)
-logText.BackgroundTransparency = 1
-logText.Text = "Welcome to the Complete GUI! (Scroll to see more)"
-logText.TextColor3 = Color3.fromRGB(0, 0, 0)
-logText.TextScaled = true
-logText.TextXAlignment = Enum.TextXAlignment.Left
-logText.Font = Enum.Font.SourceSans
-logText.Parent = scrollingFrame
-
--- Clear Button for Log
-local clearButton = Instance.new("TextButton")
-clearButton.Name = "ClearButton"
-clearButton.Size = UDim2.new(0, 80, 0, 30)
-clearButton.Position = UDim2.new(1, -90, 0, 290)
-clearButton.BackgroundColor3 = Color3.fromRGB(158, 158, 158)
-clearButton.Text = "Clear Log"
-clearButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-clearButton.TextScaled = true
-clearButton.Font = Enum.Font.SourceSansBold
-clearButton.Parent = mainFrame
-
--- Variables
-local counter = 0
-local logEntries = {}
-
--- Function to add log entry
-local function addLog(text)
-    table.insert(logEntries, text)
-    
-    -- Clear existing children
-    for _, child in pairs(scrollingFrame:GetChildren()) do
-        if child:IsA("TextLabel") then
-            child:Destroy()
+local function EquipTool(ToolName)
+    for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool.Name == ToolName then
+            HumanoidRootPart.Parent.Humanoid:EquipTool(tool)
+            break
         end
     end
-    
-    -- Recreate labels
-    local canvasHeight = 0
-    for i, entry in ipairs(logEntries) do
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, -10, 0, 20)
-        label.Position = UDim2.new(0, 5, 0, canvasHeight)
-        label.BackgroundTransparency = 1
-        label.Text = tostring(i) .. ": " .. entry
-        label.TextColor3 = Color3.fromRGB(0, 0, 0)
-        label.TextScaled = true
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Font = Enum.Font.SourceSans
-        label.Parent = scrollingFrame
-        canvasHeight = canvasHeight + 25
+end
+
+local function CheckQuest()
+    local Level = LocalPlayer.Data.Level.Value
+    for _, quest in pairs(Config.Quests) do
+        if Level >= quest.Level[1] and Level <= quest.Level[2] then
+            CurrentQuest = quest
+            return
+        end
     end
-    
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, canvasHeight)
+    CurrentQuest = nil
+    Notify("Error", "No suitable quest found for your level.")
 end
 
--- Function to update counter
-local function updateCounter()
-    counter = counter + 1
-    counterLabel.Text = "Counter: " .. counter
-    addLog("Counter incremented to " .. counter)
+local function AllocateStat(StatType)
+    local args = {
+        [1] = "AddPoint",
+        [2] = StatType,
+        [3] = 1
+    }
+    ReplicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
 end
 
--- Function to save name
-local function saveName()
-    local name = nameTextBox.Text
-    if name ~= "" and name ~= "Type your name here..." then
-        addLog("Saved name: " .. name)
-        nameTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
-    else
-        addLog("Please enter a valid name!")
+-- Initialize Tools
+for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+    if v:IsA("Tool") then
+        table.insert(Tools, v.Name)
     end
 end
 
--- Function to clear log
-local function clearLog()
-    logEntries = {}
-    scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    addLog("Log cleared.")
+-- Anti-AFK
+for _, v in pairs(getconnections(LocalPlayer.Idled)) do
+    v:Disable()
 end
 
--- Function to close GUI
-local function closeGUI()
-    screenGui:Destroy()
+-- Main Tab
+local MainTab = Window:Tab({Title = "Main", Icon = "star"}) do
+    MainTab:Section({Title = "Autofarm Controls"})
+
+    MainTab:Dropdown({
+        Title = "Select Weapon",
+        List = Tools,
+        Value = Tools[1] or "None",
+        Callback = function(choice)
+            SelectedWeapon = choice
+            Notify("Weapon", "Selected weapon: " .. choice)
+        end
+    })
+
+    MainTab:Button({
+        Title = "Refresh Tools",
+        Desc = "Refresh the tool list",
+        Callback = function()
+            Tools = {}
+            for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if v:IsA("Tool") then
+                    table.insert(Tools, v.Name)
+                end
+            end
+            MainTab:Dropdown({
+                Title = "Select Weapon",
+                List = Tools,
+                Value = SelectedWeapon or Tools[1] or "None",
+                Callback = function(choice)
+                    SelectedWeapon = choice
+                    Notify("Weapon", "Selected weapon: " .. choice)
+                end
+            })
+            Notify("Tools", "Tool list refreshed.")
+        end
+    })
+
+    MainTab:Button({
+        Title = "Reset Status",
+        Desc = "Reset the status display",
+        Callback = function()
+            local StatusCode = MainTab:Code({
+                Title = "Status",
+                Code = "1. AutoFarm: Off\n2. Selected Weapon: None"
+            })
+            Notify("Status", "Status display reset.")
+        end
+    })
+
+    MainTab:Toggle({
+        Title = "AutoFarm",
+        Desc = "Enable/Disable AutoFarm",
+        Value = false,
+        Callback = function(state)
+            AutoFarm = state
+            Notify("AutoFarm", "AutoFarm " .. (state and "enabled" or "disabled"))
+            if not state then
+                StopTweens()
+            end
+        end
+    })
+
+    MainTab:Toggle({
+        Title = "Auto Equip Weapon",
+        Desc = "Automatically equip selected weapon",
+        Value = false,
+        Callback = function(state)
+            AutoEquip = state
+            Notify("Auto Equip", "Auto Equip Weapon " .. (state and "enabled" or "disabled"))
+        end
+    })
+
+    MainTab:Textbox({
+        Title = "Set Level",
+        Desc = "Set your level (for testing)",
+        Placeholder = "Enter level",
+        Value = "",
+        ClearTextOnFocus = false,
+        Callback = function(level)
+            pcall(function()
+                local num = tonumber(level)
+                if num then
+                    LocalPlayer.Data.Level.Value = num
+                    Notify("Level", "Level set to " .. num)
+                else
+                    Notify("Error", "Invalid level value.")
+                end
+            end)
+        end
+    })
+
+    -- Status Code Block
+    local StatusCode = MainTab:Code({
+        Title = "Status",
+        Code = "1. AutoFarm: Off\n2. Selected Weapon: None"
+    })
+
+    -- Update Status Function
+    spawn(function()
+        while task.wait(1) do
+            local statusText = string.format(
+                "1. AutoFarm: %s\n2. Selected Weapon: %s",
+                AutoFarm and "On" or "Off",
+                SelectedWeapon or "None"
+            )
+            StatusCode:SetCode(statusText)
+        end
+    end)
 end
 
--- Event Connections
-closeButton.MouseButton1Click:Connect(closeGUI)
-incrementButton.MouseButton1Click:Connect(updateCounter)
-saveButton.MouseButton1Click:Connect(saveName)
-clearButton.MouseButton1Click:Connect(clearLog)
+-- Stats Tab
+local StatsTab = Window:Tab({Title = "Stats", Icon = "bar-chart"}) do
+    StatsTab:Section({Title = "Auto Stats Allocation"})
 
--- Placeholder text event
-nameTextBox.Focused:Connect(function()
-    if nameTextBox.Text == "Type your name here..." then
-        nameTextBox.Text = ""
-        nameTextBox.TextColor3 = Color3.fromRGB(0, 0, 0)
+    for _, stat in pairs(Config.StatTypes) do
+        StatsTab:Toggle({
+            Title = "Auto " .. stat,
+            Desc = "Auto allocate " .. stat .. " stats",
+            Value = false,
+            Callback = function(state)
+                AutoStat[stat] = state
+                Notify("Stats", "Auto " .. stat .. " " .. (state and "enabled" or "disabled"))
+            end
+        })
+    end
+end
+
+-- Teleport Tab
+local TeleportTab = Window:Tab({Title = "Teleport", Icon = "map"}) do
+    TeleportTab:Section({Title = "Teleport Locations"})
+
+    for _, location in pairs(Config.TeleportLocations) do
+        TeleportTab:Button({
+            Title = location.Name,
+            Desc = "Teleport to " .. location.Name,
+            Callback = function()
+                pcall(function()
+                    TP(location.CFrame)
+                    Notify("Teleport", "Teleporting to " .. location.Name)
+                end)
+            end
+        })
+    end
+end
+
+-- Settings Tab
+local SettingsTab = Window:Tab({Title = "Settings", Icon = "wrench"}) do
+    SettingsTab:Section({Title = "Configuration"})
+
+    SettingsTab:Button({
+        Title = "Destroy UI",
+        Desc = "Close the UI",
+        Callback = function()
+            Window:Destroy()
+            SidebarLine:Destroy()
+            Notify("UI", "YANZ HUB UI destroyed.")
+        end
+    })
+end
+
+-- Autofarm Loop
+spawn(function()
+    while task.wait() do
+        if AutoFarm then
+            pcall(function()
+                CheckQuest()
+                if not CurrentQuest then return end
+                if AutoEquip and SelectedWeapon then
+                    EquipTool(SelectedWeapon)
+                end
+                if LocalPlayer.PlayerGui.Main.Quest.Visible == false then
+                    TP(CurrentQuest.CFrame)
+                    task.wait(0.9)
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", CurrentQuest.QuestName, CurrentQuest.QuestLevel)
+                    Notify("Quest", "Started quest: " .. CurrentQuest.QuestName)
+                else
+                    for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
+                        if enemy.Name == CurrentQuest.Mob and enemy.Humanoid and enemy.Humanoid.Health > 0 then
+                            TP(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
+                            enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
+                        end
+                    end
+                end
+            end)
+        end
     end
 end)
 
-nameTextBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        saveName()
+-- Auto Attack
+spawn(function()
+    RunService.RenderStepped:Connect(function()
+        if AutoFarm then
+            pcall(function()
+                VirtualUser:CaptureController()
+                VirtualUser:Button1Down(Vector2.new(0, 1))
+            end)
+        end
+    end)
+end)
+
+-- Auto Stats
+spawn(function()
+    while task.wait(30) do
+        pcall(function()
+            for stat, enabled in pairs(AutoStat) do
+                if enabled then
+                    AllocateStat(stat)
+                end
+            end
+        end)
     end
 end)
 
--- Initial log
-addLog("GUI loaded successfully on " .. os.date("%B %d, %Y"))
+-- Tool Updates
+LocalPlayer.Backpack.DescendantAdded:Connect(function(tool)
+    if tool:IsA("Tool") then
+        table.insert(Tools, tool.Name)
+        MainTab:Dropdown({
+            Title = "Select Weapon",
+            List = Tools,
+            Value = SelectedWeapon or Tools[1] or "None",
+            Callback = function(choice)
+                SelectedWeapon = choice
+                Notify("Weapon", "Selected weapon: " .. choice)
+            end
+        })
+        Notify("Tools", "Added tool: " .. tool.Name)
+    end
+end)
 
--- Tween for entrance animation
-local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local tween = TweenService:Create(mainFrame, tweenInfo, {Position = UDim2.new(0.5, -200, 0.5, -250)})
-tween:Play()
+LocalPlayer.Backpack.DescendantRemoving:Connect(function(tool)
+    if tool:IsA("Tool") then
+        for i, v in pairs(Tools) do
+            if v == tool.Name then
+                table.remove(Tools, i)
+                break
+            end
+        end
+        MainTab:Dropdown({
+            Title = "Select Weapon",
+            List = Tools,
+            Value = SelectedWeapon or Tools[1] or "None",
+            Callback = function(choice)
+                SelectedWeapon = choice
+                Notify("Weapon", "Selected weapon: " .. choice)
+            end
+        })
+        Notify("Tools", "Removed tool: " .. tool.Name)
+    end
+end)
+
+-- Cleanup on Script Termination
+game:BindToClose(function()
+    StopTweens()
+    for _, v in pairs(getconnections(LocalPlayer.Idled)) do
+        v:Enable()
+    end
+    Window:Destroy()
+    SidebarLine:Destroy()
+    Notify("UI", "YANZ HUB terminated. Connections restored.")
+end)
+
+-- Initial Notification
+Notify("YANZ HUB", "YANZ HUB loaded successfully! (Updated: 2025-09-27 05:49 AM +07)", 4)

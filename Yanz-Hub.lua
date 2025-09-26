@@ -211,22 +211,22 @@ local function startPositionUpdater()
     end
 
     renderConn = addConn(RunService.RenderStepped:Connect(function()
-        if humanoidRootPart and humanoidRootPart.Parent then
-            local pos = humanoidRootPart.Position
-            updateLabel(PositionLabel, string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
+        if LocalPlayer.Character then
+            humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local pos = humanoidRootPart.Position
+                updateLabel(PositionLabel, string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
+            else
+                updateLabel(PositionLabel, "Position: Waiting for HumanoidRootPart...")
+            end
         else
-            updateLabel(PositionLabel, "Position: Waiting for character...")
+            updateLabel(PositionLabel, "Position: Waiting for Character...")
         end
     end))
 end
 
--- Initial humanoidRootPart + start updater
-if not humanoidRootPart and LocalPlayer.Character then
-    humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-end
 startPositionUpdater()
 
--- CharacterAdded handler
 addConn(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
     humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
     startPositionUpdater()

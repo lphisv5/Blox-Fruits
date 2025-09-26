@@ -1,4 +1,3 @@
--- Services
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -10,21 +9,30 @@ if not LocalPlayer then
     LocalPlayer = Players.PlayerAdded:Wait()
 end
 
--- Character & HumanoidRootPart
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 
--- VirtualInputManager (for auto click)
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
 
--- Load Nothing Library
 local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
 local ok_lib, NothingLibrary = pcall(function()
-    return loadstring(game:HttpGetAsync(libURL))()
+    local code = game:HttpGetAsync(libURL)
+    if code then
+        print("Loaded Nothing Library code (first 1000 chars):", code:sub(1, 1000))
+        local func, err = loadstring(code)
+        if not func then
+            warn("Loadstring error:", err)
+            return nil
+        end
+        return func()
+    else
+        warn("Failed to fetch Nothing Library from URL:", libURL)
+        return nil
+    end
 end)
 if not ok_lib or not NothingLibrary then
-    warn("YANZ HUB: cannot load Nothing UI Library from URL:", libURL)
+    warn("YANZ HUB: Failed to load Nothing UI Library. Error or code issue:", NothingLibrary)
     return
 end
 
@@ -32,25 +40,34 @@ end
 local Window
 local ok_window, res_window = pcall(function()
     return NothingLibrary.new({
-        Title = "YANZ HUB | V0.1.5",
+        Title = "YANZ HUB | V0.1.6",
         Description = "By lphisv5",
         Keybind = Enum.KeyCode.RightShift,
         Logo = 'http://www.roblox.com/asset/?id=125456335927282'
     })
 end)
 if ok_window then Window = res_window else
-    warn("YANZ HUB: cannot create window from NothingLibrary")
+    warn("YANZ HUB: Cannot create window from NothingLibrary. Error:", res_window)
     return
 end
 
 -- Tabs & Sections
-local Tab = Window:NewTab({
+local HomeTab = Window:NewTab({
+    Title = "Home",
+    Description = "Main Features",
+    Icon = "rbxassetid://7733960981"
+})
+local AutoClickTab = Window:NewTab({
     Title = "Auto Clicker",
     Description = "Auto Click Features",
     Icon = "rbxassetid://7733960981"
 })
-local Section = Tab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
-local SettingsSection = Tab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
+local HomeSection = HomeTab:NewSection({Title = "Main Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
+local AutoClickSection = AutoClickTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
+local SettingsSection = AutoClickTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
+
+-- Position Label in UI
+local posLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
 
 -- Globals
 _G.clickDelay = _G.clickDelay or 0.1
@@ -68,13 +85,28 @@ local function updateLabel(lbl, text)
     end)
 end
 
--- Status & Position Labels
-local StatusLabel = Section:NewTitle("Status: Ready")
-local PositionLabel = Section:NewTitle("Position: Waiting...")
+-- Status Label
+local StatusLabel = AutoClickSection:NewTitle("Status: Ready")
 
 -- Connections manager
 local connections = {}
 local function addConn(conn) if conn then table.insert(connections, conn) end return conn end
+
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Icon = "rbxassetid://7733960981",
+    Callback = function()
+        pcall(function()
+            setclipboard("https://discord.gg/DfVuhsZb")
+            
+            NothingLibrary:Notify({
+                Title = "Join Our Discord!",
+                Content = "Discord link has been copied to your clipboard! - https://discord.gg/DfVuhsZb",
+                Duration = 5
+            })
+        end)
+    end
+})
 
 -- Safe Click
 local function SafeClick(pos)
@@ -126,7 +158,7 @@ local function ClickLoop()
 end
 
 -- Auto Click Toggle
-local autoToggle = Section:NewToggle({
+AutoClickSection:NewToggle({
     Title = "Auto Click",
     Default = _G.isLoopRunning or false,
     Callback = function(value)
@@ -146,7 +178,7 @@ local autoToggle = Section:NewToggle({
 })
 
 -- Set Click Position Button
-Section:NewButton({
+AutoClickSection:NewButton({
     Title = "SET CLICK POSITION",
     Callback = function()
         local settingPosition = true
@@ -204,15 +236,15 @@ end
 
 -- Position Updater
 local function startPositionUpdater(character)
-    local hrp = character:WaitForChild("HumanoidRootPart")
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     
     local renderConn = RunService.RenderStepped:Connect(function()
         pcall(function()
-            if hrp and hrp.Parent then
-                local pos = hrp.Position
-                updateLabel(PositionLabel, string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
+            if humanoidRootPart and humanoidRootPart.Parent then
+                local pos = humanoidRootPart.Position
+                updateLabel(posLabel, string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
             else
-                updateLabel(PositionLabel, "Position: Waiting...")
+                updateLabel(posLabel, "Player Pos: Waiting...")
             end
         end)
     end)
@@ -275,4 +307,4 @@ addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
 
-print("YANZ HUB | V0.1.5 Loaded Successfully")
+print("YANZ HUB | V0.1.6 Loaded Successfully")

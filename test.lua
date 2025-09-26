@@ -308,11 +308,15 @@ local SettingsTab = Window:Tab({Title = "Settings", Icon = "wrench"}) do
 
     SettingsTab:Button({
         Title = "Destroy UI",
-        Desc = "Close the UI",
+        Desc = "Close the UI and clean up",
         Callback = function()
+            StopTweens()
+            for _, v in pairs(getconnections(LocalPlayer.Idled)) do
+                v:Enable()
+            end
             Window:Destroy()
             SidebarLine:Destroy()
-            Notify("UI", "YANZ HUB UI destroyed.")
+            Notify("UI", "YANZ HUB UI destroyed and cleaned up.")
         end
     })
 end
@@ -408,16 +412,18 @@ LocalPlayer.Backpack.DescendantRemoving:Connect(function(tool)
     end
 end)
 
--- Cleanup on Script Termination
-game:BindToClose(function()
-    StopTweens()
-    for _, v in pairs(getconnections(LocalPlayer.Idled)) do
-        v:Enable()
+-- Client-Side Disconnect Handler (Alternative to BindToClose)
+LocalPlayer.OnTeleport:Connect(function(teleportState)
+    if teleportState == Enum.TeleportState.InProgress then
+        StopTweens()
+        for _, v in pairs(getconnections(LocalPlayer.Idled)) do
+            v:Enable()
+        end
+        Window:Destroy()
+        SidebarLine:Destroy()
+        Notify("UI", "YANZ HUB cleaned up on teleport.")
     end
-    Window:Destroy()
-    SidebarLine:Destroy()
-    Notify("UI", "YANZ HUB terminated. Connections restored.")
 end)
 
 -- Initial Notification
-Notify("YANZ HUB", "YANZ HUB loaded successfully! (Updated: 2025-09-27 05:49 AM +07)", 4)
+Notify("YANZ HUB", "YANZ HUB loaded successfully! (Updated: 2025-09-27 06:02 AM +07)", 4)

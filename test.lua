@@ -12,12 +12,11 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Configuration (Updated 2025-09-27)
+-- Configuration
 local Config = {
     Quests = {
         {Level = {0, 10}, Mob = "Bandit [Lv. 5]", MobName = "Bandit", QuestName = "BanditQuest1", QuestLevel = 1, CFrame = CFrame.new(1062.64697265625, 16.516624450683594, 1546.55224609375)},
         {Level = {11, 20}, Mob = "Monkey [Lv. 14]", MobName = "Monkey", QuestName = "JungleQuest", QuestLevel = 1, CFrame = CFrame.new(-1615.1883544921875, 36.85209655761719, 150.80490112304688)},
-        -- Placeholder for future levels (e.g., 21-30, etc.)
     },
     TeleportLocations = {
         {Name = "Pirate Island", CFrame = CFrame.new(1041.8861083984375, 16.273563385009766, 1424.93701171875)},
@@ -39,35 +38,28 @@ local Config = {
     StatTypes = {"Melee", "Defense", "Sword", "Gun", "Demon Fruit"},
 }
 
--- Global Variables
-local Tools = {}
-local SelectedWeapon = nil
-local AutoFarm = false
-local AutoStat = {}
-local CurrentQuest = nil
-local ActiveTweens = {}
-local AutoEquip = false
+-- Global Settings (จาก Silver Hub)
+_G.Settings = {
+    Main = {["Auto Farm Level"] = false, ["Fast Auto Farm Level"] = false, ["Distance Mob Aura"] = 1000, ["Mob Aura"] = false},
+    Configs = {["Fast Attack"] = true, ["Fast Attack Type"] = {"Fast"}, ["Select Weapon"] = {}, ["Auto Haki"] = true, ["Distance Auto Farm"] = 20},
+}
+local SelectWeapon = "Melee"
+local PosMon = nil
+local BringMobFarm = false
+local SetCFarme = 1
+local FastAttack = false
+local cooldownfastattack = tick()
 
--- Initialize UI Library
+-- Initialize UI Library (ใช้ YANZ UI)
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2zu/OPEN-SOURCE-UI-ROBLOX/refs/heads/main/X2ZU%20UI%20ROBLOX%20OPEN%20SOURCE/DummyUi-leak-by-x2zu/fetching-main/Tools/Framework.luau"))()
-
--- Create Main Window
 local Window = Library:Window({
-    Title = "YANZ HUB",
-    Desc = "YANZ HUB - Blox Fruits Autofarm & More",
+    Title = "YANZ-Silver Hub",
+    Desc = "Blox Fruits AutoFarm & More (Updated: 2025-09-27 06:26 AM +07)",
     Icon = 105059922903197,
     Theme = "Dark",
-    Config = {
-        Keybind = Enum.KeyCode.LeftControl,
-        Size = UDim2.new(0, 500, 0, 400)
-    },
-    CloseUIButton = {
-        Enabled = true,
-        Text = "YANZ"
-    }
+    Config = {Keybind = Enum.KeyCode.LeftControl, Size = UDim2.new(0, 500, 0, 400)},
+    CloseUIButton = {Enabled = true, Text = "YANZ"}
 })
-
--- Sidebar Vertical Separator
 local SidebarLine = Instance.new("Frame")
 SidebarLine.Size = UDim2.new(0, 1, 1, 0)
 SidebarLine.Position = UDim2.new(0, 140, 0, 0)
@@ -80,17 +72,11 @@ SidebarLine.Parent = CoreGui
 -- Utility Functions
 local function Notify(Title, Desc, Time)
     local timestamp = os.date("%Y-%m-%d %I:%M %p +07")
-    Window:Notify({
-        Title = Title,
-        Desc = string.format("%s\n[Time: %s]", Desc, timestamp),
-        Time = Time or 3
-    })
+    Window:Notify({Title = Title, Desc = string.format("%s\n[Time: %s]", Desc, timestamp), Time = Time or 3})
 end
 
 local function StopTweens()
-    for _, tween in pairs(ActiveTweens) do
-        tween:Cancel()
-    end
+    for _, tween in pairs(ActiveTweens or {}) do tween:Cancel() end
     ActiveTweens = {}
 end
 
@@ -106,12 +92,8 @@ local function TP(TargetCFrame)
         HumanoidRootPart.CFrame = TargetCFrame
         return
     end
-    local Tween = TweenService:Create(
-        HumanoidRootPart,
-        TweenInfo.new(Distance / Speed, Enum.EasingStyle.Linear),
-        {CFrame = TargetCFrame}
-    )
-    table.insert(ActiveTweens, Tween)
+    local Tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(Distance / Speed, Enum.EasingStyle.Linear), {CFrame = TargetCFrame})
+    table.insert(ActiveTweens or {}, Tween)
     Tween:Play()
 end
 
@@ -124,179 +106,137 @@ local function EquipTool(ToolName)
     end
 end
 
-local function CheckQuest()
-    local Level = LocalPlayer.Data.Level.Value
-    for _, quest in pairs(Config.Quests) do
-        if Level >= quest.Level[1] and Level <= quest.Level[2] then
-            CurrentQuest = quest
-            return
+local function QuestCheck()
+    local Lvl = LocalPlayer.Data.Level.Value
+    if Lvl >= 1 and Lvl <= 9 then
+        if tostring(LocalPlayer.Team) == "Marines" then
+            return {1, CFrame.new(-2709.67944, 24.5206585, 2104.24585), "Trainee [Lv. 5]", "MarineQuest", 1, "Trainee"}
+        elseif tostring(LocalPlayer.Team) == "Pirates" then
+            return {1, CFrame.new(1059.99731, 16.9222069, 1549.28162), "Bandit [Lv. 5]", "BanditQuest1", 1, "Bandit"}
         end
     end
-    CurrentQuest = nil
-    Notify("Error", "No suitable quest found for your level.")
-end
-
-local function AllocateStat(StatType)
-    local args = {
-        [1] = "AddPoint",
-        [2] = StatType,
-        [3] = 1
-    }
-    ReplicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
-end
-
--- Initialize Tools
-for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
-    if v:IsA("Tool") then
-        table.insert(Tools, v.Name)
+    -- เพิ่มการตรวจสอบเลเวลอื่น ๆ ตาม Silver Hub
+    local GuideModule = require(game:GetService("ReplicatedStorage").GuideModule)
+    local Quests = require(game:GetService("ReplicatedStorage").Quests)
+    local NPCPosition, QuestLevel, LevelRequire = nil, 1, 0
+    for i, v in pairs(GuideModule["Data"]["NPCList"]) do
+        for i1, v1 in pairs(v["Levels"]) do
+            if Lvl >= v1 and v1 > LevelRequire then
+                NPCPosition = i["CFrame"]
+                QuestLevel = i1
+                LevelRequire = v1
+            end
+        end
     end
+    for i, v in pairs(Quests) do
+        for i1, v1 in pairs(v) do
+            if v1["LevelReq"] == LevelRequire and i ~= "CitizenQuest" then
+                local MobName = next(v1["Task"])
+                return {QuestLevel, NPCPosition, MobName, i, LevelRequire, string.split(MobName, " [Lv. " .. LevelRequire .. "]")[1]}
+            end
+        end
+    end
+    return nil
 end
 
--- Anti-AFK
-for _, v in pairs(getconnections(LocalPlayer.Idled)) do
-    v:Disable()
+local function toTarget(TargetCFrame)
+    local Distance = (TargetCFrame.Position - HumanoidRootPart.Position).Magnitude
+    local Speed = Distance < 1000 and 315 or 300
+    local tween_s = game:service"TweenService"
+    local info = TweenInfo.new(Distance / Speed, Enum.EasingStyle.Linear)
+    local tween = tween_s:Create(HumanoidRootPart, info, {CFrame = TargetCFrame})
+    tween:Play()
+    return {Stop = function() tween:Cancel() end, Wait = function() tween.Completed:Wait() end}
+end
+
+-- Combat Framework (จาก Silver Hub)
+local CombatFramework = require(game:GetService("Players").LocalPlayer.PlayerScripts:WaitForChild("CombatFramework"))
+local CombatFrameworkR = getupvalues(CombatFramework)[2]
+function getAllBladeHits(Sizes)
+    local Hits = {}
+    for _, v in pairs(Workspace.Enemies:GetChildren()) do
+        local Human = v:FindFirstChildOfClass("Humanoid")
+        if Human and Human.RootPart and Human.Health > 0 and (Human.RootPart.Position - HumanoidRootPart.Position).Magnitude < Sizes + 5 then
+            table.insert(Hits, Human.RootPart)
+        end
+    end
+    return Hits
+end
+function AttackFunction()
+    local ac = CombatFrameworkR.activeController
+    if ac and ac.equipped then
+        local bladehit = getAllBladeHits(60)
+        if #bladehit > 0 then
+            ac:attack()
+        end
+    end
 end
 
 -- Main Tab
 local MainTab = Window:Tab({Title = "Main", Icon = "star"}) do
     MainTab:Section({Title = "Autofarm Controls"})
-
+    MainTab:Toggle({
+        Title = "Auto Farm Level",
+        Desc = "Enable/Disable Auto Farm Level",
+        Value = _G.Settings.Main["Auto Farm Level"],
+        Callback = function(state)
+            _G.Settings.Main["Auto Farm Level"] = state
+            _G.AutoFarmLevelReal = state
+            Notify("AutoFarm", "Auto Farm Level " .. (state and "enabled" or "disabled"))
+            if not state then StopTweens() end
+            SaveSettings()
+        end
+    })
+    MainTab:Toggle({
+        Title = "Fast Attack",
+        Desc = "Enable Fast Attack",
+        Value = _G.Settings.Configs["Fast Attack"],
+        Callback = function(state)
+            _G.Settings.Configs["Fast Attack"] = state
+            Notify("Combat", "Fast Attack " .. (state and "enabled" or "disabled"))
+            SaveSettings()
+        end
+    })
+    MainTab:Dropdown({
+        Title = "Fast Attack Type",
+        List = {"Fast", "Normal", "Slow"},
+        Value = _G.Settings.Configs["Fast Attack Type"][1],
+        Callback = function(value)
+            _G.Settings.Configs["Fast Attack Type"] = {value}
+            Notify("Combat", "Fast Attack Type set to " .. value)
+            SaveSettings()
+        end
+    })
     MainTab:Dropdown({
         Title = "Select Weapon",
-        List = Tools,
-        Value = Tools[1] or "None",
-        Callback = function(choice)
-            SelectedWeapon = choice
-            Notify("Weapon", "Selected weapon: " .. choice)
+        List = {"Melee", "Sword", "Fruit"},
+        Value = SelectWeapon,
+        Callback = function(value)
+            SelectWeapon = value
+            Notify("Weapon", "Selected weapon type: " .. value)
         end
     })
-
-    MainTab:Button({
-        Title = "Refresh Tools",
-        Desc = "Refresh the tool list",
-        Callback = function()
-            Tools = {}
-            for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
-                if v:IsA("Tool") then
-                    table.insert(Tools, v.Name)
-                end
-            end
-            MainTab:Dropdown({
-                Title = "Select Weapon",
-                List = Tools,
-                Value = SelectedWeapon or Tools[1] or "None",
-                Callback = function(choice)
-                    SelectedWeapon = choice
-                    Notify("Weapon", "Selected weapon: " .. choice)
-                end
-            })
-            Notify("Tools", "Tool list refreshed.")
-        end
-    })
-
-    MainTab:Button({
-        Title = "Reset Status",
-        Desc = "Reset the status display",
-        Callback = function()
-            local StatusCode = MainTab:Code({
-                Title = "Status",
-                Code = "1. AutoFarm: Off\n2. Selected Weapon: None"
-            })
-            Notify("Status", "Status display reset.")
-        end
-    })
-
-    MainTab:Toggle({
-        Title = "AutoFarm",
-        Desc = "Enable/Disable AutoFarm",
-        Value = false,
-        Callback = function(state)
-            AutoFarm = state
-            Notify("AutoFarm", "AutoFarm " .. (state and "enabled" or "disabled"))
-            if not state then
-                StopTweens()
-            end
-        end
-    })
-
     MainTab:Toggle({
         Title = "Auto Equip Weapon",
         Desc = "Automatically equip selected weapon",
         Value = false,
         Callback = function(state)
-            AutoEquip = state
-            Notify("Auto Equip", "Auto Equip Weapon " .. (state and "enabled" or "disabled"))
+            _G.Settings.Configs["AutoEquip"] = state
+            Notify("Auto Equip", "Auto Equip " .. (state and "enabled" or "disabled"))
         end
     })
-
-    MainTab:Textbox({
-        Title = "Set Level",
-        Desc = "Set your level (for testing)",
-        Placeholder = "Enter level",
-        Value = "",
-        ClearTextOnFocus = false,
-        Callback = function(level)
-            pcall(function()
-                local num = tonumber(level)
-                if num then
-                    LocalPlayer.Data.Level.Value = num
-                    Notify("Level", "Level set to " .. num)
-                else
-                    Notify("Error", "Invalid level value.")
-                end
-            end)
-        end
-    })
-
-    -- Status Code Block
-    local StatusCode = MainTab:Code({
-        Title = "Status",
-        Code = "1. AutoFarm: Off\n2. Selected Weapon: None"
-    })
-
-    -- Update Status Function
-    spawn(function()
-        while task.wait(1) do
-            local statusText = string.format(
-                "1. AutoFarm: %s\n2. Selected Weapon: %s",
-                AutoFarm and "On" or "Off",
-                SelectedWeapon or "None"
-            )
-            StatusCode:SetCode(statusText)
-        end
-    end)
-end
-
--- Stats Tab
-local StatsTab = Window:Tab({Title = "Stats", Icon = "bar-chart"}) do
-    StatsTab:Section({Title = "Auto Stats Allocation"})
-
-    for _, stat in pairs(Config.StatTypes) do
-        StatsTab:Toggle({
-            Title = "Auto " .. stat,
-            Desc = "Auto allocate " .. stat .. " stats",
-            Value = false,
-            Callback = function(state)
-                AutoStat[stat] = state
-                Notify("Stats", "Auto " .. stat .. " " .. (state and "enabled" or "disabled"))
-            end
-        })
-    end
 end
 
 -- Teleport Tab
 local TeleportTab = Window:Tab({Title = "Teleport", Icon = "map"}) do
     TeleportTab:Section({Title = "Teleport Locations"})
-
     for _, location in pairs(Config.TeleportLocations) do
         TeleportTab:Button({
             Title = location.Name,
             Desc = "Teleport to " .. location.Name,
             Callback = function()
-                pcall(function()
-                    TP(location.CFrame)
-                    Notify("Teleport", "Teleporting to " .. location.Name)
-                end)
+                TP(location.CFrame)
+                Notify("Teleport", "Teleporting to " .. location.Name)
             end
         })
     end
@@ -305,131 +245,131 @@ end
 -- Settings Tab
 local SettingsTab = Window:Tab({Title = "Settings", Icon = "wrench"}) do
     SettingsTab:Section({Title = "Configuration"})
-
     SettingsTab:Button({
         Title = "Destroy UI",
         Desc = "Close the UI and clean up",
         Callback = function()
             StopTweens()
-            for _, v in pairs(getconnections(LocalPlayer.Idled)) do
-                v:Enable()
-            end
+            for _, v in pairs(getconnections(LocalPlayer.Idled)) do v:Enable() end
             Window:Destroy()
             SidebarLine:Destroy()
-            Notify("UI", "YANZ HUB UI destroyed and cleaned up.")
+            Notify("UI", "YANZ-Silver Hub UI destroyed and cleaned up.")
         end
     })
 end
 
--- Autofarm Loop
+-- Auto Farm Loop
 spawn(function()
-    while task.wait() do
-        if AutoFarm then
-            pcall(function()
-                CheckQuest()
-                if not CurrentQuest then
-                    Notify("AutoFarm", "No quest available for your level.")
+    while wait() do
+        pcall(function()
+            if _G.AutoFarmLevelReal then
+                local quest = QuestCheck()
+                if not quest then
+                    Notify("AutoFarm", "No quest found for your level!")
                     return
                 end
-                Notify("AutoFarm", "Checking quest: " .. CurrentQuest.QuestName)
-                if AutoEquip and SelectedWeapon then
-                    EquipTool(SelectedWeapon)
-                    Notify("AutoFarm", "Equipped weapon: " .. SelectedWeapon)
+                Notify("AutoFarm", "Quest: " .. quest[3] .. ", Level: " .. LocalPlayer.Data.Level.Value)
+                if _G.Settings.Configs["AutoEquip"] and _G.Settings.Configs["Select Weapon"] then
+                    EquipTool(_G.Settings.Configs["Select Weapon"])
                 end
-                if LocalPlayer.PlayerGui.Main.Quest.Visible == false then
-                    Notify("AutoFarm", "Teleporting to quest location.")
-                    TP(CurrentQuest.CFrame)
-                    task.wait(2) -- เพิ่มเวลารอให้แน่ใจว่าถึงจุดหมาย
-                    local success, err = pcall(function()
-                        ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", CurrentQuest.QuestName, CurrentQuest.QuestLevel)
-                    end)
-                    if success then
-                        Notify("Quest", "Started quest: " .. CurrentQuest.QuestName)
+                local QuestC = LocalPlayer.PlayerGui.Main.Quest
+                if QuestC.Visible then
+                    if (quest[2].Position - HumanoidRootPart.Position).Magnitude >= 3000 then
+                        TP(quest[2])
+                        Notify("AutoFarm", "Teleporting to NPC...")
+                    end
+                    local enemy = Workspace.Enemies:FindFirstChild(quest[3])
+                    if enemy and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                        repeat task.wait()
+                            if not string.find(QuestC.Container.QuestTitle.Title.Text, quest[6]) then
+                                ReplicatedStorage.Remotes.CommF_:InvokeServer("AbandonQuest")
+                                Notify("AutoFarm", "Abandoning quest...")
+                            else
+                                PosMon = enemy.HumanoidRootPart.CFrame
+                                enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
+                                enemy.HumanoidRootPart.CanCollide = false
+                                toTarget(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 30, 5))
+                                if _G.Settings.Configs["Fast Attack"] then AttackFunction() end
+                            end
+                        until not _G.AutoFarmLevelReal or not enemy.Parent or enemy.Humanoid.Health <= 0 or not QuestC.Visible
                     else
-                        Notify("Error", "Failed to start quest: " .. (err or "Unknown error"))
+                        toTarget(quest[2])
                     end
                 else
-                    local enemyFound = false
-                    for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
-                        if enemy.Name == CurrentQuest.Mob and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                            enemyFound = true
-                            Notify("AutoFarm", "Found enemy: " .. enemy.Name)
-                            TP(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
-                            enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
-                            break
+                    if (quest[2].Position - HumanoidRootPart.Position).Magnitude >= 3000 then
+                        TP(quest[2])
+                    else
+                        toTarget(quest[2])
+                        if (quest[2].Position - HumanoidRootPart.Position).Magnitude <= 20 then
+                            ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", quest[4], quest[1])
+                            Notify("AutoFarm", "Started quest: " .. quest[4])
                         end
                     end
-                    if not enemyFound then
-                        Notify("AutoFarm", "No valid enemy found for " .. CurrentQuest.Mob)
-                    end
-                end
-            end)
-        end
-    end
-end)
-
--- Auto Attack
-spawn(function()
-    RunService.RenderStepped:Connect(function()
-        if AutoFarm then
-            pcall(function()
-                VirtualUser:CaptureController()
-                VirtualUser:Button1Down(Vector2.new(0, 1))
-            end)
-        end
-    end)
-end)
-
--- Auto Stats
-spawn(function()
-    while task.wait(30) do
-        pcall(function()
-            for stat, enabled in pairs(AutoStat) do
-                if enabled then
-                    AllocateStat(stat)
                 end
             end
         end)
     end
 end)
 
--- Tool Updates
-LocalPlayer.Backpack.DescendantAdded:Connect(function(tool)
-    if tool:IsA("Tool") then
-        table.insert(Tools, tool.Name)
-        MainTab:Dropdown({
-            Title = "Select Weapon",
-            List = Tools,
-            Value = SelectedWeapon or Tools[1] or "None",
-            Callback = function(choice)
-                SelectedWeapon = choice
-                Notify("Weapon", "Selected weapon: " .. choice)
+-- Fast Attack Loop
+spawn(function()
+    while task.wait(0.1) do
+        if _G.Settings.Configs["Fast Attack"] and _G.AutoFarmLevelReal then
+            AttackFunction()
+            if _G.Settings.Configs["Fast Attack Type"][1] == "Normal" then
+                if tick() - cooldownfastattack > 0.9 then wait(0.1) cooldownfastattack = tick() end
+            elseif _G.Settings.Configs["Fast Attack Type"][1] == "Fast" then
+                if tick() - cooldownfastattack > 0.1 then wait(0.01) cooldownfastattack = tick() end
+            elseif _G.Settings.Configs["Fast Attack Type"][1] == "Slow" then
+                if tick() - cooldownfastattack > 0.3 then wait(0.7) cooldownfastattack = tick() end
             end
-        })
-        Notify("Tools", "Added tool: " .. tool.Name)
+        end
     end
 end)
 
-LocalPlayer.Backpack.DescendantRemoving:Connect(function(tool)
-    if tool:IsA("Tool") then
-        for i, v in pairs(Tools) do
-            if v == tool.Name then
-                table.remove(Tools, i)
-                break
+-- Auto Haki
+spawn(function()
+    while wait() do
+        if _G.Settings.Configs["Auto Haki"] then
+            if not LocalPlayer.Character:FindFirstChild("HasBuso") then
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("Buso")
             end
         end
-        MainTab:Dropdown({
-            Title = "Select Weapon",
-            List = Tools,
-            Value = SelectedWeapon or Tools[1] or "None",
-            Callback = function(choice)
-                SelectedWeapon = choice
-                Notify("Weapon", "Selected weapon: " .. choice)
+    end
+end)
+
+-- Weapon Selection
+task.spawn(function()
+    while wait() do
+        pcall(function()
+            if SelectWeapon == "Melee" then
+                for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                    if v.ToolTip == "Melee" then _G.Settings.Configs["Select Weapon"] = v.Name end
+                end
+            elseif SelectWeapon == "Sword" then
+                for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                    if v.ToolTip == "Sword" then _G.Settings.Configs["Select Weapon"] = v.Name end
+                end
+            elseif SelectWeapon == "Fruit" then
+                for _, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                    if v.ToolTip == "Blox Fruit" then _G.Settings.Configs["Select Weapon"] = v.Name end
+                end
             end
-        })
-        Notify("Tools", "Removed tool: " .. tool.Name)
+        end)
     end
 end)
 
 -- Initial Notification
-Notify("YANZ HUB", "YANZ HUB loaded successfully! (Updated: 2025-09-27 06:30 AM +07)", 4)
+Notify("YANZ-Silver Hub", "Script loaded successfully! (Updated: 2025-09-27 06:26 AM +07)", 4)
+
+-- Save Settings Function (จาก Silver Hub)
+function SaveSettings()
+    if readfile and writefile and isfile and isfolder then
+        if not isfolder("YANZ-Silver Hub") then makefolder("YANZ-Silver Hub") end
+        if not isfile("YANZ-Silver Hub/" .. LocalPlayer.Name .. ".json") then
+            writefile("YANZ-Silver Hub/" .. LocalPlayer.Name .. ".json", game:GetService("HttpService"):JSONEncode(_G.Settings))
+        else
+            writefile("YANZ-Silver Hub/" .. LocalPlayer.Name .. ".json", game:GetService("HttpService"):JSONEncode(_G.Settings))
+        end
+    end
+end

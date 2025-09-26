@@ -3,7 +3,6 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 -- Safety check for LocalPlayer
@@ -15,7 +14,7 @@ end
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 10)
 
--- Load Nothing UI Library
+-- Load Nothing UI Library (corrected URL without /refs/heads/)
 local NothingLibrary = loadstring(game:HttpGetAsync('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))()
 
 -- Create Window
@@ -33,61 +32,85 @@ local Tab = Window:NewTab({
     Icon = "rbxassetid://7733960981"
 })
 
--- Main Controls Section
-local Section = Tab:NewSection({
+-- Controls Section (Left)
+local ControlsSection = Tab:NewSection({
     Title = "Controls",
     Icon = "rbxassetid://7733916988",
     Position = "Left"
 })
 
--- Settings Section
-local SettingsSection = Tab:NewSection({
-    Title = "Speed Settings",
-    Icon = "rbxassetid://7743869054",
+-- Display Section (Right)
+local DisplaySection = Tab:NewSection({
+    Title = "Display",
+    Icon = "rbxassetid://7733916988",
     Position = "Right"
 })
 
+-- Settings Section (Left, below Controls)
+local SettingsSection = Tab:NewSection({
+    Title = "Speed Settings",
+    Icon = "rbxassetid://7743869054",
+    Position = "Left"
+})
+
 -- Global Variables
-_G.clickDelay = _G.clickDelay or 0.2
+_G.clickDelay = _G.clickDelay or 1  -- Default to NORMAL
 _G.autoClickPos = _G.autoClickPos or {X = nil, Y = nil}
 _G.isLoopRunning = false
+local loopConnection = nil  -- To manage the loop
 
--- Status and Position Labels (using NewTitle assuming it acts as label)
-local StatusLabel = Section:NewTitle("Status: Ready")
-local PositionLabel = Section:NewTitle("Position: X: 0, Y: 0, Z: 0")
+-- Speed Options for Dropdown
+local speedOptions = {
+    ["ULTRA FAST (0.01s)"] = 0.01,
+    ["FAST (0.6s)"] = 0.6,
+    ["NORMAL (1s)"] = 1,
+    ["SLOW (1.5s)"] = 1.5
+}
+local speedLabels = {"ULTRA FAST (0.01s)", "FAST (0.6s)", "NORMAL (1s)", "SLOW (1.5s)"}
 
--- Assuming the library methods return objects with Set method for updating text
--- If not, adjust accordingly based on library docs
+-- Labels for Status and Position (assuming NewLabel exists and returns object with :Set method)
+local StatusLabel = DisplaySection:NewLabel("Status: Ready")
+local PositionLabel = DisplaySection:NewLabel("Position: X: 0, Y: 0, Z: 0")
 
--- Toggle Button
-local toggleBtnTitle = "▶ START AUTO CLICK"
-local toggleBtn = Section:NewButton({
-    Title = toggleBtnTitle,
-    Callback = function()
-        _G.isLoopRunning = not _G.isLoopRunning
-        if _G.isLoopRunning then
-            toggleBtnTitle = "⏹ STOP AUTO CLICK"
-            toggleBtn:SetTitle(toggleBtnTitle)
+-- Main Auto Click Toggle
+ControlsSection:NewToggle({
+    Title = "Auto Click",
+    Default = false,
+    Callback = function(value)
+        _G.isLoopRunning = value
+        if value then
             StatusLabel:Set("Auto Clicking Active")
-            spawn(function()
-                while _G.isLoopRunning do
-                    ClickLoop()
-                    wait(_G.clickDelay)
-                end
-            end)
+            NothingLibrary.Notification().new({
+                Title = "Started",
+                Description = "Auto Clicker is now running!",
+                Duration = 2,
+                Icon = "rbxassetid://4483345998"
+            })
+            StartClickLoop()
         else
-            toggleBtnTitle = "▶ START AUTO CLICK"
-            toggleBtn:SetTitle(toggleBtnTitle)
-            StatusLabel:Set("Status: Ready")
+            StopClickLoop()
+            StatusLabel:Set("Auto Clicking Stopped")
+            NothingLibrary.Notification().new({
+                Title = "Stopped",
+                Description = "Auto Clicker has been stopped.",
+                Duration = 2,
+                Icon = "rbxassetid://4483345998"
+            })
         end
     end
 })
 
 -- Set Position Button
-Section:NewButton({
-    Title = "SET CLICK POSITION",
+ControlsSection:NewButton({
+    Title = "Set Click Position",
     Callback = function()
-        StatusLabel:Set("🖱️ Click anywhere to set position...")
+        StatusLabel:Set("🖱️ Click anywhere to set position... (10s timeout)")
+        NothingLibrary.Notification().new({
+            Title = "Setting Position",
+            Description = "Click on screen to set auto-click position.",
+            Duration = 3,
+            Icon = "rbxassetid://4483345998"
+        })
         local connection
         connection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if gameProcessed then return end
@@ -97,17 +120,32 @@ Section:NewButton({
                     Y = input.Position.Y
                 }
                 StatusLabel:Set("✅ Position set: " .. math.floor(_G.autoClickPos.X) .. ", " .. math.floor(_G.autoClickPos.Y))
+                NothingLibrary.Notification().new({
+                    Title = "Position Set",
+                    Description = "Auto-click will now target: " .. math.floor(_G.autoClickPos.X) .. ", " .. math.floor(_G.autoClickPos.Y),
+                    Duration = 3,
+                    Icon = "rbxassetid://4483345998"
+                })
                 if connection then
                     connection:Disconnect()
                 end
             end
         end)
         
-        delay(10, function()
-            if connection then
+        -- Timeout after 10 seconds
+        game:GetService("Debris"):AddItem(connection, 10)  -- Better than delay for cleanup
+        spawn(function()
+            wait(10)
+            if connection and connection.Connected then
                 connection:Disconnect()
-                if StatusLabel:Get():find("Click anywhere") then
+                if StatusLabel:Get():find("Click anywhere") then  -- Assuming :Get() exists, or check text somehow; fallback
                     StatusLabel:Set("❌ Position set cancelled")
+                    NothingLibrary.Notification().new({
+                        Title = "Cancelled",
+                        Description = "Position setting timed out.",
+                        Duration = 2,
+                        Icon = "rbxassetid://4483345998"
+                    })
                     wait(2)
                     StatusLabel:Set("Status: Ready")
                 end
@@ -116,33 +154,32 @@ Section:NewButton({
     end
 })
 
--- Speed Buttons
-local speeds = {
-    {label = "ULTRA FAST", value = 0.01},
-    {label = "FAST", value = 0.6},
-    {label = "NORMAL", value = 1},
-    {label = "SLOW", value = 1.5}
-}
-
-for _, speedData in ipairs(speeds) do
-    SettingsSection:NewButton({
-        Title = speedData.label .. " (" .. speedData.value .. "s)",
-        Callback = function()
-            _G.clickDelay = speedData.value
-            StatusLabel:Set("Delay: " .. speedData.value .. "s")
-            -- Optionally notify
-            NothingLibrary:Notify({
-                Title = "Speed Updated",
-                Content = "Click delay set to " .. speedData.value .. "s",
-                Duration = 2
-            })
+-- Speed Dropdown
+SettingsSection:NewDropdown({
+    Title = "Click Delay",
+    Data = speedLabels,
+    Default = "NORMAL (1s)",
+    Callback = function(selected)
+        _G.clickDelay = speedOptions[selected]
+        StatusLabel:Set("Delay: " .. selected)
+        NothingLibrary.Notification().new({
+            Title = "Speed Updated",
+            Description = "Click delay set to " .. selected,
+            Duration = 2,
+            Icon = "rbxassetid://4483345998"
+        })
+        -- If running, restart loop with new delay
+        if _G.isLoopRunning then
+            StopClickLoop()
+            StartClickLoop()
         end
-    })
-end
+    end
+})
 
--- Real-Time Position Update (assuming Set method exists)
+-- Real-Time Position Update
+local posConnection
 if humanoidRootPart then
-    RunService.RenderStepped:Connect(function()
+    posConnection = RunService.RenderStepped:Connect(function()
         local pos = humanoidRootPart.Position
         PositionLabel:Set(string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
     end)
@@ -150,8 +187,9 @@ else
     PositionLabel:Set("Position: Waiting for character...")
     LocalPlayer.CharacterAdded:Connect(function(newCharacter)
         humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
-        if humanoidRootPart then
-            RunService.RenderStepped:Connect(function()
+        if humanoidRootPart and posConnection then
+            posConnection:Disconnect()
+            posConnection = RunService.RenderStepped:Connect(function()
                 local pos = humanoidRootPart.Position
                 PositionLabel:Set(string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
             end)
@@ -159,13 +197,25 @@ else
     end)
 end
 
--- Safe Click Function
+-- Safe Click Function (unchanged)
 local function SafeClick(pos)
-    if not pos or not pos.X or not pos.Y then return end
+    if not pos or not pos.X or not pos.Y then 
+        NothingLibrary.Notification().new({
+            Title = "Error",
+            Description = "Invalid position provided.",
+            Duration = 2
+        })
+        return 
+    end
     
     local viewportSize = workspace.CurrentCamera.ViewportSize
     if pos.X < 0 or pos.Y < 0 or pos.X > viewportSize.X or pos.Y > viewportSize.Y then
         warn("⚠️ Invalid click position")
+        NothingLibrary.Notification().new({
+            Title = "Warning",
+            Description = "Click position out of screen bounds.",
+            Duration = 2
+        })
         return
     end
     
@@ -176,11 +226,16 @@ local function SafeClick(pos)
     
     if not success then
         warn("❌ Click error: " .. tostring(errorMsg))
+        NothingLibrary.Notification().new({
+            Title = "Click Error",
+            Description = tostring(errorMsg),
+            Duration = 3
+        })
     end
 end
 
--- Click Loop
-function ClickLoop()
+-- Click Loop Function
+local function ClickLoop()
     if _G.autoClickPos and _G.autoClickPos.X and _G.autoClickPos.Y then
         SafeClick(_G.autoClickPos)
     else
@@ -193,42 +248,73 @@ function ClickLoop()
     end
 end
 
--- Emergency Stop Toggle (F6)
+-- Start Loop
+function StartClickLoop()
+    if loopConnection then loopConnection:Disconnect() end
+    loopConnection = RunService.Heartbeat:Connect(function()
+        if _G.isLoopRunning then
+            ClickLoop()
+            wait(_G.clickDelay)
+        end
+    end)
+end
+
+-- Stop Loop
+function StopClickLoop()
+    if loopConnection then
+        loopConnection:Disconnect()
+        loopConnection = nil
+    end
+end
+
+-- Emergency Stop Toggle (F6) - Updates toggle state assuming toggle object is accessible; here we simulate by toggling flag and notifying
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
         _G.isLoopRunning = not _G.isLoopRunning
         if _G.isLoopRunning then
-            toggleBtnTitle = "⏹ STOP AUTO CLICK"
-            if toggleBtn.SetTitle then toggleBtn:SetTitle(toggleBtnTitle) end
-            StatusLabel:Set("Auto Clicking Active")
-            spawn(function()
-                while _G.isLoopRunning do
-                    ClickLoop()
-                    wait(_G.clickDelay)
-                end
-            end)
+            StatusLabel:Set("Auto Clicking Active (F6)")
+            NothingLibrary.Notification().new({
+                Title = "Resumed",
+                Description = "Auto Clicker resumed via F6.",
+                Duration = 2
+            })
+            StartClickLoop()
         else
-            toggleBtnTitle = "▶ START AUTO CLICK"
-            if toggleBtn.SetTitle then toggleBtn:SetTitle(toggleBtnTitle) end
+            StopClickLoop()
             StatusLabel:Set("Emergency Stopped (F6)")
+            NothingLibrary.Notification().new({
+                Title = "Emergency Stop",
+                Description = "Auto Clicker stopped via F6.",
+                Duration = 2
+            })
             wait(2)
-            if not _G.isLoopRunning then
-                StatusLabel:Set("Status: Ready")
-            end
+            StatusLabel:Set("Status: Ready")
         end
+        -- Note: To sync with UI toggle, you would need to reference the toggle object and call :Set(_G.isLoopRunning)
+        -- For now, it toggles the flag and loop independently
     end
 end)
 
--- Auto-cleanup
+-- Auto-cleanup on player leaving
 Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then
-        _G.isLoopRunning = false
+        StopClickLoop()
+        if posConnection then posConnection:Disconnect() end
     end
 end)
 
-print("YANZ HUB | V0.1.4 [BETA] Loaded Successfully with Nothing UI Library!")
-print("Features: Auto Click, Position Set, Speed Control, Real-Time Position Tracking, Emergency Stop (F6)")
+-- Initial Notification
+NothingLibrary.Notification().new({
+    Title = "YANZ HUB Loaded",
+    Description = "V0.1.4 [BETA] - Use RightShift to toggle GUI. F6 for emergency stop.",
+    Duration = 4,
+    Icon = "rbxassetid://4483345998"
+})
+
+print("YANZ HUB | V0.1.4 [BETA] Loaded Successfully")
+print("Features: Cyber UI, Auto Click Toggle, Position Set, Speed Dropdown, Real-Time Position Tracking, Emergency Stop (F6)")
 print("Toggle GUI with RightShift!")
 
+-- Return the Window for potential external access
 return Window

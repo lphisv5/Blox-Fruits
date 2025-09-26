@@ -18,6 +18,21 @@ local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
 
+-- Create ScreenGui for Position Label
+local gui = Instance.new("ScreenGui")
+gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+gui.Name = "ScreenGui"
+
+local label = Instance.new("TextLabel")
+label.Name = "PositionLabel"
+label.Parent = gui
+label.Size = UDim2.new(0, 200, 0, 50)
+label.Position = UDim2.new(0, 10, 0, 10)
+label.BackgroundTransparency = 1
+label.TextColor3 = Color3.new(1, 1, 1)
+label.TextSize = 20
+label.Text = "Position: Waiting..."
+
 -- Load Nothing Library
 local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
 local ok_lib, NothingLibrary = pcall(function()
@@ -68,9 +83,8 @@ local function updateLabel(lbl, text)
     end)
 end
 
--- Status & Position Labels
+-- Status Label
 local StatusLabel = Section:NewTitle("Status: Ready")
-local PositionLabel = Section:NewTitle("Position: X: 0, Y: 0, Z: 0")
 
 -- Connections manager
 local connections = {}
@@ -203,33 +217,28 @@ for _, speedData in ipairs(speeds) do
 end
 
 -- Position Updater
-local renderConn
-local function startPositionUpdater()
-    if renderConn then
-        pcall(function() renderConn:Disconnect() end)
-        renderConn = nil
-    end
-
-    renderConn = addConn(RunService.RenderStepped:Connect(function()
-        if LocalPlayer.Character then
-            humanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if humanoidRootPart then
-                local pos = humanoidRootPart.Position
-                updateLabel(PositionLabel, string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
-            else
-                updateLabel(PositionLabel, "Position: Waiting for HumanoidRootPart...")
-            end
+local function startPositionUpdater(character)
+    local hrp = character:WaitForChild("HumanoidRootPart")
+    
+    local renderConn = RunService.RenderStepped:Connect(function()
+        if hrp and hrp.Parent then
+            local pos = hrp.Position
+            label.Text = string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
         else
-            updateLabel(PositionLabel, "Position: Waiting for Character...")
+            label.Text = "Position: Waiting..."
         end
-    end))
+    end)
+    addConn(renderConn)
 end
 
-startPositionUpdater()
+-- Start updating for the current character
+if LocalPlayer.Character then
+    startPositionUpdater(LocalPlayer.Character)
+end
 
-addConn(LocalPlayer.CharacterAdded:Connect(function(newCharacter)
-    humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart", 10)
-    startPositionUpdater()
+-- Update on character respawn
+addConn(LocalPlayer.CharacterAdded:Connect(function(char)
+    startPositionUpdater(char)
 end))
 
 -- Emergency Stop (F6)
@@ -271,6 +280,7 @@ local function cleanup()
     pcall(function()
         if Window and Window.Destroy then Window:Destroy() end
         if Window and Window.Close then Window:Close() end
+        if gui then gui:Destroy() end
     end)
 end
 

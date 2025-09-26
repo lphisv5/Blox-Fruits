@@ -18,21 +18,6 @@ local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
 
--- Create ScreenGui for Position Label
-local gui = Instance.new("ScreenGui")
-gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-gui.Name = "ScreenGui"
-
-local label = Instance.new("TextLabel")
-label.Name = "PositionLabel"
-label.Parent = gui
-label.Size = UDim2.new(0, 200, 0, 50)
-label.Position = UDim2.new(0, 10, 0, 10)
-label.BackgroundTransparency = 1
-label.TextColor3 = Color3.new(1, 1, 1)
-label.TextSize = 20
-label.Text = "Position: Waiting..."
-
 -- Load Nothing Library
 local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
 local ok_lib, NothingLibrary = pcall(function()
@@ -83,8 +68,9 @@ local function updateLabel(lbl, text)
     end)
 end
 
--- Status Label
+-- Status & Position Labels
 local StatusLabel = Section:NewTitle("Status: Ready")
+local PositionLabel = Section:NewTitle("Position: Waiting...")
 
 -- Connections manager
 local connections = {}
@@ -221,12 +207,14 @@ local function startPositionUpdater(character)
     local hrp = character:WaitForChild("HumanoidRootPart")
     
     local renderConn = RunService.RenderStepped:Connect(function()
-        if hrp and hrp.Parent then
-            local pos = hrp.Position
-            label.Text = string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z)
-        else
-            label.Text = "Position: Waiting..."
-        end
+        pcall(function()
+            if hrp and hrp.Parent then
+                local pos = hrp.Position
+                updateLabel(PositionLabel, string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
+            else
+                updateLabel(PositionLabel, "Position: Waiting...")
+            end
+        end)
     end)
     addConn(renderConn)
 end
@@ -280,7 +268,6 @@ local function cleanup()
     pcall(function()
         if Window and Window.Destroy then Window:Destroy() end
         if Window and Window.Close then Window:Close() end
-        if gui then gui:Destroy() end
     end)
 end
 

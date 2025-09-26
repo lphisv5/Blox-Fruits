@@ -327,21 +327,40 @@ spawn(function()
         if AutoFarm then
             pcall(function()
                 CheckQuest()
-                if not CurrentQuest then return end
+                if not CurrentQuest then
+                    Notify("AutoFarm", "No quest available for your level.")
+                    return
+                end
+                Notify("AutoFarm", "Checking quest: " .. CurrentQuest.QuestName)
                 if AutoEquip and SelectedWeapon then
                     EquipTool(SelectedWeapon)
+                    Notify("AutoFarm", "Equipped weapon: " .. SelectedWeapon)
                 end
                 if LocalPlayer.PlayerGui.Main.Quest.Visible == false then
+                    Notify("AutoFarm", "Teleporting to quest location.")
                     TP(CurrentQuest.CFrame)
-                    task.wait(0.9)
-                    ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", CurrentQuest.QuestName, CurrentQuest.QuestLevel)
-                    Notify("Quest", "Started quest: " .. CurrentQuest.QuestName)
+                    task.wait(2) -- เพิ่มเวลารอให้แน่ใจว่าถึงจุดหมาย
+                    local success, err = pcall(function()
+                        ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", CurrentQuest.QuestName, CurrentQuest.QuestLevel)
+                    end)
+                    if success then
+                        Notify("Quest", "Started quest: " .. CurrentQuest.QuestName)
+                    else
+                        Notify("Error", "Failed to start quest: " .. (err or "Unknown error"))
+                    end
                 else
+                    local enemyFound = false
                     for _, enemy in pairs(Workspace.Enemies:GetChildren()) do
-                        if enemy.Name == CurrentQuest.Mob and enemy.Humanoid and enemy.Humanoid.Health > 0 then
+                        if enemy.Name == CurrentQuest.Mob and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+                            enemyFound = true
+                            Notify("AutoFarm", "Found enemy: " .. enemy.Name)
                             TP(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 20, 0))
                             enemy.HumanoidRootPart.Size = Vector3.new(60, 60, 60)
+                            break
                         end
+                    end
+                    if not enemyFound then
+                        Notify("AutoFarm", "No valid enemy found for " .. CurrentQuest.Mob)
                     end
                 end
             end)
@@ -413,4 +432,4 @@ LocalPlayer.Backpack.DescendantRemoving:Connect(function(tool)
 end)
 
 -- Initial Notification
-Notify("YANZ HUB", "YANZ HUB loaded successfully! (Updated: 2025-09-27 06:15 AM +07)", 4)
+Notify("YANZ HUB", "YANZ HUB loaded successfully! (Updated: 2025-09-27 06:30 AM +07)", 4)

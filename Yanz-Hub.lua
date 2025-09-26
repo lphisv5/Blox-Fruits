@@ -205,12 +205,15 @@ end
 -- Position Updater
 local renderConn
 local function startPositionUpdater()
-    if renderConn then pcall(function() renderConn:Disconnect() end) end
+    if renderConn then
+        pcall(function() renderConn:Disconnect() end)
+        renderConn = nil
+    end
+
     renderConn = addConn(RunService.RenderStepped:Connect(function()
         if humanoidRootPart and humanoidRootPart.Parent then
             local pos = humanoidRootPart.Position
             updateLabel(PositionLabel, string.format("Position: X: %.2f, Y: %.2f, Z: %.2f", pos.X, pos.Y, pos.Z))
-            print("X:", pos.X, "Y:", pos.Y, "Z:", pos.Z)
         else
             updateLabel(PositionLabel, "Position: Waiting for character...")
         end

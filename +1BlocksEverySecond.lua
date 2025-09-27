@@ -1,255 +1,151 @@
--- Advanced +1 Blocks Every Second Management System
--- Comprehensive framework with modular architecture
-
-local AdvancedBlockManager = {
-    Version = "2.1.0",
-    Author = "Advanced Scripting Framework",
-    LastUpdated = "2025-09-28"
-}
-
--- Core service initialization
-local RunService = game:GetService("RunService")
+-- Tower Builder with Fluent UI
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Advanced configuration system
-AdvancedBlockManager.Config = {
-    Performance = {
-        MaxCPS = 15,
-        MemoryLimitMB = 250,
-        GarbageCollectionInterval = 30
-    },
-    Security = {
-        RequestHashing = true,
-        RateLimiting = true,
-        DetectionEvasion = true
-    },
-    Automation = {
-        SmartRebirthThreshold = 75000,
-        OptimalEggBatchSize = 3,
-        AdaptiveTiming = true
-    }
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local TOWER_BASE = workspace:WaitForChild("TowerBase")
+local BLOCK_SIZE = Vector3.new(4,4,4)
+
+-- Load Fluent UI Library
+local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2Swiftz/UI-Library/main/Libraries/FluentUI-Example.lua"))()
+
+-- ===============================
+-- CONFIG
+-- ===============================
+local MATERIAL_STAGES = {
+	{threshold=0, material=Enum.Material.Wood},
+	{threshold=100, material=Enum.Material.Concrete},
+	{threshold=500, material=Enum.Material.Metal},
+	{threshold=2000, material=Enum.Material.Neon}
 }
 
--- Advanced memory management
-AdvancedBlockManager.MemoryManager = {
-    ActiveConnections = {},
-    Cache = {},
-    PerformanceMetrics = {
-        StartTime = tick(),
-        OperationsCount = 0,
-        MemoryUsage = 0
-    }
-}
+local CLICK_VALUE = 5
+local PASSIVE_RATE = 1 -- blocks per second
 
-function AdvancedBlockManager.MemoryManager:Optimize()
-    local currentMemory = collectgarbage("count")
-    if currentMemory > self.Config.Performance.MemoryLimitMB then
-        collectgarbage("collect")
-        warn("Memory optimization triggered: " .. currentMemory .. "MB")
-    end
+-- ===============================
+-- VARIABLES
+-- ===============================
+local totalBlocks = 0
+local towerHeight = 1
+local currentMaterial = MATERIAL_STAGES[1].material
+local autoBuildEnabled = false
+local buildSpeed = 1
+
+-- ===============================
+-- FUNCTIONS
+-- ===============================
+local function getMaterial(blocks)
+	local chosen = MATERIAL_STAGES[1].material
+	for _, stage in ipairs(MATERIAL_STAGES) do
+		if blocks >= stage.threshold then
+			chosen = stage.material
+		end
+	end
+	return chosen
 end
 
--- Advanced network handler with error correction
-AdvancedBlockManager.NetworkHandler = {
-    RequestQueue = {},
-    RetryAttempts = 3,
-    BaseDelay = 1
-}
+local function addBlocks(amount)
+	for i = 1, amount do
+		local block = Instance.new("Part")
+		block.Size = BLOCK_SIZE
+		block.Anchored = true
+		block.Material = currentMaterial
+		block.BrickColor = BrickColor.new("Bright green")
+		block.Position = TOWER_BASE.Position + Vector3.new(0, towerHeight * BLOCK_SIZE.Y, 0)
+		block.Parent = workspace
 
-function AdvancedBlockManager.NetworkHandler:ExecuteSafeRequest(remote, ...)
-    local args = {...}
-    local success, result = pcall(function()
-        for attempt = 1, self.RetryAttempts do
-            local response = remote:InvokeServer(unpack(args))
-            if response ~= nil then
-                return response
-            end
-            wait(self.BaseDelay * attempt)
-        end
-        return nil
-    end)
-    
-    return success, result
+		towerHeight += 1
+		totalBlocks += 1
+		currentMaterial = getMaterial(totalBlocks)
+	end
+	updateStatsUI()
 end
 
--- Advanced analytics and statistics
-AdvancedBlockManager.Analytics = {
-    SessionData = {
-        BlocksGained = 0,
-        RebirthsCompleted = 0,
-        PetsCollected = 0,
-        PlayTime = 0
-    },
-    EfficiencyMetrics = {
-        BlocksPerMinute = 0,
-        RebirthEfficiency = 0,
-        PetBoostMultiplier = 1
-    }
-}
-
-function AdvancedBlockManager.Analytics:CalculateEfficiency()
-    local currentTime = tick()
-    self.SessionData.PlayTime = currentTime - self.PerformanceMetrics.StartTime
-    self.EfficiencyMetrics.BlocksPerMinute = (self.SessionData.BlocksGained / self.SessionData.PlayTime) * 60
-end
-
--- Advanced UI system with dynamic elements
-AdvancedBlockManager.Interface = {
-    MainContainer = nil,
-    Modules = {},
-    Themes = {
-        Dark = {
-            Background = Color3.fromRGB(25, 25, 25),
-            Primary = Color3.fromRGB(0, 162, 255),
-            Text = Color3.fromRGB(255, 255, 255)
-        },
-        Light = {
-            Background = Color3.fromRGB(240, 240, 240),
-            Primary = Color3.fromRGB(0, 102, 204),
-            Text = Color3.fromRGB(0, 0, 0)
-        }
-    }
-}
-
-function AdvancedBlockManager.Interface:CreateModule(name, config)
-    local module = {
-        Name = name,
-        Enabled = false,
-        Config = config,
-        GUIElements = {},
-        Connections = {}
-    }
-    
-    self.Modules[name] = module
-    return module
-end
-
--- Core automation modules
-local AutoClicker = AdvancedBlockManager.Interface:CreateModule("AutoClicker", {
-    CPS = 10,
-    SmartTiming = true,
-    DetectionAvoidance = true
+-- ===============================
+-- GUI SETUP
+-- ===============================
+local Window = Fluent:CreateWindow({
+	Title = "Tower Builder",
+	SubTitle = "by YourName",
+	Size = UDim2.fromOffset(580,460),
+	Acrylic = true,
+	Theme = "Dark",
+	MinimizeKey = Enum.KeyCode.LeftControl
 })
 
-local AutoRebirth = AdvancedBlockManager.Interface:CreateModule("AutoRebirth", {
-    Threshold = 50000,
-    EfficiencyMode = true,
-    Delay = 2
+local Tabs = {
+	Main = Window:AddTab({Title="Main", Icon="home"}),
+	Settings = Window:AddTab({Title="Settings", Icon="settings"})
+}
+
+-- Paragraph for stats
+local StatsParagraph = Tabs.Main:AddParagraph({Title="Tower Stats", Content="Blocks: 0 | Material: Wood"})
+local function updateStatsUI()
+	StatsParagraph.Content = string.format("Blocks: %d | Material: %s", totalBlocks, tostring(currentMaterial))
+end
+
+-- Button to manually add blocks
+Tabs.Main:AddButton({
+	Title = "Add Block",
+	Description = "Click to add blocks",
+	Callback = function()
+		addBlocks(CLICK_VALUE)
+	end
 })
 
-local PetManager = AdvancedBlockManager.Interface:CreateModule("PetManager", {
-    AutoHatch = true,
-    PriorityRarity = "Rare",
-    FusionOptimization = true
-})
-
--- Advanced code management system
-AdvancedBlockManager.CodeSystem = {
-    ActiveCodes = {
-        "release", "8mvisits", "alien", "oblivion", 
-        "mars", "visit1.5m", "10klikes", "13klikes", "heaven"
-    },
-    CodeHistory = {},
-    UpdateInterval = 3600 -- 1 hour
-}
-
-function AdvancedBlockManager.CodeSystem:CheckForUpdates()
-    -- Implementation for dynamic code updates
-    -- This would connect to a secure update source
-end
-
--- Advanced security and anti-detection
-AdvancedBlockManager.Security = {
-    BehaviorPatterns = {
-        RandomDelays = true,
-        HumanLikeInteractions = true,
-        ActivityRotation = true
-    },
-    DetectionFlags = 0
-}
-
-function AdvancedBlockManager.Security:GenerateBehaviorSignature()
-    -- Creates unique behavioral patterns to avoid detection
-    return HttpService:GenerateGUID(false)
-end
-
--- Main execution framework
-function AdvancedBlockManager:Initialize()
-    print("Advanced Block Manager v" .. self.Version .. " Initializing...")
-    
-    -- Security initialization
-    self.Security.BehaviorSignature = self.Security:GenerateBehaviorSignature()
-    
-    -- Performance monitoring
-    self.MemoryManager.OptimizationTimer = RunService.Heartbeat:Connect(function()
-        self.MemoryManager:Optimize()
-    end)
-    
-    -- Analytics tracking
-    self.Analytics.TrackingTimer = RunService.Heartbeat:Connect(function()
-        self.Analytics:CalculateEfficiency()
-    end)
-    
-    -- Code system updates
-    self.CodeSystem.UpdateTimer = RunService.Heartbeat:Connect(function()
-        self.CodeSystem:CheckForUpdates()
-    end)
-    
-    print("Advanced System Fully Operational")
-end
-
--- Module control system
-function AdvancedBlockManager:ToggleModule(moduleName, state)
-    local module = self.Interface.Modules[moduleName]
-    if module then
-        module.Enabled = state
-        print("Module " .. moduleName .. " " .. (state and "Enabled" : "Disabled"))
-    end
-end
-
--- Advanced error handling and recovery
-AdvancedBlockManager.ErrorHandler = {
-    ErrorLog = {},
-    MaxErrors = 10,
-    AutoRecovery = true
-}
-
-function AdvancedBlockManager.ErrorHandler:LogError(context, errorMsg)
-    table.insert(self.ErrorLog, {
-        Timestamp = os.time(),
-        Context = context,
-        Message = errorMsg
-    })
-    
-    if #self.ErrorLog > self.MaxErrors then
-        table.remove(self.ErrorLog, 1)
-    end
-end
-
--- System cleanup and shutdown
-function AdvancedBlockManager:Shutdown()
-    -- Cleanup all connections
-    for _, connection in pairs(self.MemoryManager.ActiveConnections) do
-        connection:Disconnect()
-    end
-    
-    -- Clear memory
-    table.clear(self.MemoryManager.Cache)
-    table.clear(self.Interface.Modules)
-    
-    print("Advanced System Shutdown Complete")
-end
-
--- Auto-execute initialization
-task.spawn(function()
-    AdvancedBlockManager:Initialize()
-    
-    -- Example module activation
-    AdvancedBlockManager:ToggleModule("AutoClicker", true)
-    AdvancedBlockManager:ToggleModule("AutoRebirth", true)
+-- Toggle for auto-build
+local AutoToggle = Tabs.Main:AddToggle("Auto Build", {Title="Enable Auto Build", Default=false})
+AutoToggle:OnChanged(function(value)
+	autoBuildEnabled = value
 end)
 
--- Return the advanced system for external control
-return AdvancedBlockManager
+-- Slider for build speed
+local BuildSpeedSlider = Tabs.Main:AddSlider("Build Speed", {
+	Title="Build Speed",
+	Description="Adjust auto build speed",
+	Default=1,
+	Min=0.1,
+	Max=5,
+	Rounding=1,
+	Callback=function(value)
+		buildSpeed = value
+	end
+})
+
+-- Dropdown for material preview (optional)
+local MaterialDropdown = Tabs.Main:AddDropdown("Material Selector", {
+	Title="Select Material",
+	Values={"Wood","Concrete","Metal","Neon"},
+	Default=1
+})
+MaterialDropdown:OnChanged(function(value)
+	-- Preview only
+end)
+
+-- ===============================
+-- CLICK DETECTOR
+-- ===============================
+local clickDetector = TOWER_BASE:FindFirstChild("ClickDetector") or Instance.new("ClickDetector")
+clickDetector.Parent = TOWER_BASE
+
+clickDetector.MouseClick:Connect(function()
+	addBlocks(CLICK_VALUE)
+end)
+
+-- ===============================
+-- PASSIVE + AUTO BUILD LOOP
+-- ===============================
+task.spawn(function()
+	while true do
+		task.wait(1 / PASSIVE_RATE)
+		addBlocks(1)
+
+		if autoBuildEnabled then
+			addBlocks(buildSpeed)
+		end
+	end
+end)
+
+print("Tower Builder + Fluent UI loaded!")

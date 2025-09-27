@@ -1,17 +1,15 @@
 -- ===============================
--- โหลดไลบรารี Venyx UI
+-- โหลด Darius UI
 -- ===============================
-local Venyx = loadstring(game:HttpGet("https://raw.githubusercontent.com/Stefanuk12/Venyx-UI-Library/main/source2.lua"))()
+local Darius = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2Swiftz/UI-Library/refs/heads/main/Libraries/Darius%20-%20Example%20.lua"))()
 
--- ===============================
--- สร้าง UI (ครั้งเดียว)
--- ===============================
-local UI = Venyx.new({title = "Venyx UI"})
+-- สร้าง UI
+local UI = Darius.new("Darius UI Example")
 
 -- ===============================
 -- สร้างหน้าหลักและ Section
 -- ===============================
-local Page = UI:addPage("Main Page", 5012544693) -- เปลี่ยนเป็น Icon ID ได้
+local Page = UI:addPage("Main Page")
 local Section = Page:addSection("Controls")
 
 -- ปุ่มตัวอย่าง
@@ -25,8 +23,7 @@ Section:addSlider("WalkSpeed", 16, 0, 500, function(value)
     if character and character:FindFirstChild("Humanoid") then
         character.Humanoid.WalkSpeed = value
     end
-    -- คืนค่า string ให้ UI แสดง
-    return tostring(value)
+    return tostring(value) -- ปลอดภัยสำหรับ UI
 end)
 
 -- ===============================
@@ -35,13 +32,11 @@ end)
 local player = game.Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
 
--- สร้าง ScreenGui
 local FloatingGui = Instance.new("ScreenGui")
 FloatingGui.Name = "FloatingToggleUI"
-FloatingGui.ResetOnSpawn = false -- สำคัญ! ไม่ให้หายหลัง Respawn
+FloatingGui.ResetOnSpawn = false
 FloatingGui.Parent = PlayerGui
 
--- สร้างปุ่มลอย
 local DragButton = Instance.new("TextButton")
 DragButton.Size = UDim2.new(0, 50, 0, 50)
 DragButton.Position = UDim2.new(1, -60, 1, -60)
@@ -62,16 +57,16 @@ DragButton.MouseLeave:Connect(function()
     DragButton.BackgroundTransparency = 0.1
 end)
 
--- ฟังก์ชัน toggle UI ปลอดภัย
+-- Toggle UI ปลอดภัย
 local uiOpen = false
 DragButton.MouseButton1Click:Connect(function()
     uiOpen = not uiOpen
     if uiOpen then
-        UI:show() -- แสดง UI
+        UI:show()
         DragButton.Text = "×"
         DragButton.Size = UDim2.new(0, 60, 0, 60)
     else
-        UI:hide() -- ซ่อน UI
+        UI:hide()
         DragButton.Text = "+"
         DragButton.Size = UDim2.new(0, 50, 0, 50)
     end

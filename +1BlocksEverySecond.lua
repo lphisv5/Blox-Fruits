@@ -1,6 +1,6 @@
 -- =========================================
--- YANZ HUB | Auto Click Only | Working Version
--- Ensures GUI loads and is displayed
+-- YANZ HUB | Auto Click Only | Updated Version
+-- Full working GUI, SafeClick, and Speed Settings
 -- =========================================
 
 -- Services
@@ -9,19 +9,17 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
-if not LocalPlayer then
-    LocalPlayer = Players.PlayerAdded:Wait()
-end
+if not LocalPlayer then LocalPlayer = Players.PlayerAdded:Wait() end
 
 -- Character
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- Load VirtualInputManager (for safe clicks)
+-- VirtualInputManager (Safe Clicks)
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
 
--- Load NOTHING UI Library
+-- Load Nothing UI Library
 local NothingLibrary = loadstring(game:HttpGet('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))()
 if not NothingLibrary then
     warn("YANZ HUB: Failed to load NOTHING UI Library!")
@@ -29,7 +27,7 @@ if not NothingLibrary then
 end
 
 -- =========================================
--- Create GUI Window (works in latest NOTHING UI)
+-- Create GUI Window
 -- =========================================
 local Window = NothingLibrary:CreateWindow({
     Title = "YANZ HUB | Auto Click Only",
@@ -37,7 +35,6 @@ local Window = NothingLibrary:CreateWindow({
     Keybind = Enum.KeyCode.RightShift
 })
 
--- Check Window object exists
 if not Window then
     warn("YANZ HUB: Window creation failed!")
     return
@@ -46,18 +43,9 @@ end
 -- =========================================
 -- Tabs & Sections
 -- =========================================
-local AutoClickTab = Window:NewTab({
-    Title = "Auto Clicker",
-    Description = "Auto Click Features"
-})
-local AutoClickSection = AutoClickTab:NewSection({
-    Title = "Controls",
-    Position = "Left"
-})
-local SettingsSection = AutoClickTab:NewSection({
-    Title = "Speed Settings",
-    Position = "Right"
-})
+local AutoClickTab = Window:NewTab({Title = "Auto Clicker", Description = "Auto Click Features"})
+local AutoClickSection = AutoClickTab:NewSection({Title = "Controls", Position = "Left"})
+local SettingsSection = AutoClickTab:NewSection({Title = "Speed Settings", Position = "Right"})
 
 -- Status Label
 local StatusLabel = AutoClickSection:NewTitle("Status: Ready")
@@ -77,7 +65,6 @@ local function SafeClick(pos)
     if not VirtualInputManager then return end
     local cam = workspace.CurrentCamera
     if not cam then return end
-
     pcall(function()
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, cam, 1)
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, cam, 1)
@@ -160,5 +147,22 @@ SettingsSection:NewDropdown({
         StatusLabel:SetTitle("Delay: " .. value)
     end
 })
+
+-- =========================================
+-- Position Updater (Optional, shows player position)
+-- =========================================
+local function startPositionUpdater(character)
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    RunService.RenderStepped:Connect(function()
+        pcall(function()
+            if humanoidRootPart and humanoidRootPart.Parent then
+                local pos = humanoidRootPart.Position
+                StatusLabel:SetTitle(string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
+            end
+        end)
+    end)
+end
+if LocalPlayer.Character then startPositionUpdater(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(char) startPositionUpdater(char) end)
 
 print("YANZ HUB | Auto Click Only (GUI loaded) successfully!")

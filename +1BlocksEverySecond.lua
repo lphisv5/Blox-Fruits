@@ -19,6 +19,7 @@ local Window = NothingLibrary.new({
     Description = "By lphisv5",
     Keybind = Enum.KeyCode.RightShift
 })
+Window:Show()
 
 -- Auto Click Tab
 local AutoClickTab = Window:NewTab({Title = "Auto Clicker", Description = "Auto Click Features"})

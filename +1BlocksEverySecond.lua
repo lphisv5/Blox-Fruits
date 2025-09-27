@@ -1,4 +1,5 @@
--- Tower Builder with FluentUI (LocalScript)
+-- Tower Builder with FluentUI
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,8 +9,13 @@ local playerGui = player:WaitForChild("PlayerGui")
 local TOWER_BASE = workspace:WaitForChild("TowerBase")
 local BLOCK_SIZE = Vector3.new(4,4,4)
 
--- Load FluentUI from ModuleScript in ReplicatedStorage
+-- ===============================
+-- LOAD FLUENT UI (ModuleScript recommended)
+-- ===============================
+-- ModuleScript: ReplicatedStorage -> FluentUI
 local Fluent = require(ReplicatedStorage:WaitForChild("FluentUI"))
+local SaveManager = require(ReplicatedStorage:WaitForChild("FluentUI_SaveManager"))
+local InterfaceManager = require(ReplicatedStorage:WaitForChild("FluentUI_InterfaceManager"))
 
 -- ===============================
 -- CONFIG
@@ -24,9 +30,6 @@ local MATERIAL_STAGES = {
 local CLICK_VALUE = 5
 local PASSIVE_RATE = 1 -- blocks per second
 
--- ===============================
--- VARIABLES
--- ===============================
 local totalBlocks = 0
 local towerHeight = 1
 local currentMaterial = MATERIAL_STAGES[1].material
@@ -68,7 +71,7 @@ end
 -- ===============================
 local Window = Fluent:CreateWindow({
 	Title = "Tower Builder",
-	SubTitle = "by YourName",
+	SubTitle = "by You",
 	Size = UDim2.fromOffset(580,460),
 	Acrylic = true,
 	Theme = "Dark",
@@ -76,16 +79,13 @@ local Window = Fluent:CreateWindow({
 })
 
 local Tabs = {
-	Main = Window:AddTab({Title="Main", Icon="home"}),
+	Main = Window:AddTab({Title="Main", Icon=""}),
 	Settings = Window:AddTab({Title="Settings", Icon="settings"})
 }
 
 -- Stats Paragraph
-local StatsParagraph = Tabs.Main:AddParagraph({
-	Title="Tower Stats",
-	Content="Blocks: 0 | Material: Wood"
-})
-local function updateStatsUI()
+local StatsParagraph = Tabs.Main:AddParagraph({Title="Tower Stats", Content="Blocks: 0 | Material: Wood"})
+function updateStatsUI()
 	StatsParagraph.Content = string.format("Blocks: %d | Material: %s", totalBlocks, tostring(currentMaterial))
 end
 
@@ -105,7 +105,7 @@ AutoToggle:OnChanged(function(value)
 end)
 
 -- Slider for build speed
-Tabs.Main:AddSlider("Build Speed", {
+local BuildSpeedSlider = Tabs.Main:AddSlider("Build Speed", {
 	Title="Build Speed",
 	Description="Adjust auto build speed",
 	Default=1,
@@ -116,16 +116,6 @@ Tabs.Main:AddSlider("Build Speed", {
 		buildSpeed = value
 	end
 })
-
--- Optional Dropdown for material preview
-local MaterialDropdown = Tabs.Main:AddDropdown("Material Selector", {
-	Title="Select Material",
-	Values={"Wood","Concrete","Metal","Neon"},
-	Default=1
-})
-MaterialDropdown:OnChanged(function(value)
-	-- Preview only, no actual tower change
-end)
 
 -- ===============================
 -- CLICK DETECTOR
@@ -151,4 +141,21 @@ task.spawn(function()
 	end
 end)
 
-print("Tower Builder + FluentUI loaded successfully!")
+-- ===============================
+-- SaveManager + InterfaceManager setup
+-- ===============================
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("TowerBuilderHub")
+SaveManager:SetFolder("TowerBuilderHub/Config")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+
+Window:SelectTab(1)
+Fluent:Notify({Title="Tower Builder", Content="GUI Loaded Successfully!", Duration=5})
+
+print("Tower Builder + Fluent UI Loaded!")

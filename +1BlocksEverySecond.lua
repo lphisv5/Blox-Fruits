@@ -1,4 +1,4 @@
--- Tower Builder with Fluent UI
+-- Tower Builder with FluentUI (LocalScript)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,8 +8,8 @@ local playerGui = player:WaitForChild("PlayerGui")
 local TOWER_BASE = workspace:WaitForChild("TowerBase")
 local BLOCK_SIZE = Vector3.new(4,4,4)
 
--- Load Fluent UI Library
-local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/x2Swiftz/UI-Library/main/Libraries/FluentUI-Example.lua"))()
+-- Load FluentUI from ModuleScript in ReplicatedStorage
+local Fluent = require(ReplicatedStorage:WaitForChild("FluentUI"))
 
 -- ===============================
 -- CONFIG
@@ -80,8 +80,11 @@ local Tabs = {
 	Settings = Window:AddTab({Title="Settings", Icon="settings"})
 }
 
--- Paragraph for stats
-local StatsParagraph = Tabs.Main:AddParagraph({Title="Tower Stats", Content="Blocks: 0 | Material: Wood"})
+-- Stats Paragraph
+local StatsParagraph = Tabs.Main:AddParagraph({
+	Title="Tower Stats",
+	Content="Blocks: 0 | Material: Wood"
+})
 local function updateStatsUI()
 	StatsParagraph.Content = string.format("Blocks: %d | Material: %s", totalBlocks, tostring(currentMaterial))
 end
@@ -102,7 +105,7 @@ AutoToggle:OnChanged(function(value)
 end)
 
 -- Slider for build speed
-local BuildSpeedSlider = Tabs.Main:AddSlider("Build Speed", {
+Tabs.Main:AddSlider("Build Speed", {
 	Title="Build Speed",
 	Description="Adjust auto build speed",
 	Default=1,
@@ -114,14 +117,14 @@ local BuildSpeedSlider = Tabs.Main:AddSlider("Build Speed", {
 	end
 })
 
--- Dropdown for material preview (optional)
+-- Optional Dropdown for material preview
 local MaterialDropdown = Tabs.Main:AddDropdown("Material Selector", {
 	Title="Select Material",
 	Values={"Wood","Concrete","Metal","Neon"},
 	Default=1
 })
 MaterialDropdown:OnChanged(function(value)
-	-- Preview only
+	-- Preview only, no actual tower change
 end)
 
 -- ===============================
@@ -148,4 +151,4 @@ task.spawn(function()
 	end
 end)
 
-print("Tower Builder + Fluent UI loaded!")
+print("Tower Builder + FluentUI loaded successfully!")

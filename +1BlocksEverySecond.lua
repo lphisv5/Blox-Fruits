@@ -40,8 +40,8 @@ end
 local Window
 local ok_window, res_window = pcall(function()
     return NothingLibrary.new({
-        Title = "YANZ HUB | V0.1.6",
-        Description = "By lphisv5",
+        Title = "YANZ HUB | V0.2.1",
+        Description = "By lphisv5 | Game : +1 Blocks Every Second",
         Keybind = Enum.KeyCode.RightShift,
         Logo = 'http://www.roblox.com/asset/?id=125456335927282'
     })
@@ -65,8 +65,9 @@ local posLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
 
 -- Globals
 _G.clickDelay = _G.clickDelay or 0.1
-_G.humanizeClicks = _G.humanizeClicks or false -- New Global
+_G.humanizeClicks = _G.humanizeClicks or false
 _G.autoClickPos = _G.autoClickPos or {X = nil, Y = nil}
+_G.lastClickPos = _G.lastClickPos or nil
 _G.isLoopRunning = _G.isLoopRunning or false
 
 -- Helper: updateLabel
@@ -80,8 +81,21 @@ local function updateLabel(lbl, text)
     end)
 end
 
--- Status Label
-local StatusLabel = AutoClickSection:NewTitle("Status: Ready")
+-- Counters
+local clickCount = 0
+
+-- Status Label (Rich Information)
+local StatusLabel = AutoClickSection:NewTitle("Status: Initializing...")
+
+-- Update the main status label with all relevant info
+local function updateStatusLabel()
+    local statusText = "Status: " .. (_G.isLoopRunning and "Running" or "Ready")
+    statusText = statusText .. " | Delay: " .. string.format("%.2f", _G.clickDelay) .. "s"
+    statusText = statusText .. " | Humanization: " .. (_G.humanizeClicks and "ON" or "OFF")
+    statusText = statusText .. " | Clicks: " .. clickCount
+    statusText = statusText .. " | Last Pos: " .. (_G.lastClickPos and string.format("(%.0f, %.0f)", _G.lastClickPos.X, _G.lastClickPos.Y) or "N/A")
+    updateLabel(StatusLabel, statusText)
+end
 
 -- Connections manager
 local connections = {}
@@ -126,14 +140,19 @@ end
 
 -- Click Loop
 local function ClickLoop()
+    local posToClick
     if _G.autoClickPos and _G.autoClickPos.X and _G.autoClickPos.Y then
-        SafeClick(_G.autoClickPos)
+        posToClick = _G.autoClickPos
     else
         local cam = workspace.CurrentCamera
         if not cam then return end
         local viewportSize = cam.ViewportSize
-        SafeClick({X = viewportSize.X/2, Y = viewportSize.Y/2})
+        posToClick = {X = viewportSize.X/2, Y = viewportSize.Y/2}
     end
+    SafeClick(posToClick)
+    clickCount = clickCount + 1
+    _G.lastClickPos = posToClick -- Update last click position
+    updateStatusLabel() -- Update status immediately after a click
 end
 
 -- Auto Click Toggle
@@ -142,21 +161,18 @@ AutoClickSection:NewToggle({
     Default = _G.isLoopRunning or false,
     Callback = function(value)
         _G.isLoopRunning = value
+        updateStatusLabel()
         if value then
-            updateLabel(StatusLabel, "Auto Clicking Active")
             task.spawn(function()
                 while _G.isLoopRunning do
                     pcall(ClickLoop)
                     local delay = _G.clickDelay
                     if _G.humanizeClicks then
-                        -- สุ่ม delay ระหว่าง 80% ถึง 120% ของค่า delay หลัก
                         delay = delay * (0.8 + (math.random() * 0.4))
                     end
                     task.wait(delay)
                 end
             end)
-        else
-            updateLabel(StatusLabel, "Status: Ready")
         end
     end
 })
@@ -176,6 +192,8 @@ AutoClickSection:NewButton({
                 updateLabel(StatusLabel, "✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
                 settingPosition = false
                 if conn then conn:Disconnect() end
+                task.wait(1)
+                updateStatusLabel()
             end
         end))
         task.delay(10, function()
@@ -185,30 +203,24 @@ AutoClickSection:NewButton({
                 updateLabel(StatusLabel, "❌ Position set cancelled")
                 task.wait(2)
                 if not _G.isLoopRunning then
-                    updateLabel(StatusLabel, "Status: Ready")
+                    updateStatusLabel()
+                else
+                     updateStatusLabel()
                 end
             end
         end)
     end
 })
 
--- Speed Slider (Replaces Speed Buttons)
-local speedLabel = SettingsSection:NewTitle("Delay: " .. string.format("%.2f", _G.clickDelay) .. "s") -- New Label
+-- Speed
 SettingsSection:NewSlider({
     Title = "Click Delay (seconds)",
-    Min = 0.01,
+    Min = 00.01,
     Max = 2,
     Default = _G.clickDelay or 0.1,
     Callback = function(value)
         _G.clickDelay = value
-        updateLabel(speedLabel, "Delay: " .. string.format("%.2f", value) .. "s") -- Update label
-        if _G.isLoopRunning then
-            updateLabel(StatusLabel, "Delay Updated: " .. string.format("%.2f", value) .. "s") -- Optional: Show on status
-            task.wait(1)
-            if _G.isLoopRunning then -- Check again in case it was turned off
-                updateLabel(StatusLabel, "Auto Clicking Active")
-            end
-        end
+        updateStatusLabel()
         -- Notify
         pcall(function()
             if NothingLibrary.Notify then
@@ -223,13 +235,12 @@ SettingsSection:NewSlider({
 })
 
 -- Humanization Toggle
-local humanizeLabel = SettingsSection:NewTitle("Humanization: " .. (_G.humanizeClicks and "ON" or "OFF")) -- New Label
 SettingsSection:NewToggle({
     Title = "Enable Humanization",
     Default = _G.humanizeClicks,
     Callback = function(value)
         _G.humanizeClicks = value
-        updateLabel(humanizeLabel, "Humanization: " .. (value and "ON" or "OFF"))
+        updateStatusLabel()
         pcall(function()
             if NothingLibrary.Notify then
                 NothingLibrary:Notify({
@@ -274,13 +285,8 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
         _G.isLoopRunning = not _G.isLoopRunning
-        pcall(function()
-            -- Assuming autoToggle refers to the toggle created earlier, but it's not stored in a variable
-            -- We can't directly update the toggle here without storing its reference
-            -- So we just update the state and status label
-        end)
+        updateStatusLabel()
         if _G.isLoopRunning then
-            updateLabel(StatusLabel, "Auto Clicking Active (F6)")
             task.spawn(function()
                 while _G.isLoopRunning do
                     pcall(ClickLoop)
@@ -291,12 +297,6 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     task.wait(delay)
                 end
             end)
-        else
-            updateLabel(StatusLabel, "Emergency Stopped (F6)")
-            task.wait(2)
-            if not _G.isLoopRunning then
-                updateLabel(StatusLabel, "Status: Ready")
-            end
         end
     end
 end))
@@ -306,15 +306,22 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F7 then
         _G.isLoopRunning = false
-        -- Optionally reset the toggle state if a reference exists
-        -- if autoToggle and autoToggle.Set then autoToggle:Set(false) end
-        updateLabel(StatusLabel, "FORCE STOPPED (F7)")
-        task.wait(2)
-        if not _G.isLoopRunning then
-            updateLabel(StatusLabel, "Status: Ready")
-        end
+        updateStatusLabel()
+        -- Notify
+        pcall(function()
+            if NothingLibrary.Notify then
+                NothingLibrary:Notify({
+                    Title = "FORCE STOPPED",
+                    Content = "Auto Clicker stopped by F7",
+                    Duration = 2
+                })
+            end
+        end)
     end
 end))
+
+-- Initial Status Update
+updateStatusLabel()
 
 -- Cleanup
 local function cleanup()
@@ -332,4 +339,4 @@ addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
 
-print("YANZ HUB | V0.1.6 Loaded Successfully")
+print("YANZ HUB - Loaded Successfully")

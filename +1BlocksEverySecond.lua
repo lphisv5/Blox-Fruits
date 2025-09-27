@@ -1,4 +1,5 @@
--- Tower Builder with FluentUI
+-- Tower Builder LocalScript
+-- Place in StarterPlayerScripts
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,9 +11,8 @@ local TOWER_BASE = workspace:WaitForChild("TowerBase")
 local BLOCK_SIZE = Vector3.new(4,4,4)
 
 -- ===============================
--- LOAD FLUENT UI (ModuleScript recommended)
+-- REQUIRE MODULES
 -- ===============================
--- ModuleScript: ReplicatedStorage -> FluentUI
 local Fluent = require(ReplicatedStorage:WaitForChild("FluentUI"))
 local SaveManager = require(ReplicatedStorage:WaitForChild("FluentUI_SaveManager"))
 local InterfaceManager = require(ReplicatedStorage:WaitForChild("FluentUI_InterfaceManager"))
@@ -28,7 +28,7 @@ local MATERIAL_STAGES = {
 }
 
 local CLICK_VALUE = 5
-local PASSIVE_RATE = 1 -- blocks per second
+local PASSIVE_RATE = 1 -- blocks/sec
 
 local totalBlocks = 0
 local towerHeight = 1
@@ -142,7 +142,7 @@ task.spawn(function()
 end)
 
 -- ===============================
--- SaveManager + InterfaceManager setup
+-- SAVE MANAGER + INTERFACE MANAGER
 -- ===============================
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)

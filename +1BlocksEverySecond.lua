@@ -1,6 +1,6 @@
 -- =========================================
--- YANZ HUB | Auto Click Only | v0.2
--- Fully Updated & Debugged
+-- YANZ HUB | Auto Click Only | Working Version
+-- Ensures GUI loads and is displayed
 -- =========================================
 
 -- Services
@@ -8,21 +8,18 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- Local Player
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
     LocalPlayer = Players.PlayerAdded:Wait()
 end
 
--- Character & HumanoidRootPart
+-- Character
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 
--- Attempt to get VirtualInputManager (for safe clicks)
+-- Load VirtualInputManager (for safe clicks)
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
-if not ok_vim then
-    VirtualInputManager = nil
-end
+if not ok_vim then VirtualInputManager = nil end
 
 -- Load NOTHING UI Library
 local NothingLibrary = loadstring(game:HttpGet('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))()
@@ -32,17 +29,22 @@ if not NothingLibrary then
 end
 
 -- =========================================
--- Create Window
+-- Create GUI Window (works in latest NOTHING UI)
 -- =========================================
-local Window = NothingLibrary.new({
+local Window = NothingLibrary:CreateWindow({
     Title = "YANZ HUB | Auto Click Only",
     Description = "By lphisv5",
     Keybind = Enum.KeyCode.RightShift
 })
 
+-- Check Window object exists
+if not Window then
+    warn("YANZ HUB: Window creation failed!")
+    return
+end
 
 -- =========================================
--- Create Tabs & Sections
+-- Tabs & Sections
 -- =========================================
 local AutoClickTab = Window:NewTab({
     Title = "Auto Clicker",
@@ -68,8 +70,7 @@ _G.autoClickPos = {X = nil, Y = nil}
 _G.isLoopRunning = false
 
 -- =========================================
--- Helper: SafeClick
--- Clicks without interfering with GUI
+-- SafeClick function (clicks without interfering with GUI)
 -- =========================================
 local function SafeClick(pos)
     if not pos or not pos.X or not pos.Y then return end
@@ -77,9 +78,7 @@ local function SafeClick(pos)
     local cam = workspace.CurrentCamera
     if not cam then return end
 
-    -- Use pcall for safety
     pcall(function()
-        -- Send mouse click events directly to camera (world)
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, cam, 1)
         VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, cam, 1)
     end)
@@ -92,7 +91,6 @@ local function ClickLoop()
     if _G.autoClickPos.X and _G.autoClickPos.Y then
         SafeClick(_G.autoClickPos)
     else
-        -- Default to center of viewport
         local cam = workspace.CurrentCamera
         if not cam then return end
         local viewport = cam.ViewportSize
@@ -139,7 +137,6 @@ AutoClickSection:NewButton({
                 if conn then conn:Disconnect() end
             end
         end)
-        -- Timeout for 10 seconds
         task.delay(10, function()
             if setting then
                 setting = false
@@ -152,7 +149,6 @@ AutoClickSection:NewButton({
 
 -- =========================================
 -- Speed Settings Dropdown
--- Only numbers, simplified display
 -- =========================================
 local speedOptions = {0.01, 0.5, 1, 1.5}
 SettingsSection:NewDropdown({
@@ -165,15 +161,4 @@ SettingsSection:NewDropdown({
     end
 })
 
--- =========================================
--- Notes & Bug Fixes Implemented
--- =========================================
--- 1. Window:Show() added to ensure GUI appears immediately.
--- 2. Removed all unnecessary functions (Discord, emergency stop, player pos).
--- 3. SafeClick now clicks directly on Camera, preventing GUI interference.
--- 4. Auto Click loop uses task.spawn + pcall for stability.
--- 5. Speed Settings Dropdown simplified to numeric display only.
--- 6. Auto Click will not block dragging GUI or interacting with other UI elements.
--- 7. Input detection for setting click position uses timeout to avoid stuck states.
-
-print("YANZ HUB | Auto Click Only v0.2 loaded successfully!")
+print("YANZ HUB | Auto Click Only (GUI loaded) successfully!")

@@ -1,10 +1,10 @@
 -- โหลดไลบรารี Venyx UI
 local Venyx = loadstring(game:HttpGet("https://raw.githubusercontent.com/Stefanuk12/Venyx-UI-Library/main/source2.lua"))()
 
--- สร้าง UI
+-- สร้าง UI (แค่ครั้งเดียว)
 local UI = Venyx.new({title = "Venyx UI"})
 
--- ตัวอย่างหน้าหลัก
+-- สร้างหน้าและส่วนภายใน UI
 local Page = UI:addPage("Main Page", 5012544693)
 local Section = Page:addSection("Controls")
 
@@ -20,27 +20,28 @@ Section:addSlider("WalkSpeed", 16, 0, 500, function(value)
 end)
 
 -- ===============================
--- ปุ่มลอยแบบลากได้
+-- ปุ่มลอยแบบลากได้และ toggle UI
 -- ===============================
 local player = game.Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui")
+local PlayerGui = player:WaitForChild("PlayerGui") -- รอ PlayerGui โหลดเสร็จ
 
--- สร้าง ScreenGui
+-- สร้าง ScreenGui สำหรับปุ่มลอย
 local FloatingGui = Instance.new("ScreenGui")
 FloatingGui.Name = "FloatingToggleUI"
+FloatingGui.ResetOnSpawn = false -- สำคัญ! ไม่ให้หายหลัง Respawn
 FloatingGui.Parent = PlayerGui
 
--- สร้างปุ่มขนาดเล็ก
+-- สร้างปุ่ม
 local DragButton = Instance.new("TextButton")
 DragButton.Size = UDim2.new(0, 50, 0, 50)
-DragButton.Position = UDim2.new(1, -60, 1, -60) -- มุมล่างขวา
+DragButton.Position = UDim2.new(1, -60, 1, -60)
+DragButton.AnchorPoint = Vector2.new(0, 0)
 DragButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 DragButton.BackgroundTransparency = 0.1
 DragButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 DragButton.Text = "+"
 DragButton.Font = Enum.Font.GothamBold
 DragButton.TextSize = 30
-DragButton.AnchorPoint = Vector2.new(0, 0)
 DragButton.Parent = FloatingGui
 
 -- Hover effect
@@ -51,22 +52,23 @@ DragButton.MouseLeave:Connect(function()
     DragButton.BackgroundTransparency = 0.1
 end)
 
--- ฟังก์ชัน toggle UI
+-- ฟังก์ชัน toggle UI แบบปลอดภัย
 local uiOpen = false
 DragButton.MouseButton1Click:Connect(function()
     uiOpen = not uiOpen
-    UI:toggle()
     if uiOpen then
+        UI:show() -- แสดง UI
         DragButton.Text = "×"
         DragButton.Size = UDim2.new(0, 60, 0, 60)
     else
+        UI:hide() -- ซ่อน UI
         DragButton.Text = "+"
         DragButton.Size = UDim2.new(0, 50, 0, 50)
     end
 end)
 
 -- ===============================
--- เพิ่มฟีเจอร์ Drag ปุ่ม
+-- Drag ปุ่มได้
 -- ===============================
 local dragging = false
 local dragInput, mousePos, framePos

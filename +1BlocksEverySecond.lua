@@ -1,6 +1,6 @@
 -- =========================================
--- YANZ HUB | Auto Click Only | Fixed Version 2
--- Now compatible with the specific NOTHING UI Library
+-- YANZ HUB | Auto Click Only | Fixed Version 3
+-- Now compatible with the MODIFIED NOTHING UI Library (has 'new' function)
 -- =========================================
 
 -- Services
@@ -43,24 +43,30 @@ end
 -- Create GUI Window using the correct function name
 local Window
 local ok_window, res_window = pcall(function()
-    -- ใช้ Library.New แทน CreateWindow หรือ new
-    -- โครงสร้างของ Library.New (หรือ NewAuth ในโค้ดต้นฉบับ) ต้องการ config ที่มี Title, Description, Keybind
-    return NothingLibrary.New({
+    -- ใช้ Library.new แทน CreateWindow
+    -- Library.new นี้เป็น Library.NewAuth ที่ถูก rename มา
+    -- โครงสร้างของ Library.new ต้องการ config ที่มี Title, Description, Keybind (และอาจมีค่าอื่น ๆ)
+    -- ใช้ค่าเริ่มต้นสำหรับ Auth และ GetKey เพื่อให้ข้ามระบบยืนยันตัวชี้
+    return NothingLibrary.new({
         Title = "YANZ HUB | Auto Click Only",
         Description = "By lphisv5",
         Keybind = Enum.KeyCode.RightShift,
         Size = UDim2.new(0.15, 0, 0.25, 0), -- เพิ่มขนาด (Optional)
+        -- ค่าเหล่านี้จำเป็นเพื่อข้ามระบบ Auth ใน Library.new (ซึ่งคือ NewAuth)
+        GetKey = function() return 'https://example.com' end, -- ค่าจำลอง
+        Auth = function(key) if key == 'any_key' then return true else return false end; end, -- ค่าจำลอง
+        Freeze = false, -- ค่าจำลอง
     })
 end)
 
 if not ok_window or not res_window then
-    warn("YANZ HUB: NewWindow failed! Error:", res_window)
+    warn("YANZ HUB: Library.new failed! Error:", res_window)
     return
 end
-Window = res_window -- ตอนนี้ Window คือ WindowTable ที่ได้จาก Library.New
+Window = res_window -- ตอนนี้ Window คือ WindowTable ที่ได้จาก Library.new
 
 -- Tabs & Sections
--- ใช้เมธอดของ Window ที่ได้จาก Library.New
+-- ใช้เมธอดของ Window ที่ได้จาก Library.new
 local AutoClickTab = Window:NewTab({
     Title = "Auto Clicker",
     Description = "Auto Click Features",
@@ -68,25 +74,32 @@ local AutoClickTab = Window:NewTab({
 })
 local AutoClickSection = AutoClickTab:NewSection({
     Title = "Controls",
-    Position = "Left", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
+    -- Position = "Left", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
     Icon = nil
 })
 local SettingsSection = AutoClickTab:NewSection({
     Title = "Speed Settings",
-    Position = "Right",
+    -- Position = "Right", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
     Icon = nil
 })
 local PositionSection = AutoClickTab:NewSection({
     Title = "Player Position",
-    Position = "Right",
+    -- Position = "Right", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
     Icon = nil
 })
 
 -- Labels (ใช้ NewTitle หรือ NewLabel ถ้ามี, ถ้าไม่มี ใช้ Label หรือ TextLabel ธรรมดาก็ได้)
 -- Library นี้ใช้ NewToggle, NewButton, NewDropdown ได้ตามปกติ
 -- เราจะใช้ Title ของ Section หรือ Toggle/Button สำหรับแสดงสถานะแทน Label
-local StatusTitle = AutoClickSection:NewToggle({
-    Title = "Status: Ready", -- ใช้ Title แสดงสถานะ
+
+-- Global Variables
+_G.clickDelay = 0.1
+_G.autoClickPos = {X = nil, Y = nil}
+_G.isLoopRunning = false
+
+-- Status Label (ใช้ Toggle ว่างๆ สำหรับแสดงสถานะ)
+local statusToggle = AutoClickSection:NewToggle({
+    Title = "Status: Ready",
     Default = false,
     Callback = function(value) -- ไม่ต้องทำอะไรกับ toggle นี้จริงๆ
         -- เปลี่ยน Title ตอนเปิด/ปิด
@@ -94,31 +107,12 @@ local StatusTitle = AutoClickSection:NewToggle({
     end
 })
 
--- เราจะใช้ Title ของ StatusTitle นี้ในการเปลี่ยนข้อความ
--- ต้องเก็บ reference ไว้ แต่ Library นี้ไม่ได้คืนค่า Object ที่มี SetTitle ให้โดยตรง
--- วิธีแก้: ใช้ Title ของ Toggle/Button หรือสร้าง Toggle/Button ว่างๆ ไว้แสดงสถานะ
--- หรือใช้ TextLabel ที่สร้างเอง แล้วอัปเดตผ่าน script ของเรา
--- วิธีที่ง่ายที่สุดคือใช้ Title ของ Toggle/Button ที่มี Callback ไม่ทำอะไร
-
--- ใช้ Toggle ว่างๆ สำหรับแสดงสถานะ
-local statusToggle = AutoClickSection:NewToggle({
-    Title = "Status: Ready",
-    Default = false,
-    Callback = function(value) -- ไม่ต้องทำอะไร
-    end
-})
-
--- ใช้ Button ว่างๆ สำหรับแสดงตำแหน่ง
+-- Position Label (ใช้ Button ว่างๆ สำหรับแสดงตำแหน่ง)
 local posButton = PositionSection:NewButton({
     Title = "Player Pos: Waiting...",
     Callback = function() -- ไม่ต้องทำอะไร
     end
 })
-
--- Global Variables
-_G.clickDelay = 0.1
-_G.autoClickPos = {X = nil, Y = nil}
-_G.isLoopRunning = false
 
 -- Connections manager
 local connections = {}
@@ -323,4 +317,4 @@ addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
 
-print("YANZ HUB | Auto Click Only (Fixed Version 2) loaded successfully!")
+print("YANZ HUB | Auto Click Only (Fixed Version 3) loaded successfully!")

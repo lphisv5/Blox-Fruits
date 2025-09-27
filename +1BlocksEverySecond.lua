@@ -1,135 +1,127 @@
 -- =========================================
--- YANZ HUB | Auto Click Only | Fixed Version 3
+-- YANZ HUB | Auto Click Only | Fixed Version 4
 -- Now compatible with the MODIFIED NOTHING UI Library (has 'new' function)
 -- =========================================
 
 -- Services
-local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService") -- เพิ่ม TweenService ถ้า Library ต้องการ
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService") -- เพิ่ม HttpService ถ้า Library ต้องการ
 local LocalPlayer = Players.LocalPlayer
+
 if not LocalPlayer then
     LocalPlayer = Players.PlayerAdded:Wait()
 end
 
--- Character
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") -- เปลี่ยนจาก WaitForChild เป็น FindFirstChild
 
--- Load VirtualInputManager
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
 
--- Load NOTHING UI Library
+local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua' -- ลบช่องว่างท้าย URL
 local ok_lib, NothingLibrary = pcall(function()
-    -- โหลดโค้ด Library จาก GitHub
-    local lib_source = game:HttpGet('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua')
-    -- รันโค้ด Library แล้วรับค่าที่คืนกลับมา
-    return loadstring(lib_source)()
+    local code = game:HttpGetAsync(libURL) -- เปลี่ยนจาก game:HttpGet เป็น game:HttpGetAsync เพื่อความปลอดภัย
+    if code then
+        -- print("Loaded Nothing Library code (first 1000 chars):", code:sub(1, 1000)) -- แสดงเฉพาะตอน debug
+        local func, err = loadstring(code)
+        if not func then
+            warn("Loadstring error:", err)
+            return nil
+        end
+        return func()
+    else
+        warn("Failed to fetch Nothing Library from URL:", libURL)
+        return nil
+    end
 end)
-
 if not ok_lib or not NothingLibrary then
-    warn("YANZ HUB: Failed to load NOTHING UI Library!")
+    warn("YANZ HUB: Failed to load Nothing UI Library. Error or code issue:", NothingLibrary)
     return
 end
 
--- Debug library methods (Optional)
-print("NothingLibrary methods:")
-for k, v in pairs(NothingLibrary) do
-    print(k, type(v))
-end
-
--- Create GUI Window using the correct function name
+-- Create Window
 local Window
 local ok_window, res_window = pcall(function()
-    -- ใช้ Library.new แทน CreateWindow
-    -- Library.new นี้เป็น Library.NewAuth ที่ถูก rename มา
-    -- โครงสร้างของ Library.new ต้องการ config ที่มี Title, Description, Keybind (และอาจมีค่าอื่น ๆ)
-    -- ใช้ค่าเริ่มต้นสำหรับ Auth และ GetKey เพื่อให้ข้ามระบบยืนยันตัวชี้
+    -- ใช้ Library.new ซึ่งเป็น NewAuth ที่ rename มา
+    -- ต้องส่งค่าจำลองเพื่อข้ามระบบ Auth
     return NothingLibrary.new({
         Title = "YANZ HUB | Auto Click Only",
         Description = "By lphisv5",
         Keybind = Enum.KeyCode.RightShift,
+        -- Logo = 'http://www.roblox.com/asset/?id=125456335927282' -- ถ้าต้องการ Logo
         Size = UDim2.new(0.15, 0, 0.25, 0), -- เพิ่มขนาด (Optional)
-        -- ค่าเหล่านี้จำเป็นเพื่อข้ามระบบ Auth ใน Library.new (ซึ่งคือ NewAuth)
-        GetKey = function() return 'https://example.com' end, -- ค่าจำลอง
-        Auth = function(key) if key == 'any_key' then return true else return false end; end, -- ค่าจำลอง
-        Freeze = false, -- ค่าจำลอง
+        -- ค่าจำลองเพื่อข้ามระบบ Auth
+        GetKey = function() return 'https://example.com' end,
+        Auth = function(key) if key == 'any_key' then return true else return false end; end,
+        Freeze = false,
     })
 end)
-
-if not ok_window or not res_window then
-    warn("YANZ HUB: Library.new failed! Error:", res_window)
+if ok_window then Window = res_window else
+    warn("YANZ HUB: Cannot create window from NothingLibrary. Error:", res_window)
     return
 end
-Window = res_window -- ตอนนี้ Window คือ WindowTable ที่ได้จาก Library.new
 
 -- Tabs & Sections
--- ใช้เมธอดของ Window ที่ได้จาก Library.new
 local AutoClickTab = Window:NewTab({
     Title = "Auto Clicker",
     Description = "Auto Click Features",
+    -- Icon = "rbxassetid://7733960981" -- ถ้าต้องการ Icon
     Icon = nil -- หลีกเลี่ยง asset errors หากมี
 })
 local AutoClickSection = AutoClickTab:NewSection({
     Title = "Controls",
-    -- Position = "Left", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
-    Icon = nil
+    -- Icon = "rbxassetid://7733916988",
+    Icon = nil,
+    -- Position = "Left" -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
 })
 local SettingsSection = AutoClickTab:NewSection({
     Title = "Speed Settings",
-    -- Position = "Right", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
-    Icon = nil
-})
-local PositionSection = AutoClickTab:NewSection({
-    Title = "Player Position",
-    -- Position = "Right", -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
-    Icon = nil
+    -- Icon = "rbxassetid://7743869054",
+    Icon = nil,
+    -- Position = "Right"
 })
 
--- Labels (ใช้ NewTitle หรือ NewLabel ถ้ามี, ถ้าไม่มี ใช้ Label หรือ TextLabel ธรรมดาก็ได้)
--- Library นี้ใช้ NewToggle, NewButton, NewDropdown ได้ตามปกติ
--- เราจะใช้ Title ของ Section หรือ Toggle/Button สำหรับแสดงสถานะแทน Label
+-- Helper: updateLabel (เหมือนในโค้ดตัวอย่าง)
+local function updateLabel(lbl, text)
+    if not lbl then return end
+    pcall(function()
+        if typeof(lbl) == "Instance" and lbl.Text ~= nil then lbl.Text = tostring(text) end
+        if lbl.Set then lbl:Set(tostring(text)) end
+        if lbl.SetText then lbl:SetText(tostring(text)) end
+        if lbl.SetTitle then lbl:SetTitle(tostring(text)) end
+    end)
+end
+
+-- Status Label
+local StatusLabel = AutoClickSection:NewTitle("Status: Ready")
+
+-- Position Label
+local PosLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
 
 -- Global Variables
-_G.clickDelay = 0.1
-_G.autoClickPos = {X = nil, Y = nil}
-_G.isLoopRunning = false
-
--- Status Label (ใช้ Toggle ว่างๆ สำหรับแสดงสถานะ)
-local statusToggle = AutoClickSection:NewToggle({
-    Title = "Status: Ready",
-    Default = false,
-    Callback = function(value) -- ไม่ต้องทำอะไรกับ toggle นี้จริงๆ
-        -- เปลี่ยน Title ตอนเปิด/ปิด
-        -- แต่เราจะใช้ Callback ของ Auto Click Toggle หลักแทน
-    end
-})
-
--- Position Label (ใช้ Button ว่างๆ สำหรับแสดงตำแหน่ง)
-local posButton = PositionSection:NewButton({
-    Title = "Player Pos: Waiting...",
-    Callback = function() -- ไม่ต้องทำอะไร
-    end
-})
+_G.clickDelay = _G.clickDelay or 0.1
+_G.autoClickPos = _G.autoClickPos or {X = nil, Y = nil}
+_G.isLoopRunning = _G.isLoopRunning or false
 
 -- Connections manager
 local connections = {}
 local function addConn(conn) if conn then table.insert(connections, conn) end return conn end
 
--- SafeClick function
+-- Safe Click
 local function SafeClick(pos)
     if not pos or not pos.X or not pos.Y then return end
-    if not VirtualInputManager then
-        warn("⚠️ VirtualInputManager not available")
-        return
-    end
     local cam = workspace.CurrentCamera
     if not cam then return end
     local viewport = cam.ViewportSize
     if pos.X < 0 or pos.Y < 0 or pos.X > viewport.X or pos.Y > viewport.Y then
         warn("⚠️ Invalid click position", pos.X, pos.Y, "Viewport:", viewport)
+        return
+    end
+    if not VirtualInputManager then
+        warn("⚠️ VirtualInputManager not available")
         return
     end
     local tried = {}
@@ -157,31 +149,32 @@ end
 
 -- Click Loop
 local function ClickLoop()
-    if _G.autoClickPos.X and _G.autoClickPos.Y then
+    if _G.autoClickPos and _G.autoClickPos.X and _G.autoClickPos.Y then
         SafeClick(_G.autoClickPos)
     else
         local cam = workspace.CurrentCamera
         if not cam then return end
-        local viewport = cam.ViewportSize
-        SafeClick({X = viewport.X / 2, Y = viewport.Y / 2})
+        local viewportSize = cam.ViewportSize
+        SafeClick({X = viewportSize.X/2, Y = viewportSize.Y/2})
     end
 end
 
 -- Auto Click Toggle
-AutoClickSection:NewToggle({
+local autoToggle = AutoClickSection:NewToggle({ -- เก็บ reference ของ Toggle ไว้ใช้ใน F6
     Title = "Auto Click",
-    Default = _G.isLoopRunning,
+    Default = _G.isLoopRunning or false,
     Callback = function(value)
         _G.isLoopRunning = value
-        -- เปลี่ยน Title ของ statusToggle ที่เราสร้างไว้
-        statusToggle.Callback("Status: " .. (value and "Auto Clicking Active" or "Ready"))
         if value then
+            updateLabel(StatusLabel, "Auto Clicking Active")
             task.spawn(function()
                 while _G.isLoopRunning do
                     pcall(ClickLoop)
-                    task.wait(_G.clickDelay)
+                    task.wait(_G.clickDelay or 0.2)
                 end
             end)
+        else
+            updateLabel(StatusLabel, "Status: Ready")
         end
     end
 })
@@ -190,82 +183,82 @@ AutoClickSection:NewToggle({
 AutoClickSection:NewButton({
     Title = "SET CLICK POSITION",
     Callback = function()
-        -- อัปเดตสถานะ
-        statusToggle.Callback("Status: 🖱️ Click anywhere to set position...")
-        local setting = true
+        local settingPosition = true
+        updateLabel(StatusLabel, "🖱️ Click anywhere to set position...")
         local conn
-        conn = addConn(UserInputService.InputBegan:Connect(function(input, processed)
-            if processed or not setting then return end
+        conn = addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            if gameProcessed or not settingPosition then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = UserInputService:GetMouseLocation()
-                _G.autoClickPos = {X = mousePos.X, Y = mousePos.Y}
-                statusToggle.Callback("Status: ✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
-                pcall(function()
-                    NothingLibrary.Notification({
-                        Title = "Position Set",
-                        Content = "Click position set to X: " .. math.floor(mousePos.X) .. ", Y: " .. math.floor(mousePos.Y),
-                        Duration = 3
-                    })
-                end)
-                setting = false
+                _G.autoClickPos = { X = mousePos.X, Y = mousePos.Y }
+                updateLabel(StatusLabel, "✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
+                settingPosition = false
                 if conn then conn:Disconnect() end
             end
         end))
         task.delay(10, function()
-            if setting then
-                setting = false
+            if settingPosition then
+                settingPosition = false
                 if conn then conn:Disconnect() end
-                statusToggle.Callback("Status: ❌ Position set cancelled")
-                pcall(function()
-                    NothingLibrary.Notification({
-                        Title = "Position Set Cancelled",
-                        Content = "Click position setting was cancelled",
-                        Duration = 3
-                    })
-                end)
+                updateLabel(StatusLabel, "❌ Position set cancelled")
+                task.wait(2)
+                if not _G.isLoopRunning then
+                    updateLabel(StatusLabel, "Status: Ready")
+                end
             end
         end)
     end
 })
 
--- Speed Settings Dropdown
-local speedOptions = {0.01, 0.5, 1, 1.5}
-SettingsSection:NewDropdown({
-    Title = "Click Speed",
-    Default = tostring(_G.clickDelay),
-    Options = speedOptions,
-    Callback = function(value)
-        _G.clickDelay = tonumber(value)
-        statusToggle.Callback("Status: Delay: " .. value .. "s")
-        pcall(function()
-            NothingLibrary.Notification({
-                Title = "Speed Updated",
-                Content = "Click delay set to " .. value .. "s",
-                Duration = 2
-            })
-        end)
-    end
-})
+-- Speed Buttons (เหมือนในโค้ดตัวอย่าง)
+local speeds = {
+    {label = "ULTRA FAST", value = 0.01},
+    {label = "FAST", value = 0.5},
+    {label = "NORMAL", value = 1},
+    {label = "SLOW", value = 1.5}
+}
+for _, speedData in ipairs(speeds) do
+    SettingsSection:NewButton({
+        Title = speedData.label .. " (" .. speedData.value .. "s)",
+        Callback = function()
+            _G.clickDelay = speedData.value
+            updateLabel(StatusLabel, "Delay: " .. speedData.value .. "s")
+            pcall(function()
+                if NothingLibrary.Notify then
+                    NothingLibrary:Notify({
+                        Title = "Speed Updated",
+                        Content = "Click delay set to " .. speedData.value .. "s",
+                        Duration = 2
+                    })
+                end
+            end)
+        end
+    })
+end
 
--- Player Position Updater
+-- Position Updater
 local function startPositionUpdater(character)
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
     local renderConn = RunService.RenderStepped:Connect(function()
         pcall(function()
             if humanoidRootPart and humanoidRootPart.Parent then
                 local pos = humanoidRootPart.Position
-                posButton.Callback(string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
+                updateLabel(PosLabel, string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
             else
-                posButton.Callback("Player Pos: Waiting...")
+                updateLabel(PosLabel, "Player Pos: Waiting...")
             end
         end)
     end)
     addConn(renderConn)
 end
 
+-- Start updating for the current character
 if LocalPlayer.Character then
     startPositionUpdater(LocalPlayer.Character)
 end
+
+-- Update on character respawn
 addConn(LocalPlayer.CharacterAdded:Connect(function(char)
     startPositionUpdater(char)
 end))
@@ -275,30 +268,26 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
         _G.isLoopRunning = not _G.isLoopRunning
-        -- อัปเดต Toggle หลัก (ถ้า Library ให้เราอัปเดตค่า Toggle ได้)
-        -- โค้ดเดิมพยายามหา Toggle แล้ว Set ค่า ซึ่ง Library นี้อาจไม่รองรับ
-        -- เราจะใช้ Callback ของ Toggle หลักอีกครั้งเพื่ออัปเดตสถานะ
-        -- เรียก Callback ของ Auto Click Toggle ด้วยค่าใหม่
-        -- เนื่องจากเราไม่สามารถเรียก Callback ของ Toggle อื่นได้โดยตรง
-        -- วิธีแก้คือ ให้ Toggle หลักอัปเดตสถานะเองทุกครั้งที่ถูกเรียก
-        -- ดัดแปลง Toggle หลักเล็กน้อย
-        -- หรือใช้ _G.isLoopRunning ตรงๆ
-        -- ให้ statusToggle แสดงสถานะ
-        statusToggle.Callback("Status: " .. (_G.isLoopRunning and "Auto Clicking Active (F6)" or "Emergency Stopped (F6)"))
-        pcall(function()
-            NothingLibrary.Notification({
-                Title = _G.isLoopRunning and "Auto Click Resumed" or "Emergency Stop",
-                Content = _G.isLoopRunning and "Auto clicking resumed via F6" or "Auto clicking stopped via F6",
-                Duration = 3
-            })
-        end)
+        -- อัปเดต Toggle หลักโดยใช้ reference ที่เก็บไว้
+        if autoToggle and autoToggle.Set then
+            autoToggle:Set(_G.isLoopRunning)
+        elseif autoToggle and autoToggle.SetValue then
+            autoToggle:SetValue(_G.isLoopRunning)
+        end
         if _G.isLoopRunning then
+            updateLabel(StatusLabel, "Auto Clicking Active (F6)")
             task.spawn(function()
                 while _G.isLoopRunning do
                     pcall(ClickLoop)
-                    task.wait(_G.clickDelay)
+                    task.wait(_G.clickDelay or 0.2)
                 end
             end)
+        else
+            updateLabel(StatusLabel, "Emergency Stopped (F6)")
+            task.wait(2)
+            if not _G.isLoopRunning then
+                updateLabel(StatusLabel, "Status: Ready")
+            end
         end
     end
 end))
@@ -309,12 +298,14 @@ local function cleanup()
     for _, c in ipairs(connections) do
         pcall(function() if c and c.Disconnect then c:Disconnect() end end)
     end
-    -- ไม่มีฟังก์ชัน Destroy Window ที่ชัดเจนใน Library นี้
-    -- ปล่อยให้ Roblox จัดการเมื่อสคริปต์หยุด
+    pcall(function()
+        if Window and Window.Destroy then Window:Destroy() end
+        if Window and Window.Close then Window:Close() end
+    end)
 end
 
 addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
 
-print("YANZ HUB | Auto Click Only (Fixed Version 3) loaded successfully!")
+print("YANZ HUB | Auto Click Only (Fixed Version 4) loaded successfully!")

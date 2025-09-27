@@ -1,37 +1,47 @@
+-- ===============================
 -- โหลดไลบรารี Venyx UI
+-- ===============================
 local Venyx = loadstring(game:HttpGet("https://raw.githubusercontent.com/Stefanuk12/Venyx-UI-Library/main/source2.lua"))()
 
--- สร้าง UI (แค่ครั้งเดียว)
+-- ===============================
+-- สร้าง UI (ครั้งเดียว)
+-- ===============================
 local UI = Venyx.new({title = "Venyx UI"})
 
--- สร้างหน้าและส่วนภายใน UI
-local Page = UI:addPage("Main Page", 5012544693)
+-- ===============================
+-- สร้างหน้าหลักและ Section
+-- ===============================
+local Page = UI:addPage("Main Page", 5012544693) -- เปลี่ยนเป็น Icon ID ได้
 local Section = Page:addSection("Controls")
 
+-- ปุ่มตัวอย่าง
 Section:addButton("Click Me!", function()
     print("Button clicked!")
 end)
 
+-- Slider WalkSpeed พร้อมป้องกัน error
 Section:addSlider("WalkSpeed", 16, 0, 500, function(value)
     local character = game.Players.LocalPlayer.Character
     if character and character:FindFirstChild("Humanoid") then
         character.Humanoid.WalkSpeed = value
     end
+    -- คืนค่า string ให้ UI แสดง
+    return tostring(value)
 end)
 
 -- ===============================
--- ปุ่มลอยแบบลากได้และ toggle UI
+-- ปุ่มลอยแบบลากได้ + toggle UI
 -- ===============================
 local player = game.Players.LocalPlayer
-local PlayerGui = player:WaitForChild("PlayerGui") -- รอ PlayerGui โหลดเสร็จ
+local PlayerGui = player:WaitForChild("PlayerGui")
 
--- สร้าง ScreenGui สำหรับปุ่มลอย
+-- สร้าง ScreenGui
 local FloatingGui = Instance.new("ScreenGui")
 FloatingGui.Name = "FloatingToggleUI"
 FloatingGui.ResetOnSpawn = false -- สำคัญ! ไม่ให้หายหลัง Respawn
 FloatingGui.Parent = PlayerGui
 
--- สร้างปุ่ม
+-- สร้างปุ่มลอย
 local DragButton = Instance.new("TextButton")
 DragButton.Size = UDim2.new(0, 50, 0, 50)
 DragButton.Position = UDim2.new(1, -60, 1, -60)
@@ -52,7 +62,7 @@ DragButton.MouseLeave:Connect(function()
     DragButton.BackgroundTransparency = 0.1
 end)
 
--- ฟังก์ชัน toggle UI แบบปลอดภัย
+-- ฟังก์ชัน toggle UI ปลอดภัย
 local uiOpen = false
 DragButton.MouseButton1Click:Connect(function()
     uiOpen = not uiOpen

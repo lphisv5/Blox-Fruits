@@ -52,16 +52,25 @@ if ok_window then Window = res_window else
 end
 
 -- Tabs & Sections
-local AutoClickTab = Window:NewTab({
-    Title = "Auto Clicker",
+local HomeTab = Window:NewTab({
+    Title = "HOME",
+    Description = "Home Features",
+    Icon = "rbxassetid://7733960981"
+})
+local MainTab = Window:NewTab({
+    Title = "MAIN", -- Renamed from "Auto Clicker"
     Description = "Auto Click Features",
     Icon = "rbxassetid://7733960981"
 })
-local AutoClickSection = AutoClickTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
-local SettingsSection = AutoClickTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
+local HomeSection = HomeTab:NewSection({Title = "Home", Icon = "rbxassetid://7733916988", Position = "Left"})
+local MainControlsSection = MainTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
+local MainSettingsSection = MainTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
 
--- Position Label in UI
-local posLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
+-- Position Label in UI (Moved to Main Tab)
+local posLabel = MainControlsSection:NewTitle("Player Pos: Waiting...")
+
+-- Height Label in UI (Added to Home Tab)
+local heightLabel = HomeSection:NewTitle("Height: Waiting...")
 
 -- Globals
 _G.clickDelay = _G.clickDelay or 0.1
@@ -84,8 +93,8 @@ end
 -- Counters
 local clickCount = 0
 
--- Status Label (Rich Information)
-local StatusLabel = AutoClickSection:NewTitle("Status: Initializing...")
+-- Status Label (Rich Information) (Moved to Main Tab)
+local StatusLabel = MainControlsSection:NewTitle("Status: Initializing...")
 
 -- Update the main status label with all relevant info
 local function updateStatusLabel()
@@ -100,6 +109,23 @@ end
 -- Connections manager
 local connections = {}
 local function addConn(conn) if conn then table.insert(connections, conn) end return conn end
+
+-- Home Tab Functions
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Icon = "rbxassetid://7733960981",
+    Callback = function()
+        pcall(function()
+            setclipboard("https://discord.gg/DfVuhsZb")
+            
+            NothingLibrary:Notify({
+                Title = "Copied!",
+                Content = "Successfully copied the link",
+                Duration = 5
+            })
+        end)
+    end
+})
 
 -- Safe Click
 local function SafeClick(pos)
@@ -156,7 +182,7 @@ local function ClickLoop()
 end
 
 -- Auto Click Toggle
-AutoClickSection:NewToggle({
+MainControlsSection:NewToggle({
     Title = "Auto Click",
     Default = _G.isLoopRunning or false,
     Callback = function(value)
@@ -178,7 +204,7 @@ AutoClickSection:NewToggle({
 })
 
 -- Set Click Position Button
-AutoClickSection:NewButton({
+MainControlsSection:NewButton({
     Title = "SET CLICK POSITION",
     Callback = function()
         local settingPosition = true
@@ -213,7 +239,7 @@ AutoClickSection:NewButton({
 })
 
 -- Speed
-SettingsSection:NewSlider({
+MainSettingsSection:NewSlider({
     Title = "Click Delay (seconds)",
     Min = 00.01,
     Max = 2,
@@ -235,7 +261,7 @@ SettingsSection:NewSlider({
 })
 
 -- Humanization Toggle
-SettingsSection:NewToggle({
+MainSettingsSection:NewToggle({
     Title = "Enable Humanization",
     Default = _G.humanizeClicks,
     Callback = function(value)
@@ -253,7 +279,7 @@ SettingsSection:NewToggle({
     end
 })
 
--- Position Updater
+-- Position Updater (Updated for Main Tab)
 local function startPositionUpdater(character)
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     
@@ -262,8 +288,11 @@ local function startPositionUpdater(character)
             if humanoidRootPart and humanoidRootPart.Parent then
                 local pos = humanoidRootPart.Position
                 updateLabel(posLabel, string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
+                -- Update height label in Home Tab
+                updateLabel(heightLabel, string.format("Height: Y=%.2f", pos.Y))
             else
                 updateLabel(posLabel, "Player Pos: Waiting...")
+                updateLabel(heightLabel, "Height: Waiting...")
             end
         end)
     end)

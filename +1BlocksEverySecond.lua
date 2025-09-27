@@ -1,14 +1,14 @@
 -- =========================================
--- YANZ HUB | Auto Click Only | Fixed Version 4
--- Now compatible with the MODIFIED NOTHING UI Library (has 'new' function)
+-- YANZ HUB | Auto Click Only | Fixed Version 5
+-- Now compatible with the MODIFIED NOTHING UI Library and has larger GUI
 -- =========================================
 
 -- Services
-local TweenService = game:GetService("TweenService") -- เพิ่ม TweenService ถ้า Library ต้องการ
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService") -- เพิ่ม HttpService ถ้า Library ต้องการ
+local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
 if not LocalPlayer then
@@ -16,16 +16,16 @@ if not LocalPlayer then
 end
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local humanoidRootPart = character:FindFirstChild("HumanoidRootPart") -- เปลี่ยนจาก WaitForChild เป็น FindFirstChild
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
 
-local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua' -- ลบช่องว่างท้าย URL
+local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
 local ok_lib, NothingLibrary = pcall(function()
-    local code = game:HttpGetAsync(libURL) -- เปลี่ยนจาก game:HttpGet เป็น game:HttpGetAsync เพื่อความปลอดภัย
+    local code = game:HttpGetAsync(libURL)
     if code then
-        -- print("Loaded Nothing Library code (first 1000 chars):", code:sub(1, 1000)) -- แสดงเฉพาะตอน debug
+        -- print("Loaded Nothing Library code (first 1000 chars):", code:sub(1, 1000))
         local func, err = loadstring(code)
         if not func then
             warn("Loadstring error:", err)
@@ -42,17 +42,18 @@ if not ok_lib or not NothingLibrary then
     return
 end
 
--- Create Window
+-- Create Window with LARGER Size
 local Window
 local ok_window, res_window = pcall(function()
-    -- ใช้ Library.new ซึ่งเป็น NewAuth ที่ rename มา
-    -- ต้องส่งค่าจำลองเพื่อข้ามระบบ Auth
     return NothingLibrary.new({
         Title = "YANZ HUB | Auto Click Only",
         Description = "By lphisv5",
         Keybind = Enum.KeyCode.RightShift,
         -- Logo = 'http://www.roblox.com/asset/?id=125456335927282' -- ถ้าต้องการ Logo
-        Size = UDim2.new(0.15, 0, 0.25, 0), -- เพิ่มขนาด (Optional)
+        -- ปรับ Size ให้ใหญ่ขึ้น
+        Size = UDim2.new(0.3, 0, 0.4, 0), -- ขนาด 30% ของความกว้างหน้าจอ และ 40% ของความสูงหน้าจอ
+        -- หรือใช้ขนาดคงที่ (แนะนำสำหรับการทดสอบ)
+        -- Size = UDim2.new(0, 500, 0, 400), -- ความกว้าง 500 พิกเซล, ความสูง 400 พิกเซล
         -- ค่าจำลองเพื่อข้ามระบบ Auth
         GetKey = function() return 'https://example.com' end,
         Auth = function(key) if key == 'any_key' then return true else return false end; end,
@@ -68,20 +69,15 @@ end
 local AutoClickTab = Window:NewTab({
     Title = "Auto Clicker",
     Description = "Auto Click Features",
-    -- Icon = "rbxassetid://7733960981" -- ถ้าต้องการ Icon
     Icon = nil -- หลีกเลี่ยง asset errors หากมี
 })
 local AutoClickSection = AutoClickTab:NewSection({
     Title = "Controls",
-    -- Icon = "rbxassetid://7733916988",
     Icon = nil,
-    -- Position = "Left" -- Library นี้อาจไม่ใช้ Position แบบ Left/Right ตรงๆ แต่จะจัดเรียงใน Tab
 })
 local SettingsSection = AutoClickTab:NewSection({
     Title = "Speed Settings",
-    -- Icon = "rbxassetid://7743869054",
     Icon = nil,
-    -- Position = "Right"
 })
 
 -- Helper: updateLabel (เหมือนในโค้ดตัวอย่าง)
@@ -160,7 +156,7 @@ local function ClickLoop()
 end
 
 -- Auto Click Toggle
-local autoToggle = AutoClickSection:NewToggle({ -- เก็บ reference ของ Toggle ไว้ใช้ใน F6
+local autoToggle = AutoClickSection:NewToggle({
     Title = "Auto Click",
     Default = _G.isLoopRunning or false,
     Callback = function(value)
@@ -210,7 +206,7 @@ AutoClickSection:NewButton({
     end
 })
 
--- Speed Buttons (เหมือนในโค้ดตัวอย่าง)
+-- Speed Buttons
 local speeds = {
     {label = "ULTRA FAST", value = 0.01},
     {label = "FAST", value = 0.5},
@@ -268,7 +264,6 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
         _G.isLoopRunning = not _G.isLoopRunning
-        -- อัปเดต Toggle หลักโดยใช้ reference ที่เก็บไว้
         if autoToggle and autoToggle.Set then
             autoToggle:Set(_G.isLoopRunning)
         elseif autoToggle and autoToggle.SetValue then
@@ -308,4 +303,4 @@ addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
 
-print("YANZ HUB | Auto Click Only (Fixed Version 4) loaded successfully!")
+print("YANZ HUB | Auto Click Only (Fixed Version 5) loaded successfully!")

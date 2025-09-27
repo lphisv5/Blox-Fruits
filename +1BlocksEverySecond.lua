@@ -40,8 +40,6 @@ local Window = NothingLibrary.new({
     Keybind = Enum.KeyCode.RightShift
 })
 
--- Make GUI visible immediately
-Window:Show()
 
 -- =========================================
 -- Create Tabs & Sections

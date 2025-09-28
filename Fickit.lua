@@ -168,7 +168,7 @@ AutoClickSection:NewToggle({
             task.spawn(function()
                 while _G.isLoopRunning do
                     pcall(ClickLoop)
-                    task.wait(_G.clickDelay or 0.2)
+                    task.wait(_G.clickDelay or 0.1)
                 end
             end)
         else
@@ -211,7 +211,7 @@ AutoClickSection:NewButton({
 -- Speed Buttons
 local speeds = {
     {label = "ULTRA FAST", value = 0.01},
-    {label = "FAST", value = 0.5},
+    {label = "FAST", value = 0.3},
     {label = "NORMAL", value = 1},
     {label = "SLOW", value = 1.5}
 }

@@ -1,7 +1,3 @@
--- YANZ HUB | Race Clicker - PROFESSIONAL FIXED VERSION
--- By: assistant (for lphisv5 request)
--- Version: V0.6.6 [UPDATED: Super Fast TP Loop, Anti-Jump Fix, Advanced Auto Click]
-
 --===[ Services ]===--
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -45,9 +41,7 @@ local function isClickToBuildActive()
     local gui = LocalPlayer:FindFirstChild("PlayerGui")
     if not gui then return false end
     for _, c in ipairs(gui:GetDescendants()) do
-        if c:IsA("TextLabel") and c.Text == "Click to build" then -- ตรวจสอบแบบเข้มงวด: Text ต้องตรงเป๊ะ "Click to build"
-            -- เพิ่มการตรวจสอบเพิ่มเติมถ้าต้องการ เช่น ชื่อ parent หรือ position ถ้าทราบ path ใน GUI
-            -- ตัวอย่าง: if c.Parent.Name == "SpecificFrame" then return true end
+        if c:IsA("TextLabel") and c.Text == "Click to build start" then
             return true
         end
     end
@@ -62,18 +56,18 @@ AutoClickSection:NewToggle({
         if v then
             task.spawn(function()
                 while state.autoClick do
-                    if isClickToBuildActive() then -- คลิกเฉพาะเมื่อ "Click to build" แสดงเท่านั้น
+                    if isClickToBuildActive() then
                         print("Click to build detected! Starting super spam clicks...")
                         local startTime = tick()
-                        while (tick() - startTime) < 20 and isClickToBuildActive() and state.autoClick do -- สแปม 20 วินาที หรือจนกว่า "Click to build" หาย
-                            for i = 1, 100 do -- สแปมเหมือน 100 คนคลิกพร้อมกัน (loop 100 ครั้งรวดเดียว)
-                                task.spawn(doClick) -- ใช้ task.spawn เพื่อคลิกพร้อมกันหลายครั้ง (เหมือนหลายนิ้วคลิกกลางหน้าจอ)
+                        while (tick() - startTime) < 20 and isClickToBuildActive() and state.autoClick do
+                            for i = 1, 100 do
+                                task.spawn(doClick)
                             end
-                            task.wait(0.005) -- หน่วง 0.005 วินาที (5 ซิ = 0.005s) เพื่อป้องกัน FPS ตกเยอะ
+                            task.wait(0.005)
                         end
                         print("Spam clicks ended after 20s or state changed.")
                     end
-                    task.wait(0000000000000000000000.0000000000000000000001) -- ตรวจสอบสถานะทุก 0.1 วินาที
+                    task.wait(0000000000000000000000.0000000000000000000001)
                 end
             end)
         end
@@ -90,12 +84,12 @@ local function tpTo(num)
     local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     
     if hrp and humanoid then
-        humanoid.Jump = false -- บังคับไม่ให้กระโดด
-        humanoid.JumpPower = 0 -- ตั้ง JumpPower เป็น 0 เพื่อป้องกันกระโดด
+        humanoid.Jump = false
+        humanoid.JumpPower = 0
         pcall(function()
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if obj:IsA("BasePart") and tostring(obj.Name) == tostring(num) then
-                    hrp.CFrame = obj.CFrame + Vector3.new(0, 1, 0) -- ไม่ใช้ Anchored เพื่อความสมูท
+                    hrp.CFrame = obj.CFrame + Vector3.new(0, 1, 0)
                     success = true
                     print("Teleported to checkpoint: " .. num)
                     break
@@ -130,7 +124,7 @@ AutoWinsSection:NewToggle({
         if v then
             task.spawn(function()
                 while state.autoWins do
-                    RunService.RenderStepped:Wait() -- ใช้ RenderStepped เพื่อความเร็วสูงสุดและสมูท
+                    RunService.RenderStepped:Wait()
                     local txt = findTimer()
                     print("Timer Status: " .. txt)
                     if txt:find("Waiting") then
@@ -143,10 +137,10 @@ AutoWinsSection:NewToggle({
                         end
                     elseif txt:match("%d%d:%d%d") then
                         print("Race in progress, starting super fast TP loop...")
-                        while txt:match("%d%d:%d%d") and state.autoWins do -- วนลูป TP จนกว่าจะจบการแข่ง
-                            tpTo(endCheckpoint) -- TP ไป 100K รวดเดียว
+                        while txt:match("%d%d:%d%d") and state.autoWins do
+                            tpTo(endCheckpoint)
                             RunService.RenderStepped:Wait() -- หน่วงสั้นสุด (เหมือน 0.000...1)
-                            tpTo(startCheckpoint) -- TP กลับ 1
+                            tpTo(startCheckpoint)
                             RunService.RenderStepped:Wait() -- วนซ้ำรวดเร็วมาก
                             txt = findTimer() -- อัปเดตสถานะ
                         end
@@ -172,29 +166,28 @@ SpeedSection:NewToggle({
         if v then
             task.spawn(function()
                 while state.autoSpeed do
-                    RunService.RenderStepped:Wait() -- อัปเดตบ่อยขึ้นเพื่อป้องกันกระโดด
+                    RunService.RenderStepped:Wait()
                     pcall(function()
                         local char = LocalPlayer.Character
                         if char then
                             local hum = char:FindFirstChildOfClass("Humanoid")
                             if hum then
                                 hum.WalkSpeed = 999999999
-                                hum.JumpPower = 0 -- บังคับ JumpPower = 0
-                                hum.Jump = false -- บังคับไม่ให้กระโดดทุก frame
+                                hum.JumpPower = 0
+                                hum.Jump = false
                             end
                         end
                     end)
                 end
             end)
         else
-            -- รีเซ็ตเมื่อปิด Speed Booster
             pcall(function()
                 local char = LocalPlayer.Character
                 if char then
                     local hum = char:FindFirstChildOfClass("Humanoid")
                     if hum then
-                        hum.WalkSpeed = 16 -- ค่าเริ่มต้น
-                        hum.JumpPower = 50 -- ค่าเริ่มต้น
+                        hum.WalkSpeed = 16
+                        hum.JumpPower = 50
                     end
                 end
             end)

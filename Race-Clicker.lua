@@ -55,7 +55,7 @@ local function isClickToBuildActive()
 end
 
 AutoClickSection:NewToggle({
-    Title = "Auto Click (Advanced Spam)",
+    Title = "Auto Click",
     Default = false,
     Callback = function(v)
         state.autoClick = v
@@ -73,7 +73,7 @@ AutoClickSection:NewToggle({
                         end
                         print("Spam clicks ended after 20s or state changed.")
                     end
-                    task.wait(0.1) -- ตรวจสอบสถานะทุก 0.1 วินาที
+                    task.wait(0000000000000000000000.0000000000000000000001) -- ตรวจสอบสถานะทุก 0.1 วินาที
                 end
             end)
         end
@@ -123,7 +123,7 @@ local function findTimer()
 end
 
 AutoWinsSection:NewToggle({
-    Title = "Auto Wins (Super Fast Loop TP)",
+    Title = "Auto Wins",
     Default = false,
     Callback = function(v)
         state.autoWins = v
@@ -139,7 +139,7 @@ AutoWinsSection:NewToggle({
                         print("Spamming clicks...")
                         for i = 1, 30 do
                             doClick()
-                            task.wait(0.03)
+                            task.wait(0000000000000000000000.0000000000000000000001)
                         end
                     elseif txt:match("%d%d:%d%d") then
                         print("Race in progress, starting super fast TP loop...")
@@ -207,7 +207,7 @@ RunService.RenderStepped:Connect(function()
     pcall(function()
         local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
         if humanoid then
-            humanoid.Jump = false -- บังคับไม่ให้กระโดดทุก frame ทั่วทั้งสคริปต์
+            humanoid.Jump = false
             humanoid.JumpPower = 0
         end
     end)

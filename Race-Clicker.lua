@@ -236,22 +236,74 @@ AutoFarm:NewToggle({
 })
 
 -- สร้าง status label
-StatusSection:NewTitle({
-    Title = "Wins: " .. getgenv().wins_count,
+local RebirthsLabel = StatusSection:NewTitle({
+    Title = "😇 Rebirths: Loading..."
+})
+
+local WinsLabel = StatusSection:NewTitle({
+    Title = "🏁 Wins: Loading..."
+})
+
+local HighscoreLabel = StatusSection:NewTitle({
+    Title = "⭐ Highscore: Loading..."
+})
+
+local TopSpeedLabel = StatusSection:NewTitle({
+    Title = "🏃 TopSpeed: Loading..."
 })
 
 -- สร้าง timer สำหรับอัปเดต status
 spawn(function()
     while true do
         wait(1)
-        if StatusSection then
-            -- ถ้ามีการสร้าง title แล้ว ให้อัปเดตค่า
-            for _, v in pairs(StatusSection:GetChildren()) do
-                if v:IsA("TextLabel") and v.Text:lower():find("wins") then
-                    v.Text = "Wins: " .. getgenv().wins_count
-                    break
+        -- ลองหาข้อมูลจาก leaderboard ในเกม
+        local rebirths = 0
+        local wins = 0
+        local highscore = 0
+        local topspeed = 0
+        
+        -- ตัวอย่าง: หาข้อมูลจาก GUI ของเกม
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("TextLabel") then
+                if v.Text:lower():find("rebirths") then
+                    local num = tonumber(v.Text:match("%d+"))
+                    if num then
+                        rebirths = num
+                    end
+                elseif v.Text:lower():find("wins") then
+                    local num = tonumber(v.Text:match("%d+"))
+                    if num then
+                        wins = num
+                    end
+                elseif v.Text:lower():find("highscore") then
+                    local num = tonumber(v.Text:match("%d+"))
+                    if num then
+                        highscore = num
+                    end
+                elseif v.Text:lower():find("topspeed") then
+                    local num = tonumber(v.Text:match("%d+"))
+                    if num then
+                        topspeed = num
+                    end
                 end
             end
+        end
+        
+        -- อัปเดต label
+        if RebirthsLabel and RebirthsLabel.SetTitle then
+            RebirthsLabel:SetTitle("😇 Rebirths: " .. rebirths)
+        end
+        
+        if WinsLabel and WinsLabel.SetTitle then
+            WinsLabel:SetTitle("🏁 Wins: " .. wins)
+        end
+        
+        if HighscoreLabel and HighscoreLabel.SetTitle then
+            HighscoreLabel:SetTitle("⭐ Highscore: " .. highscore)
+        end
+        
+        if TopSpeedLabel and TopSpeedLabel.SetTitle then
+            TopSpeedLabel:SetTitle("🏃 TopSpeed: " .. topspeed)
         end
     end
 end)

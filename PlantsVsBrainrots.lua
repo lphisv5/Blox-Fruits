@@ -1,5 +1,12 @@
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/UI-Libraries/main/Gumanba-UI-Library-V1.lua"))()
-local main = library:AddWindow("PvB Advanced GUI", "Community Script", Enum.KeyCode.RightShift)
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
+
+-- สร้างหน้าต่างหลัก
+local main = library.new({
+    Title = "PvB Advanced GUI",
+    Description = "Plants vs Brainrots Script",
+    Keybind = Enum.KeyCode.RightShift,
+    Size = UDim2.new(0.15, 500, 0.25, 400)
+})
 
 -- // Services and Game Variables //
 local Players = game:GetService("Players")
@@ -11,38 +18,72 @@ local Remotes = ReplicatedStorage.Remotes
 local Tycoon = Workspace.Tycoon
 
 -- // Main Automation Tab //
-local mainTab = main:AddTab("Automation")
+local automationTab = main:CreateTab("Automation")
 
-mainTab:AddToggle("Kill Aura", false, function(bool)
-    _G.KillAura = bool
-end)
+-- Kill Aura
+automationTab:NewToggle({
+    Title = "Kill Aura",
+    Default = false,
+    Callback = function(bool)
+        _G.KillAura = bool
+    end
+})
 
-mainTab:AddToggle("Auto Collect Cash", false, function(bool)
-    _G.AutoCollect = bool
-end)
+-- Auto Collect Cash
+automationTab:NewToggle({
+    Title = "Auto Collect Cash",
+    Default = false,
+    Callback = function(bool)
+        _G.AutoCollect = bool
+    end
+})
 
-mainTab:AddToggle("Auto Equip Best Brainrots", false, function(bool)
-    _G.AutoEquipBest = bool
-end)
+-- Auto Equip Best Brainrots
+automationTab:NewToggle({
+    Title = "Auto Equip Best Brainrots",
+    Default = false,
+    Callback = function(bool)
+        _G.AutoEquipBest = bool
+    end
+})
 
-mainTab:AddToggle("Auto Buy Gears", false, function(bool)
-    _G.AutoBuyGears = bool
-end)
+-- Auto Buy Gears
+automationTab:NewToggle({
+    Title = "Auto Buy Gears",
+    Default = false,
+    Callback = function(bool)
+        _G.AutoBuyGears = bool
+    end
+})
 
 -- // Player Modifications Tab //
-local playerTab = main:AddTab("Player")
+local playerTab = main:CreateTab("Player")
 
-playerTab:AddSlider("WalkSpeed", 16, 16, 200, function(val)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = val
+-- WalkSpeed Slider
+playerTab:NewSlider({
+    Title = "WalkSpeed",
+    Min = 16,
+    Max = 200,
+    Default = 16,
+    Callback = function(val)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = val
+        end
     end
-end)
+})
 
-playerTab:AddSlider("JumpPower", 50, 50, 300, function(val)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.JumpPower = val
+-- JumpPower Slider
+playerTab:NewSlider({
+    Title = "JumpPower",
+    Min = 50,
+    Max = 300,
+    Default = 50,
+    Callback = function(val)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.JumpPower = val
+        end
     end
-end)
+})
 
 -- // Core Logic Loops //
 

@@ -61,6 +61,18 @@ end
 
 local Window = res_window
 
+-- ✅ ตรวจสอบว่า Window มี method NewTab หรือไม่
+if not Window.NewTab then
+    warn("Window does not have 'NewTab' method! Structure might be different.")
+    print("Available methods in Window:")
+    for k, v in pairs(Window) do
+        if type(v) == "function" then
+            print("  - " .. k)
+        end
+    end
+    return
+end
+
 -- ✅ สร้าง Tab และ Section ด้วย method ที่ถูกต้อง
 local Farming = Window:NewTab({
     Title = "Main",

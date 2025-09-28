@@ -1,146 +1,247 @@
+-- YANZ HUB | Robust version
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
 
-getgenv().awin = false
-getgenv().aclick = false
-getgenv().wins_count = 0
-getgenv().is_racing = false
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
-function awin()
-    spawn(function()
-        print("Auto Win started")
-        while getgenv().awin do
-            wait(0.1)
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v.Name == "TouchInterest" then
-                    if not getgenv().awin then break end
-                    firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 0)
-                    wait(0.1)
-                    firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 1)
+-- Global toggles / state (persist across script re-runs because using getgenv)
+getgenv().awin = getgenv().awin or false
+getgenv().aclick = getgenv().aclick or false
+getgenv().wins_count = getgenv().wins_count or 0
+getgenv().is_racing = getgenv().is_racing or false
+
+-- internal running flags to avoid launching duplicate threads
+getgenv().awin_running = getgenv().awin_running or false
+getgenv().aclick_running = getgenv().aclick_running or false
+getgenv().race_running = getgenv().race_running or false
+getgenv().status_running = getgenv().status_running or false
+
+-- cache for click function (to avoid repeated expensive getgc scans)
+getgenv().cached_click_func = getgenv().cached_click_func or nil
+
+-- Helper: safe get HRP
+local function get_hrp()
+    local pl = Players.LocalPlayer
+    if not pl then return nil end
+    local char = pl.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+-- Helper: safe firetouchinterest wrapper
+local function safe_fire_touch(part)
+    if not part or not part:IsA("BasePart") then return false end
+    local hrp = get_hrp()
+    if not hrp then return false end
+    -- protect against errors
+    pcall(function()
+        firetouchinterest(hrp, part, 0)
+        task.wait(0.05) -- small delay for touch to register
+        firetouchinterest(hrp, part, 1)
+    end)
+    return true
+end
+
+-- Find 'click' function via getgc (protected)
+local function find_click_function()
+    if getgenv().cached_click_func then
+        return getgenv().cached_click_func
+    end
+
+    local ok, gc = pcall(getgc)
+    if not ok or type(gc) ~= "table" then return nil end
+
+    for _, v in pairs(gc) do
+        if type(v) == "function" then
+            local ok2, info = pcall(debug.getinfo, v)
+            if ok2 and info and info.name then
+                local nm = tostring(info.name):lower()
+                if nm:find("click") then
+                    getgenv().cached_click_func = v
+                    return v
                 end
             end
         end
+    end
+    return nil
+end
+
+-- AWin (auto-touch) - prevents duplicate threads
+function start_awin()
+    if getgenv().awin_running then
+        warn("[start_awin] already running")
+        return
+    end
+    getgenv().awin_running = true
+    task.spawn(function()
+        print("Auto Win started")
+        while getgenv().awin do
+            -- getdescendants once per iteration (avoid constant API thrash)
+            local descendants = Workspace:GetDescendants()
+            for _, v in pairs(descendants) do
+                if not getgenv().awin then break end
+                -- check name then parent type
+                if v.Name == "TouchInterest" then
+                    local parent = v.Parent
+                    if parent and parent:IsA("BasePart") then
+                        safe_fire_touch(parent)
+                        -- tiny throttle to avoid spamming too fast
+                        task.wait(0.06)
+                    end
+                end
+            end
+            -- small pause before scanning again
+            task.wait(0.15)
+        end
+        getgenv().awin_running = false
         print("Auto Win stopped")
     end)
 end
 
-function aclick()
-    spawn(function()
-        print("=== Searching for 'Click' function ===")
-        local click = nil
-        for i, v in pairs(getgc()) do
-            if type(v) == 'function' then
-                local info = debug.getinfo(v)
-                if info.name and info.name:lower():find("click") then
-                    print("Found function with 'click' in name:", info.name)
-                    if info.name == "Click" then
-                        click = v
-                        print("Found exact 'Click' function!")
-                        break
-                    end
-                end
-            end
-        end
+-- AClick - find and repeatedly call click function
+function start_aclick()
+    if getgenv().aclick_running then
+        warn("[start_aclick] already running")
+        return
+    end
+    getgenv().aclick_running = true
+    task.spawn(function()
+        print("=== Searching for 'click' function ===")
+        local click = find_click_function()
         if not click then
             warn("Click function not found!")
+            getgenv().aclick_running = false
             return
         end
+
         print("Auto Click started")
+        -- loop while toggle is true
         while getgenv().aclick do
-            wait(0.01)
-            pcall(click)
+            -- pcall the click call to avoid breaking the loop on errors
+            local ok, err = pcall(click)
+            if not ok then
+                warn("Error calling click function:", err)
+                -- optionally break or continue; we'll continue but with backoff
+                task.wait(0.2)
+            else
+                -- tiny throttle; use task.wait for better precision
+                task.wait(0.03)
+            end
         end
+
+        getgenv().aclick_running = false
         print("Auto Click stopped")
     end)
 end
 
--- ฟังก์ชันใหม่สำหรับการ race mode
-function race_mode()
-    spawn(function()
-        getgenv().is_racing = true
+-- Race mode (auto sequence + teleport)
+function start_race_mode()
+    if getgenv().race_running then
+        warn("[start_race_mode] already running")
+        return
+    end
+    getgenv().race_running = true
+    task.spawn(function()
         print("Race mode started")
-        
+        -- wait a bit for character / game readiness
+        local waited = 0
+        while not get_hrp() and waited < 12 and getgenv().is_racing do
+            task.wait(0.5)
+            waited = waited + 0.5
+        end
+
         while getgenv().is_racing do
-            -- รอให้เกมเริ่ม (รอ 10 วินาที)
-            wait(10)
-            
-            -- คลิกแบบบ้าคลั่ง 20 วินาที
+            -- aggressive click phase (20 cycles)
             for i = 1, 20 do
                 if not getgenv().is_racing then break end
-                -- ลองหาและคลิก "CLICK" ที่อยู่ในเกม
-                for _, v in pairs(workspace:GetDescendants()) do
+                -- scan for "Click" parts (throttle GetDescendants)
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if not getgenv().is_racing then break end
                     if v.Name == "Click" then
-                        firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 0)
-                        wait(0.1)
-                        firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 1)
+                        local parent = v.Parent
+                        if parent and parent:IsA("BasePart") then
+                            safe_fire_touch(parent)
+                        end
                     end
                 end
-                wait(1)
+                task.wait(1)
             end
-            
-            -- รอ 3 วินาที
-            wait(3)
-            
-            -- TP ไปหมายเลขต่อเนื่อง
+
+            task.wait(3) -- cooldown
+
+            -- teleport through numbered targets
             local race_number = 1
             while getgenv().is_racing do
-                -- หา object ที่มีหมายเลข
+                if not getgenv().is_racing then break end
                 local found_target = false
-                for _, v in pairs(workspace:GetDescendants()) do
-                    if v.Name == "Number" .. race_number then
-                        -- TP ไปยังตำแหน่งของ object นั้น
-                        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if v.Name == "Number" .. race_number and v:IsA("BasePart") then
+                        local hrp = get_hrp()
+                        if hrp then
+                            pcall(function()
+                                -- offset Y to avoid intersection
+                                hrp.CFrame = v.CFrame + Vector3.new(0, 3, 0)
+                            end)
                         end
                         found_target = true
                         break
                     end
                 end
-                
+
                 if not found_target then
                     race_number = race_number + 1
-                    if race_number > 100 then -- ถ้าไม่เจอเลขมากกว่า 100 ให้ reset
-                        race_number = 1
+                    if race_number > 100 then
+                        race_number = 1 -- reset if nothing found
+                        task.wait(0.5)
                     end
                 else
                     race_number = race_number + 1
                 end
-                
-                -- ตรวจสอบว่ามีคำว่า "Wins" หรือไม่
-                for _, v in pairs(workspace:GetDescendants()) do
-                    if v:IsA("TextLabel") and v.Text:lower():find("wins") then
-                        getgenv().wins_count = getgenv().wins_count + 1
-                        print("Wins count:", getgenv().wins_count)
+
+                task.wait(0.45)
+            end
+        end
+
+        getgenv().race_running = false
+        print("Race mode stopped")
+    end)
+end
+
+-- Status checker (update wins_count based on GUI text)
+function check_status()
+    if getgenv().status_running then
+        warn("[check_status] already running")
+        return
+    end
+    getgenv().status_running = true
+    task.spawn(function()
+        while true do
+            -- if you want to be able to stop status loop later, add a stop flag and check it here
+            task.wait(1)
+            for _, v in pairs(Workspace:GetDescendants()) do
+                -- protect against nil or non-string Text
+                if v:IsA("TextLabel") and v.Text then
+                    local txt = tostring(v.Text):lower()
+                    if txt:find("wins") then
+                        -- remove non-digits (handles 1,234 etc.)
+                        local digits = tostring(v.Text):gsub("[^%d]", "")
+                        local num = tonumber(digits) or 0
+                        getgenv().wins_count = num
+                        -- print for debug; comment out in production
+                        print("Wins count updated:", num)
                         break
                     end
                 end
-                
-                wait(0.5) -- รอเล็กน้อยก่อนไปหมายเลขถัดไป
             end
         end
     end)
 end
 
--- ฟังก์ชันตรวจสอบสถานะ
-function check_status()
-    spawn(function()
-        while true do
-            wait(1)
-            -- ตรวจสอบคำว่า "Wins" ในเกม
-            for _, v in pairs(workspace:GetDescendants()) do
-                if v:IsA("TextLabel") and v.Text:lower():find("wins") then
-                    getgenv().wins_count = getgenv().wins_count + 1
-                    print("Wins count:", getgenv().wins_count)
-                    break
-                end
-            end
-        end
-    end)
-end
-
--- ✅ สร้าง Window
+-- ---------- UI Creation (same structure) ----------
 local ok_window, res_window = pcall(function()
     return Library.new({
-        Title = "YANZ HUB | V0.4.9",
+        Title = "YANZ HUB | V0.5.0",
         SubTitle = "By lphisv5 | Game : 🏆 Race Clicker",
         TabSize = 180,
         Keybind = Enum.KeyCode.RightControl
@@ -154,7 +255,6 @@ end
 
 local Window = res_window
 
--- ✅ สร้าง Tab และ Section
 local Farming = Window:NewTab({
     Title = "Main",
     Description = "Main Features",
@@ -197,15 +297,15 @@ local Discord = Credits:NewSection({
     Position = "Right"
 })
 
--- ✅ สร้าง Toggle และ Button ด้วย method ที่ถูกต้อง
+-- Toggles
 AutoFarm:NewToggle({
     Title = "Auto Click",
-    Description = "Auto CLick for you",
+    Description = "Auto Click for you",
     Default = getgenv().aclick or false,
     Callback = function(bool)
         getgenv().aclick = bool
         if bool then
-            aclick()
+            start_aclick()
         end
     end,
 })
@@ -217,12 +317,11 @@ AutoFarm:NewToggle({
     Callback = function(bool)
         getgenv().awin = bool
         if bool then
-            awin()
+            start_awin()
         end
     end,
 })
 
--- เพิ่ม toggle สำหรับ race mode
 AutoFarm:NewToggle({
     Title = "Race Mode",
     Description = "Auto race mode",
@@ -230,12 +329,12 @@ AutoFarm:NewToggle({
     Callback = function(bool)
         getgenv().is_racing = bool
         if bool then
-            race_mode()
+            start_race_mode()
         end
     end,
 })
 
--- สร้าง status label
+-- Status labels
 local RebirthsLabel = StatusSection:NewTitle({
     Title = "😇 Rebirths: Loading..."
 })
@@ -252,79 +351,54 @@ local TopSpeedLabel = StatusSection:NewTitle({
     Title = "🏃 TopSpeed: Loading..."
 })
 
--- สร้าง timer สำหรับอัปเดต status
-spawn(function()
+-- Periodic UI updater (updates the UI labels; robust call with pcall)
+task.spawn(function()
     while true do
-        wait(1)
-        -- ลองหาข้อมูลจาก leaderboard ในเกม
+        task.wait(1)
+        -- Scan GUI texts once
         local rebirths = 0
         local wins = 0
         local highscore = 0
         local topspeed = 0
-        
-        -- ตัวอย่าง: หาข้อมูลจาก GUI ของเกม
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v:IsA("TextLabel") then
-                if v.Text:lower():find("rebirths") then
-                    local num = tonumber(v.Text:match("%d+"))
-                    if num then
-                        rebirths = num
-                    end
-                elseif v.Text:lower():find("wins") then
-                    local num = tonumber(v.Text:match("%d+"))
-                    if num then
-                        wins = num
-                    end
-                elseif v.Text:lower():find("highscore") then
-                    local num = tonumber(v.Text:match("%d+"))
-                    if num then
-                        highscore = num
-                    end
-                elseif v.Text:lower():find("topspeed") then
-                    local num = tonumber(v.Text:match("%d+"))
-                    if num then
-                        topspeed = num
-                    end
+
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("TextLabel") and v.Text then
+                local txt = tostring(v.Text):lower()
+                if txt:find("rebirths") then
+                    local digits = tostring(v.Text):gsub("[^%d]", "")
+                    rebirths = tonumber(digits) or rebirths
+                elseif txt:find("wins") then
+                    local digits = tostring(v.Text):gsub("[^%d]", "")
+                    wins = tonumber(digits) or wins
+                elseif txt:find("highscore") then
+                    local digits = tostring(v.Text):gsub("[^%d]", "")
+                    highscore = tonumber(digits) or highscore
+                elseif txt:find("topspeed") then
+                    local digits = tostring(v.Text):gsub("[^%d]", "")
+                    topspeed = tonumber(digits) or topspeed
                 end
             end
         end
-        
-        -- อัปเดต label
-        if RebirthsLabel and RebirthsLabel.SetTitle then
-            RebirthsLabel:SetTitle("😇 Rebirths: " .. rebirths)
-        end
-        
-        if WinsLabel and WinsLabel.SetTitle then
-            WinsLabel:SetTitle("🏁 Wins: " .. wins)
-        end
-        
-        if HighscoreLabel and HighscoreLabel.SetTitle then
-            HighscoreLabel:SetTitle("⭐ Highscore: " .. highscore)
-        end
-        
-        if TopSpeedLabel and TopSpeedLabel.SetTitle then
-            TopSpeedLabel:SetTitle("🏃 TopSpeed: " .. topspeed)
-        end
+
+        -- Update UI safely (pcall to avoid errors if API differs)
+        pcall(function() RebirthsLabel:SetTitle("😇 Rebirths: " .. rebirths) end)
+        pcall(function() WinsLabel:SetTitle("🏁 Wins: " .. wins) end)
+        pcall(function() HighscoreLabel:SetTitle("⭐ Highscore: " .. highscore) end)
+        pcall(function() TopSpeedLabel:SetTitle("🏃 TopSpeed: " .. topspeed) end)
     end
 end)
 
--- ✅ แก้ไข Credit Section
-Credit:NewTitle({
-    Title = "Created by lphisv5"
-})
+-- Credits / Discord
+Credit:NewTitle({ Title = "Created by lphisv5" })
+Credit:NewTitle({ Title = "Created by id2_lphisv5" })
 
-Credit:NewTitle({
-    Title = "Created by id2_lphisv5"
-})
-
--- ✅ แก้ไข Discord Section
 Discord:NewButton({
     Title = "Join Discord",
     Description = "https://discord.gg/DfVuhsZb",
     Callback = function()
-        setclipboard("https://discord.gg/DfVuhsZb")
+        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
     end,
 })
 
--- เริ่มตรวจสอบสถานะ
+-- Start status checker (if not already)
 check_status()

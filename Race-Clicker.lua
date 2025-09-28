@@ -7,8 +7,8 @@ function awin()
     spawn(function()
         print("Auto Win started")
         while getgenv().awin do
-            wait(0.1) -- เพิ่ม delay เพื่อไม่ให้หนักเกินไป
-            for _, v in pairs(workspace:GetDescendants()) do -- ลองเปลี่ยนจาก Environment เป็น workspace
+            wait(0.1)
+            for _, v in pairs(workspace:GetDescendants()) do -- เปลี่ยนจาก Environment เป็น workspace
                 if v.Name == "TouchInterest" then
                     if not getgenv().awin then break end
                     firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 0)
@@ -30,16 +30,11 @@ function aclick()
                 local info = debug.getinfo(v)
                 if info.name and info.name:lower():find("click") then
                     print("Found function with 'click' in name:", info.name)
-                end
-            end
-        end
-        -- ลองหา Click แบบตรงๆ
-        for i, v in pairs(getgc()) do
-            if type(v) == 'function' then
-                if debug.getinfo(v).name == "Click" then
-                    click = v
-                    print("Found exact 'Click' function!")
-                    break
+                    if info.name == "Click" then
+                        click = v
+                        print("Found exact 'Click' function!")
+                        break
+                    end
                 end
             end
         end
@@ -49,15 +44,11 @@ function aclick()
         end
         print("Auto Click started")
         while getgenv().aclick do
-            wait(0.01) -- เพิ่ม delay เพื่อไม่ให้หนักเกินไป
-            for i = 1, 100 do -- ลดจำนวน loop เพื่อไม่ให้หนักเกินไป
-                if click then
-                    pcall(click, UDim2.new(0,0,0), 1)
-                else
-                    warn("Click function disappeared!")
-                    break
-                end
-            end
+            wait(0.01)
+            -- ลองใช้ pcall โดยไม่ระบุ parameter
+            pcall(click)
+            -- หรือลองใช้ parameter ที่พบใน game
+            -- pcall(click, UDim2.new(0,0,0), 1)
         end
         print("Auto Click stopped")
     end)

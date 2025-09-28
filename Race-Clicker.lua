@@ -70,7 +70,7 @@ local function tpTo(num)
             if obj:IsA("BasePart") and tostring(obj.Name) == tostring(num) then
                 hrp.Anchored = true -- ยึดตัวละครชั่วคราว
                 hrp.CFrame = obj.CFrame + Vector3.new(0, 1, 0) -- ลดความสูงจาก 5 เป็น 2 เพื่อความสมูท
-                task.wait(000.001) -- หน่วงสั้นมากเพื่อให้ CFrame เซ็ต
+                task.wait(000000000000000.0000000000000001) -- หน่วงสั้นมากเพื่อให้ CFrame เซ็ต
                 hrp.Anchored = false
                 success = true
                 print("Teleported to checkpoint: " .. num)
@@ -105,7 +105,7 @@ AutoWinsSection:NewToggle({
         if v then
             task.spawn(function()
                 while state.autoWins do
-                    task.wait(00.01) -- ลดหน่วงจาก 0.1 เป็น 0.05 เพื่อให้เร็วสุดๆ
+                    task.wait(000000000000000.0000000000000001) -- ลดหน่วงจาก 0.1 เป็น 0.05 เพื่อให้เร็วสุดๆ
                     local txt = findTimer()
                     print("Timer Status: " .. txt)
                     if txt:find("Waiting") then

@@ -2,13 +2,15 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-
 
 getgenv().awin = false
 getgenv().aclick = false
+getgenv().wins_count = 0
+getgenv().is_racing = false
 
 function awin()
     spawn(function()
         print("Auto Win started")
         while getgenv().awin do
             wait(0.1)
-            for _, v in pairs(workspace:GetDescendants()) do -- เปลี่ยนจาก Environment เป็น workspace
+            for _, v in pairs(workspace:GetDescendants()) do
                 if v.Name == "TouchInterest" then
                     if not getgenv().awin then break end
                     firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 0)
@@ -45,12 +47,93 @@ function aclick()
         print("Auto Click started")
         while getgenv().aclick do
             wait(0.01)
-            -- ลองใช้ pcall โดยไม่ระบุ parameter
             pcall(click)
-            -- หรือลองใช้ parameter ที่พบใน game
-            -- pcall(click, UDim2.new(0,0,0), 1)
         end
         print("Auto Click stopped")
+    end)
+end
+
+-- ฟังก์ชันใหม่สำหรับการ race mode
+function race_mode()
+    spawn(function()
+        getgenv().is_racing = true
+        print("Race mode started")
+        
+        while getgenv().is_racing do
+            -- รอให้เกมเริ่ม (รอ 10 วินาที)
+            wait(10)
+            
+            -- คลิกแบบบ้าคลั่ง 20 วินาที
+            for i = 1, 20 do
+                if not getgenv().is_racing then break end
+                -- ลองหาและคลิก "CLICK" ที่อยู่ในเกม
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v.Name == "Click" then
+                        firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 0)
+                        wait(0.1)
+                        firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, v.Parent, 1)
+                    end
+                end
+                wait(1)
+            end
+            
+            -- รอ 3 วินาที
+            wait(3)
+            
+            -- TP ไปหมายเลขต่อเนื่อง
+            local race_number = 1
+            while getgenv().is_racing do
+                -- หา object ที่มีหมายเลข
+                local found_target = false
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v.Name == "Number" .. race_number then
+                        -- TP ไปยังตำแหน่งของ object นั้น
+                        if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame
+                        end
+                        found_target = true
+                        break
+                    end
+                end
+                
+                if not found_target then
+                    race_number = race_number + 1
+                    if race_number > 100 then -- ถ้าไม่เจอเลขมากกว่า 100 ให้ reset
+                        race_number = 1
+                    end
+                else
+                    race_number = race_number + 1
+                end
+                
+                -- ตรวจสอบว่ามีคำว่า "Wins" หรือไม่
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("TextLabel") and v.Text:lower():find("wins") then
+                        getgenv().wins_count = getgenv().wins_count + 1
+                        print("Wins count:", getgenv().wins_count)
+                        break
+                    end
+                end
+                
+                wait(0.5) -- รอเล็กน้อยก่อนไปหมายเลขถัดไป
+            end
+        end
+    end)
+end
+
+-- ฟังก์ชันตรวจสอบสถานะ
+function check_status()
+    spawn(function()
+        while true do
+            wait(1)
+            -- ตรวจสอบคำว่า "Wins" ในเกม
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("TextLabel") and v.Text:lower():find("wins") then
+                    getgenv().wins_count = getgenv().wins_count + 1
+                    print("Wins count:", getgenv().wins_count)
+                    break
+                end
+            end
+        end
     end)
 end
 
@@ -78,6 +161,12 @@ local Farming = Window:NewTab({
     Icon = "rbxassetid://7733960981"
 })
 
+local StatusTab = Window:NewTab({
+    Title = "Status",
+    Description = "Current Status",
+    Icon = "rbxassetid://7733960981"
+})
+
 local Credits = Window:NewTab({
     Title = "Credits",
     Description = "Credit Information",
@@ -86,6 +175,12 @@ local Credits = Window:NewTab({
 
 local AutoFarm = Farming:NewSection({
     Title = "Main",
+    Icon = "rbxassetid://7733916988",
+    Position = "Left"
+})
+
+local StatusSection = StatusTab:NewSection({
+    Title = "Status Info",
     Icon = "rbxassetid://7733916988",
     Position = "Left"
 })
@@ -127,6 +222,40 @@ AutoFarm:NewToggle({
     end,
 })
 
+-- เพิ่ม toggle สำหรับ race mode
+AutoFarm:NewToggle({
+    Title = "Race Mode",
+    Description = "Auto race mode",
+    Default = getgenv().is_racing or false,
+    Callback = function(bool)
+        getgenv().is_racing = bool
+        if bool then
+            race_mode()
+        end
+    end,
+})
+
+-- สร้าง status label
+StatusSection:NewTitle({
+    Title = "Wins: " .. getgenv().wins_count,
+})
+
+-- สร้าง timer สำหรับอัปเดต status
+spawn(function()
+    while true do
+        wait(1)
+        if StatusSection then
+            -- ถ้ามีการสร้าง title แล้ว ให้อัปเดตค่า
+            for _, v in pairs(StatusSection:GetChildren()) do
+                if v:IsA("TextLabel") and v.Text:lower():find("wins") then
+                    v.Text = "Wins: " .. getgenv().wins_count
+                    break
+                end
+            end
+        end
+    end
+end)
+
 -- ✅ ใช้ NewTitle แทน NewLabel
 Credit:NewTitle({
     Title = "Made By lphisv5",
@@ -139,3 +268,6 @@ Discord:NewButton({
         setclipboard("https://discord.gg/DfVuhsZb")
     end,
 })
+
+-- เริ่มตรวจสอบสถานะ
+check_status()

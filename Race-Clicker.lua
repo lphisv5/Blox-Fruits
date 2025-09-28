@@ -1,404 +1,261 @@
--- YANZ HUB | Robust version
+-- =====================
+-- YANZ HUB | Advanced V1.0
+-- =====================
+
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
 
+-- =====================
+-- Global variables
+-- =====================
+getgenv().awin = false
+getgenv().aclick = false
+getgenv().is_racing = false
+getgenv().wins_count = 0
+getgenv().rebirths_count = 0
+getgenv().highscore_count = 0
+getgenv().topspeed_count = 0
+getgenv().hub_running = false
+
+-- =====================
+-- Services
+-- =====================
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
 
--- Global toggles / state (persist across script re-runs because using getgenv)
-getgenv().awin = getgenv().awin or false
-getgenv().aclick = getgenv().aclick or false
-getgenv().wins_count = getgenv().wins_count or 0
-getgenv().is_racing = getgenv().is_racing or false
-
--- internal running flags to avoid launching duplicate threads
-getgenv().awin_running = getgenv().awin_running or false
-getgenv().aclick_running = getgenv().aclick_running or false
-getgenv().race_running = getgenv().race_running or false
-getgenv().status_running = getgenv().status_running or false
-
--- cache for click function (to avoid repeated expensive getgc scans)
-getgenv().cached_click_func = getgenv().cached_click_func or nil
-
--- Helper: safe get HRP
+-- =====================
+-- Helpers
+-- =====================
 local function get_hrp()
-    local pl = Players.LocalPlayer
-    if not pl then return nil end
-    local char = pl.Character
-    if not char then return nil end
-    return char:FindFirstChild("HumanoidRootPart")
+    local char = LocalPlayer.Character
+    if char then return char:FindFirstChild("HumanoidRootPart") end
+    return nil
 end
 
--- Helper: safe firetouchinterest wrapper
-local function safe_fire_touch(part)
-    if not part or not part:IsA("BasePart") then return false end
-    local hrp = get_hrp()
-    if not hrp then return false end
-    -- protect against errors
-    pcall(function()
-        firetouchinterest(hrp, part, 0)
-        task.wait(0.05) -- small delay for touch to register
-        firetouchinterest(hrp, part, 1)
-    end)
-    return true
-end
-
--- Find 'click' function via getgc (protected)
-local function find_click_function()
-    if getgenv().cached_click_func then
-        return getgenv().cached_click_func
-    end
-
-    local ok, gc = pcall(getgc)
-    if not ok or type(gc) ~= "table" then return nil end
-
-    for _, v in pairs(gc) do
-        if type(v) == "function" then
-            local ok2, info = pcall(debug.getinfo, v)
-            if ok2 and info and info.name then
-                local nm = tostring(info.name):lower()
-                if nm:find("click") then
-                    getgenv().cached_click_func = v
-                    return v
-                end
-            end
-        end
+local function find_basepart(inst)
+    if not inst then return nil end
+    if inst:IsA("BasePart") then return inst end
+    local ok, bp = pcall(function() return inst:FindFirstChildWhichIsA("BasePart", true) end)
+    if ok and bp then return bp end
+    local cur = inst
+    while cur and cur.Parent do
+        cur = cur.Parent
+        if cur:IsA("BasePart") then return cur end
+        local ok2, bp2 = pcall(function() return cur:FindFirstChildWhichIsA("BasePart") end)
+        if ok2 and bp2 then return bp2 end
     end
     return nil
 end
 
--- AWin (auto-touch) - prevents duplicate threads
-function start_awin()
-    if getgenv().awin_running then
-        warn("[start_awin] already running")
-        return
+local function safe_touch(part)
+    if not part then return end
+    local hrp = get_hrp()
+    if hrp then
+        pcall(function()
+            firetouchinterest(hrp, part, 0)
+            task.wait(0.06)
+            firetouchinterest(hrp, part, 1)
+        end)
     end
-    getgenv().awin_running = true
-    task.spawn(function()
-        print("Auto Win started")
-        while getgenv().awin do
-            -- getdescendants once per iteration (avoid constant API thrash)
-            local descendants = Workspace:GetDescendants()
-            for _, v in pairs(descendants) do
-                if not getgenv().awin then break end
-                -- check name then parent type
-                if v.Name == "TouchInterest" then
-                    local parent = v.Parent
-                    if parent and parent:IsA("BasePart") then
-                        safe_fire_touch(parent)
-                        -- tiny throttle to avoid spamming too fast
-                        task.wait(0.06)
-                    end
-                end
-            end
-            -- small pause before scanning again
-            task.wait(0.15)
-        end
-        getgenv().awin_running = false
-        print("Auto Win stopped")
-    end)
 end
 
--- AClick - find and repeatedly call click function
-function start_aclick()
-    if getgenv().aclick_running then
-        warn("[start_aclick] already running")
-        return
-    end
-    getgenv().aclick_running = true
+-- =====================
+-- Hub Main Thread
+-- =====================
+local function hub_loop()
+    if getgenv().hub_running then return end
+    getgenv().hub_running = true
+
+    local click_func = nil
+    -- detect click function
     task.spawn(function()
-        print("=== Searching for 'click' function ===")
-        local click = find_click_function()
-        if not click then
-            warn("Click function not found!")
-            getgenv().aclick_running = false
-            return
-        end
-
-        print("Auto Click started")
-        -- loop while toggle is true
-        while getgenv().aclick do
-            -- pcall the click call to avoid breaking the loop on errors
-            local ok, err = pcall(click)
-            if not ok then
-                warn("Error calling click function:", err)
-                -- optionally break or continue; we'll continue but with backoff
-                task.wait(0.2)
-            else
-                -- tiny throttle; use task.wait for better precision
-                task.wait(0.03)
-            end
-        end
-
-        getgenv().aclick_running = false
-        print("Auto Click stopped")
-    end)
-end
-
--- Race mode (auto sequence + teleport)
-function start_race_mode()
-    if getgenv().race_running then
-        warn("[start_race_mode] already running")
-        return
-    end
-    getgenv().race_running = true
-    task.spawn(function()
-        print("Race mode started")
-        -- wait a bit for character / game readiness
-        local waited = 0
-        while not get_hrp() and waited < 12 and getgenv().is_racing do
-            task.wait(0.5)
-            waited = waited + 0.5
-        end
-
-        while getgenv().is_racing do
-            -- aggressive click phase (20 cycles)
-            for i = 1, 20 do
-                if not getgenv().is_racing then break end
-                -- scan for "Click" parts (throttle GetDescendants)
-                for _, v in pairs(Workspace:GetDescendants()) do
-                    if not getgenv().is_racing then break end
-                    if v.Name == "Click" then
-                        local parent = v.Parent
-                        if parent and parent:IsA("BasePart") then
-                            safe_fire_touch(parent)
-                        end
-                    end
-                end
-                task.wait(1)
-            end
-
-            task.wait(3) -- cooldown
-
-            -- teleport through numbered targets
-            local race_number = 1
-            while getgenv().is_racing do
-                if not getgenv().is_racing then break end
-                local found_target = false
-                for _, v in pairs(Workspace:GetDescendants()) do
-                    if v.Name == "Number" .. race_number and v:IsA("BasePart") then
-                        local hrp = get_hrp()
-                        if hrp then
-                            pcall(function()
-                                -- offset Y to avoid intersection
-                                hrp.CFrame = v.CFrame + Vector3.new(0, 3, 0)
-                            end)
-                        end
-                        found_target = true
+        local ok, gc = pcall(getgc)
+        if ok and type(gc) == "table" then
+            for _, f in pairs(gc) do
+                if type(f) == "function" then
+                    local info = pcall(debug.getinfo, f)
+                    if info and info.name and tostring(info.name):lower():find("click") then
+                        click_func = f
+                        print("[Hub] Click function found via getgc:", info.name)
                         break
                     end
                 end
-
-                if not found_target then
-                    race_number = race_number + 1
-                    if race_number > 100 then
-                        race_number = 1 -- reset if nothing found
-                        task.wait(0.5)
-                    end
-                else
-                    race_number = race_number + 1
-                end
-
-                task.wait(0.45)
             end
         end
+        -- fallback RemoteEvent / ClickDetector
+        if not click_func then
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj:IsA("ClickDetector") then
+                    click_func = function() pcall(fireclickdetector, obj) end
+                    print("[Hub] Using ClickDetector:", obj:GetFullName())
+                    break
+                end
+            end
+        end
+    end)
 
-        getgenv().race_running = false
-        print("Race mode stopped")
+    -- main loop
+    task.spawn(function()
+        local race_number = 1
+        while true do
+            task.wait(0.03)
+
+            -- Auto Click
+            if getgenv().aclick and click_func then
+                pcall(click_func)
+            end
+
+            -- Auto Win
+            if getgenv().awin then
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if tostring(v.Name):lower():find("touchinterest") then
+                        local part = find_basepart(v.Parent)
+                        if part then safe_touch(part) end
+                    end
+                    if v:IsA("TextLabel") and v.Text and tostring(v.Text):lower():find("click") then
+                        local part = find_basepart(v) or find_basepart(v.Parent)
+                        if part then safe_touch(part) end
+                    end
+                end
+            end
+
+            -- Race Mode
+            if getgenv().is_racing then
+                -- TP to Number
+                local found = false
+                for _, v in pairs(Workspace:GetDescendants()) do
+                    if tostring(v.Name) == ("Number" .. race_number) then
+                        local part = find_basepart(v)
+                        if part then
+                            local hrp = get_hrp()
+                            if hrp then hrp.CFrame = part.CFrame + Vector3.new(0,3,0) end
+                            found = true
+                            break
+                        end
+                    end
+                end
+                race_number = found and race_number+1 or race_number+1
+                if race_number > 100 then race_number = 1 end
+            end
+        end
     end)
 end
 
--- Status checker (update wins_count based on GUI text)
-function check_status()
-    if getgenv().status_running then
-        warn("[check_status] already running")
-        return
-    end
-    getgenv().status_running = true
+-- =====================
+-- Status Updater
+-- =====================
+local function update_status()
     task.spawn(function()
         while true do
-            -- if you want to be able to stop status loop later, add a stop flag and check it here
             task.wait(1)
+            local rebirths, wins, highscore, topspeed = 0,0,0,0
             for _, v in pairs(Workspace:GetDescendants()) do
-                -- protect against nil or non-string Text
                 if v:IsA("TextLabel") and v.Text then
-                    local txt = tostring(v.Text):lower()
-                    if txt:find("wins") then
-                        -- remove non-digits (handles 1,234 etc.)
-                        local digits = tostring(v.Text):gsub("[^%d]", "")
-                        local num = tonumber(digits) or 0
-                        getgenv().wins_count = num
-                        -- print for debug; comment out in production
-                        print("Wins count updated:", num)
-                        break
+                    local t = v.Text:lower()
+                    local n = tonumber(v.Text:match("%d+"))
+                    if n then
+                        if t:find("rebirths") then rebirths = n
+                        elseif t:find("wins") then wins = n
+                        elseif t:find("highscore") then highscore = n
+                        elseif t:find("topspeed") then topspeed = n
+                        end
                     end
                 end
             end
+            getgenv().rebirths_count = rebirths
+            getgenv().wins_count = wins
+            getgenv().highscore_count = highscore
+            getgenv().topspeed_count = topspeed
         end
     end)
 end
 
--- ---------- UI Creation (same structure) ----------
+-- =====================
+-- GUI Setup
+-- =====================
 local ok_window, res_window = pcall(function()
     return Library.new({
         Title = "YANZ HUB | V0.5.0",
-        SubTitle = "By lphisv5 | Game : 🏆 Race Clicker",
+        SubTitle = "By lphisv5 | Game: 🏆 Race Clicker",
         TabSize = 180,
         Keybind = Enum.KeyCode.RightControl
     })
 end)
-
 if not ok_window then
-    warn("Failed to create window: " .. tostring(res_window))
+    warn("Failed to create window:", res_window)
     return
 end
-
 local Window = res_window
 
-local Farming = Window:NewTab({
-    Title = "Main",
-    Description = "Main Features",
-    Icon = "rbxassetid://7733960981"
-})
+local Farming = Window:NewTab({Title="Main", Description="Main Features", Icon="rbxassetid://7733960981"})
+local StatusTab = Window:NewTab({Title="Status", Description="Current Status", Icon="rbxassetid://7733960981"})
+local Credits = Window:NewTab({Title="Credits", Description="Credit Information", Icon="rbxassetid://7733960981"})
 
-local StatusTab = Window:NewTab({
-    Title = "Status",
-    Description = "Current Status",
-    Icon = "rbxassetid://7733960981"
-})
+local AutoFarm = Farming:NewSection({Title="Main", Icon="rbxassetid://7733916988", Position="Left"})
+local StatusSection = StatusTab:NewSection({Title="Status Info", Icon="rbxassetid://7733916988", Position="Left"})
+local Credit = Credits:NewSection({Title="Credit:", Icon="rbxassetid://7733916988", Position="Left"})
+local Discord = Credits:NewSection({Title="Discord", Icon="rbxassetid://7743869054", Position="Right"})
 
-local Credits = Window:NewTab({
-    Title = "Credits",
-    Description = "Credit Information",
-    Icon = "rbxassetid://7733960981"
-})
+-- =====================
+-- Status Labels
+-- =====================
+local RebirthsLabel = StatusSection:NewTitle({Title="😇 Rebirths: 0"})
+local WinsLabel = StatusSection:NewTitle({Title="🏁 Wins: 0"})
+local HighscoreLabel = StatusSection:NewTitle({Title="⭐ Highscore: 0"})
+local TopSpeedLabel = StatusSection:NewTitle({Title="🏃 TopSpeed: 0"})
 
-local AutoFarm = Farming:NewSection({
-    Title = "Main",
-    Icon = "rbxassetid://7733916988",
-    Position = "Left"
-})
-
-local StatusSection = StatusTab:NewSection({
-    Title = "Status Info",
-    Icon = "rbxassetid://7733916988",
-    Position = "Left"
-})
-
-local Credit = Credits:NewSection({
-    Title = "Credit:",
-    Icon = "rbxassetid://7733916988",
-    Position = "Left"
-})
-
-local Discord = Credits:NewSection({
-    Title = "Discord",
-    Icon = "rbxassetid://7743869054",
-    Position = "Right"
-})
-
--- Toggles
-AutoFarm:NewToggle({
-    Title = "Auto Click",
-    Description = "Auto Click for you",
-    Default = getgenv().aclick or false,
-    Callback = function(bool)
-        getgenv().aclick = bool
-        if bool then
-            start_aclick()
-        end
-    end,
-})
-
-AutoFarm:NewToggle({
-    Title = "Auto Win",
-    Description = "Auto win",
-    Default = getgenv().awin or false,
-    Callback = function(bool)
-        getgenv().awin = bool
-        if bool then
-            start_awin()
-        end
-    end,
-})
-
-AutoFarm:NewToggle({
-    Title = "Race Mode",
-    Description = "Auto race mode",
-    Default = getgenv().is_racing or false,
-    Callback = function(bool)
-        getgenv().is_racing = bool
-        if bool then
-            start_race_mode()
-        end
-    end,
-})
-
--- Status labels
-local RebirthsLabel = StatusSection:NewTitle({
-    Title = "😇 Rebirths: Loading..."
-})
-
-local WinsLabel = StatusSection:NewTitle({
-    Title = "🏁 Wins: Loading..."
-})
-
-local HighscoreLabel = StatusSection:NewTitle({
-    Title = "⭐ Highscore: Loading..."
-})
-
-local TopSpeedLabel = StatusSection:NewTitle({
-    Title = "🏃 TopSpeed: Loading..."
-})
-
--- Periodic UI updater (updates the UI labels; robust call with pcall)
 task.spawn(function()
     while true do
-        task.wait(1)
-        -- Scan GUI texts once
-        local rebirths = 0
-        local wins = 0
-        local highscore = 0
-        local topspeed = 0
-
-        for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("TextLabel") and v.Text then
-                local txt = tostring(v.Text):lower()
-                if txt:find("rebirths") then
-                    local digits = tostring(v.Text):gsub("[^%d]", "")
-                    rebirths = tonumber(digits) or rebirths
-                elseif txt:find("wins") then
-                    local digits = tostring(v.Text):gsub("[^%d]", "")
-                    wins = tonumber(digits) or wins
-                elseif txt:find("highscore") then
-                    local digits = tostring(v.Text):gsub("[^%d]", "")
-                    highscore = tonumber(digits) or highscore
-                elseif txt:find("topspeed") then
-                    local digits = tostring(v.Text):gsub("[^%d]", "")
-                    topspeed = tonumber(digits) or topspeed
-                end
-            end
-        end
-
-        -- Update UI safely (pcall to avoid errors if API differs)
-        pcall(function() RebirthsLabel:SetTitle("😇 Rebirths: " .. rebirths) end)
-        pcall(function() WinsLabel:SetTitle("🏁 Wins: " .. wins) end)
-        pcall(function() HighscoreLabel:SetTitle("⭐ Highscore: " .. highscore) end)
-        pcall(function() TopSpeedLabel:SetTitle("🏃 TopSpeed: " .. topspeed) end)
+        task.wait(0.5)
+        if RebirthsLabel and RebirthsLabel.SetTitle then RebirthsLabel:SetTitle("😇 Rebirths: "..getgenv().rebirths_count) end
+        if WinsLabel and WinsLabel.SetTitle then WinsLabel:SetTitle("🏁 Wins: "..getgenv().wins_count) end
+        if HighscoreLabel and HighscoreLabel.SetTitle then HighscoreLabel:SetTitle("⭐ Highscore: "..getgenv().highscore_count) end
+        if TopSpeedLabel and TopSpeedLabel.SetTitle then TopSpeedLabel:SetTitle("🏃 TopSpeed: "..getgenv().topspeed_count) end
     end
 end)
 
--- Credits / Discord
-Credit:NewTitle({ Title = "Created by lphisv5" })
-Credit:NewTitle({ Title = "Created by id2_lphisv5" })
-
-Discord:NewButton({
-    Title = "Join Discord",
-    Description = "https://discord.gg/DfVuhsZb",
-    Callback = function()
-        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
-    end,
+-- =====================
+-- Toggles
+-- =====================
+AutoFarm:NewToggle({
+    Title="Auto Click",
+    Description="Auto Click for you",
+    Default=false,
+    Callback=function(val)
+        getgenv().aclick = val
+    end
+})
+AutoFarm:NewToggle({
+    Title="Auto Win",
+    Description="Auto Win",
+    Default=false,
+    Callback=function(val)
+        getgenv().awin = val
+    end
+})
+AutoFarm:NewToggle({
+    Title="Race Mode",
+    Description="Auto Race Mode",
+    Default=false,
+    Callback=function(val)
+        getgenv().is_racing = val
+    end
 })
 
--- Start status checker (if not already)
-check_status()
+-- =====================
+-- Credits & Discord
+-- =====================
+Credit:NewTitle({Title="Created by lphisv5"})
+Credit:NewTitle({Title="Created by id2_lphisv5"})
+Discord:NewButton({
+    Title="Join Discord",
+    Description="https://discord.gg/DfVuhsZb",
+    Callback=function() setclipboard("https://discord.gg/DfVuhsZb") end
+})
+
+-- =====================
+-- Start Hub
+-- =====================
+hub_loop()
+update_status()

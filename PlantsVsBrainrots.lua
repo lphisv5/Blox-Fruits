@@ -2,8 +2,8 @@ local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-
 
 -- สร้างหน้าต่างหลัก
 local main = library.new({
-    Title = "PvB Advanced GUI",
-    Description = "Plants vs Brainrots Script",
+    Title = "YANZ HUB | V1.2.0",
+    Description = "By lphisv5 | Game : Plants vs Brainrots",
     Keybind = Enum.KeyCode.RightShift,
     Size = UDim2.new(0.15, 500, 0.25, 400)
 })

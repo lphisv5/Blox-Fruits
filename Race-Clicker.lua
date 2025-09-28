@@ -1,3 +1,7 @@
+-- YANZ HUB | Race Clicker - PROFESSIONAL FIXED VERSION
+-- By: assistant (for lphisv5 request)
+-- Version: V0.6.7 [SUPER FAST TP LOOP, ANTI-JUMP FIX, ADVANCED AUTO CLICK]
+
 --===[ Services ]===--
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,7 +14,7 @@ local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/
 local NothingLibrary = loadstring(game:HttpGet(libURL))()
 
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | V0.6.6 [TESTING]",
+    Title = "YANZ HUB | V0.6.7 [UPDATED]",
     Description = "By lphisv5 | Game : 🏆 Race Clicker",
     Keybind = Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
@@ -41,7 +45,7 @@ local function isClickToBuildActive()
     local gui = LocalPlayer:FindFirstChild("PlayerGui")
     if not gui then return false end
     for _, c in ipairs(gui:GetDescendants()) do
-        if c:IsA("TextLabel") and c.Text == "Click to build start" then
+        if c:IsA("TextLabel") and c.Text == "Click to build" then -- ตรวจสอบแบบเข้มงวด
             return true
         end
     end
@@ -60,14 +64,14 @@ AutoClickSection:NewToggle({
                         print("Click to build detected! Starting super spam clicks...")
                         local startTime = tick()
                         while (tick() - startTime) < 20 and isClickToBuildActive() and state.autoClick do
-                            for i = 1, 100 do
+                            for i = 1, 100 do -- สแปม 100 ครั้งเหมือน 100 คน 10 นิ้ว
                                 task.spawn(doClick)
                             end
-                            task.wait(0.005)
+                            task.wait(0.005) -- หน่วง 0.005 วินาที (5 ซิ) เพื่อป้องกัน FPS ตก
                         end
                         print("Spam clicks ended after 20s or state changed.")
                     end
-                    task.wait(0000000000000000000000.0000000000000000000001)
+                    RunService.RenderStepped:Wait() -- ตรวจสอบสถานะทุก frame
                 end
             end)
         end
@@ -86,6 +90,7 @@ local function tpTo(num)
     if hrp and humanoid then
         humanoid.Jump = false
         humanoid.JumpPower = 0
+        humanoid.PlatformStand = true -- บังคับให้ตัวละครยืนนิ่งเพื่อป้องกันการเคลื่อนไหว
         pcall(function()
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if obj:IsA("BasePart") and tostring(obj.Name) == tostring(num) then
@@ -96,6 +101,7 @@ local function tpTo(num)
                 end
             end
         end)
+        humanoid.PlatformStand = false -- ปลดการยืนนิ่งหลัง TP
     end
     if not success then
         print("Checkpoint " .. num .. " not found!")
@@ -131,18 +137,29 @@ AutoWinsSection:NewToggle({
                         print("Waiting for race to start...")
                     elseif txt:find("Click to build") then
                         print("Spamming clicks...")
-                        for i = 1, 30 do
-                            doClick()
-                            task.wait(0000000000000000000000.0000000000000000000001)
+                        local startTime = tick()
+                        while (tick() - startTime) < 20 and isClickToBuildActive() and state.autoWins do
+                            for i = 1, 100 do
+                                task.spawn(doClick)
+                            end
+                            task.wait(0.0001)
                         end
                     elseif txt:match("%d%d:%d%d") then
                         print("Race in progress, starting super fast TP loop...")
                         while txt:match("%d%d:%d%d") and state.autoWins do
-                            tpTo(endCheckpoint)
-                            RunService.RenderStepped:Wait() -- หน่วงสั้นสุด (เหมือน 0.000...1)
-                            tpTo(startCheckpoint)
-                            RunService.RenderStepped:Wait() -- วนซ้ำรวดเร็วมาก
-                            txt = findTimer() -- อัปเดตสถานะ
+                            if not tpTo(endCheckpoint) then
+                                print("Failed to find endCheckpoint, retrying...")
+                                RunService.RenderStepped:Wait()
+                                continue
+                            end
+                            RunService.RenderStepped:Wait()
+                            if not tpTo(startCheckpoint) then
+                                print("Failed to find startCheckpoint, retrying...")
+                                RunService.RenderStepped:Wait()
+                                continue
+                            end
+                            RunService.RenderStepped:Wait()
+                            txt = findTimer()
                         end
                     elseif txt:find("00:00") then
                         print("Race ended, resetting Auto Wins...")
@@ -175,6 +192,7 @@ SpeedSection:NewToggle({
                                 hum.WalkSpeed = 999999999
                                 hum.JumpPower = 0
                                 hum.Jump = false
+                                hum.PlatformStand = false
                             end
                         end
                     end)
@@ -188,6 +206,7 @@ SpeedSection:NewToggle({
                     if hum then
                         hum.WalkSpeed = 16
                         hum.JumpPower = 50
+                        hum.PlatformStand = false
                     end
                 end
             end)
@@ -202,8 +221,9 @@ RunService.RenderStepped:Connect(function()
         if humanoid then
             humanoid.Jump = false
             humanoid.JumpPower = 0
+            humanoid.PlatformStand = false -- รีเซ็ต PlatformStand ในกรณีที่ไม่ใช้ Auto Wins
         end
     end)
 end)
 
-print("YANZ HUB Loaded Successfully")
+print("✅ YANZ HUB Race Clicker Loaded Successfully [V0.6.7]")

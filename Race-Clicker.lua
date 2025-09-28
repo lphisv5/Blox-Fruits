@@ -60,15 +60,28 @@ AutoClickSection:NewToggle({
 local checkpoints = {1, 3, 4, 5, 10, 25, 50, 100, 500, 1000, 5000, 10000, 25000, 50000, 100000}
 
 local function tpTo(num)
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and tostring(obj.Name) == tostring(num) then
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame + Vector3.new(0, 5, 0)
-                return true -- คืนค่า true เมื่อพบและ teleport สำเร็จ
+    local success = false
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    
+    if hrp and humanoid then
+        humanoid.Jump = false -- ป้องกันการกระโดด
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and tostring(obj.Name) == tostring(num) then
+                hrp.Anchored = true -- ยึดตัวละครชั่วคราว
+                hrp.CFrame = obj.CFrame + Vector3.new(0, 2, 0) -- ลดความสูงจาก 5 เป็น 2 เพื่อความสมูท
+                task.wait(000.001) -- หน่วงสั้นมากเพื่อให้ CFrame เซ็ต
+                hrp.Anchored = false
+                success = true
+                print("Teleported to checkpoint: " .. num)
+                break
             end
         end
     end
-    return false -- คืนค่า false ถ้าไม่พบ checkpoint
+    if not success then
+        print("Checkpoint " .. num .. " not found!")
+    end
+    return success
 end
 
 local function findTimer()
@@ -85,35 +98,30 @@ local function findTimer()
 end
 
 AutoWinsSection:NewToggle({
-    Title = "Auto Wins",
+    Title = "Auto Wins (รั่วๆ)",
     Default = false,
     Callback = function(v)
         state.autoWins = v
         if v then
             task.spawn(function()
                 while state.autoWins do
-                    task.wait(0.1) -- ลดเวลาหน่วงจาก 1 วินาทีเป็น 0.5 วินาที
+                    task.wait(0.03) -- ลดหน่วงจาก 0.1 เป็น 0.05 เพื่อให้เร็วสุดๆ
                     local txt = findTimer()
                     print("Timer Status: " .. txt) -- ดีบักสถานะ
                     if txt:find("Waiting") then
                         print("Waiting for race to start...")
                     elseif txt:find("Click to build") then
                         print("Spamming clicks...")
-                        for i = 1, 20 do
+                        for i = 1, 30 do -- เพิ่มจำนวน click เพื่อความเร็ว
                             doClick()
-                            task.wait(0.05)
+                            task.wait(0.03) -- ลดหน่วง click จาก 0.05 เป็น 0.03
                         end
                     elseif txt:match("%d%d:%d%d") then
                         print("Race in progress, teleporting to checkpoints...")
                         for _, num in ipairs(checkpoints) do
                             if not state.autoWins then break end
                             local success = tpTo(num)
-                            if success then
-                                print("Teleported to checkpoint: " .. num)
-                            else
-                                print("Checkpoint " .. num .. " not found!")
-                            end
-                            task.wait(0.1) -- ลดเวลาหน่วงจาก 0.3 เป็น 0.1
+                            task.wait(000.001) -- ลดหน่วงจาก 0.1 เป็น 000.001 เพื่อ TP รั่วๆ
                         end
                     elseif txt:find("00:00") then
                         print("Race ended, resetting Auto Wins...")
@@ -121,6 +129,45 @@ AutoWinsSection:NewToggle({
                         break
                     else
                         print("Unknown timer state: " .. txt)
+                    end
+                end
+            end)
+        end
+    end
+})
+
+--===[ Speed Booster ]===--
+SpeedSection:NewToggle({
+    Title = "Enable Speed Booster (MAX)",
+    Default = false,
+    Callback = function(v)
+        state.autoSpeed = v
+        if v then
+            task.spawn(function()
+                while state.autoSpeed do
+                    task.wait(0.1)
+                    pcall(function()
+                        local char = LocalPlayer.Character
+                        if char then
+                            local hum = char:FindFirstChildOfClass("Humanoid")
+                            if hum then
+                                hum.WalkSpeed = 999999999
+                                hum.JumpPower = 0 -- ปิดการกระโดดเพื่อความสมูท
+                                hum.Jump = false -- ป้องกันการกระโดดอัตโนมัติ
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            -- รีเซ็ตเมื่อปิด Speed Booster
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char then
+                    local hum = char:FindFirstChildOfClass("Humanoid")
+                    if hum then
+                        hum.WalkSpeed = 16 -- ค่าเริ่มต้น
+                        hum.JumpPower = 50 -- ค่าเริ่มต้น
                     end
                 end
             end)

@@ -1,200 +1,114 @@
--- Library
+-- โหลด Library GUI หลัก
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua")))()
 
-local library = loadstring(game:HttpGet(('https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wall%20v3')))()
+-- ตั้งค่าหน้าต่างหลัก
+local Main = Library.new({
+    Title = "YANZ HUB",
+    Logo = "rbxassetid://1234567890", -- โลโก้ใส่อะไรก็ได้
+    Description = "By lphisv5 | Game : 🏆 Race Clicker"
+})
 
-local w = library:CreateWindow("🏆 - Race Clicker Script")
+-------------------------------------------------------
+-- 🔥 Auto Click
+-------------------------------------------------------
+local autoClick = false
+Main:CreateToggle("Auto Click (0.1s)", function(state)
+    autoClick = state
+    spawn(function()
+        while autoClick do
+            task.wait(0.1)
+            -- ระบบคลิกในเกม
+            game:GetService("ReplicatedStorage").Events.Click3:FireServer()
+            -- แสดงคำว่า CLICK ที่มุมขวาจอ
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "YANZ HUB",
+                Text = "CLICK",
+                Duration = 0.1
+            })
+        end
+    end)
+end)
 
-local b = w:CreateFolder("Main")
-local c = w:CreateFolder("Credits")
-
--- Variables
-
+-------------------------------------------------------
+-- 🏆 Auto Wins
+-------------------------------------------------------
+local autoWin = false
+local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-
 local lp = Players.LocalPlayer
 
--- Tables
+-- ตำแหน่งตามสีและตัวเลข
+local checkpoints = {
+    {"ส้มอ่อน", 1},
+    {"แดงอ่อน", 3},
+    {"ฟ้าอ่อน", 4},
+    {"ม่วง", 5},
+    {"เขียว", 10},
+    {"ฟ้าใส", 25},
+    {"ชมพู่อ่อน", 50},
+    {"ดำ", 100},
+    {"ส้ม", 500},
+    {"เขียว", 1000},
+    {"ชมพู่เข้ม", 5000},
+    {"เหลือง", 10000},
+    {"น้ำเงิน", 25000},
+    {"แดงเข้ม", 50000},
+    {"ม่วงออกชมพู", 100000}
+}
 
-local Maps = {"Home - 0 Rebirth", "Space - 2 Rebirth", "Ocean - 4 Rebirth"}
-local Eggs = {"5 Wins", "25 Wins", "175 Wins", "1k Wins", "10k Wins", "75k Wins", "250k Wins", "1M Wins", "2.5M Wins", "5M Wins"}
-local Codes = {"UPDATECLICKCODE", "hallowx3", "Accelhidden", "opx3code", "500KLikes", "Almost100MVisits", "1MGroupMembers", "Thankyou50M", "NewUpdate", "LetsGo5KLikes", "ThanksFor5MillionsVisits"}
+-- ฟังก์ชัน Teleport
+local function tpTo(part)
+    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        lp.Character.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0,3,0)
+    end
+end
 
--- Main
+-- เปิดใช้งาน Auto Wins
+Main:CreateToggle("Auto Wins", function(state)
+    autoWin = state
+    spawn(function()
+        while autoWin do
+            task.wait(0.5)
 
-local delay
-b:Slider("Auto Race Delay ( /s )",{
-    min = 0.01; -- min value of the slider
-    max = 1; -- max value of the slider
-    precise = true; -- max 2 decimals
-},function(value)
-    delay = value
-end)
+            -- ตรวจสอบสถานะเกมจาก UI ด้านบน
+            local topUI = game:GetService("Players").LocalPlayer.PlayerGui.Main.Timer.Text
 
-b:Toggle("Auto Race",function(bool)
-    getgenv().AutoFinish = bool
-    
-    task.spawn(function()
-        while task.wait() do
-            if AutoFinish then
-                pcall(function()
-                    if lp.PlayerGui.TimerUI.RaceTimer.Visible then
-                        local char = lp.Character
-                        local hum = char.Humanoid
-                        local hrp = char.HumanoidRootPart
-                        
-                        hrp.CFrame = hrp.CFrame + Vector3.new(50000, 0, 0)
-                        task.wait(delay)
+            if string.find(topUI, "Waiting to start") then
+                -- ยังไม่เริ่ม
+            elseif string.find(topUI, "Click to build up Speed") then
+                -- จะ Auto Click ตรงนี้ถ้าเปิด Auto Wins
+                game:GetService("ReplicatedStorage").Events.Click3:FireServer()
+            else
+                -- เริ่มวิ่งแล้ว → Teleport ตาม Checkpoint
+                for _,v in ipairs(checkpoints) do
+                    local part = workspace:FindFirstChild(tostring(v[2]))
+                    if part then
+                        tpTo(part)
+                        task.wait(1)
                     end
-                end)
-            end
-        end
-    end)
-end)
-
-b:Toggle("Auto Speed",function(bool)
-    getgenv().AutoClick = bool
-    
-    task.spawn(function()
-        while task.wait() do
-            if AutoClick then
-                if lp.PlayerGui.ClicksUI.ClickHelper.Visible == true then
-                    game:GetService("ReplicatedStorage").Packages.Knit.Services.ClickService.RF.Click:InvokeServer()
                 end
             end
         end
     end)
 end)
 
-b:Toggle("Auto Rebirth",function(bool)
-    getgenv().AutoRebirth = bool
-    
-    task.spawn(function()
-        while task.wait() do
-            if AutoRebirth then
-                game:GetService("ReplicatedStorage").Packages.Knit.Services.RebirthService.RF.Rebirth:InvokeServer()
-                task.wait(5)
+-------------------------------------------------------
+-- 🚀 Speed Booster
+-------------------------------------------------------
+local autoSpeed = false
+Main:CreateToggle("Speed Booster (เพิ่ม Speed ไม่จำกัด)", function(state)
+    autoSpeed = state
+    spawn(function()
+        while autoSpeed do
+            task.wait(0.2)
+            local stats = lp:FindFirstChild("leaderstats")
+            if stats and stats:FindFirstChild("Speed") then
+                stats.Speed.Value = stats.Speed.Value + 100 -- เพิ่มทีละ 100
             end
         end
     end)
 end)
 
-warn("Ty for using my script bro <3 !")
-
-b:Label("===========",{
-    TextSize = 25,
-    TextColor = Color3.fromRGB(255,255,255),
-    BgColor = Color3.fromRGB(69,69,69)
-}) 
-
-local choosed_egg
-b:Dropdown("Choose Egg",{unpack(Eggs)},true,function(egg)
-    if egg == Eggs[1] then
-       choosed_egg = "Starter01"
-    elseif egg == Eggs[2] then
-        choosed_egg = "Starter02"
-    elseif egg == Eggs[3] then
-        choosed_egg = "Starter03"
-    elseif egg == Eggs[4] then
-        choosed_egg = "Starter04"
-    elseif egg == Eggs[5] then
-        choosed_egg = "Pro01"
-    elseif egg == Eggs[6] then
-        choosed_egg = "Pro02"
-    elseif egg == Eggs[7] then
-        choosed_egg = "Pro03"
-    elseif egg == Eggs[8] then
-        choosed_egg = "Space01"
-    elseif egg == Eggs[9] then
-        choosed_egg = "Ocean01"
-    end
-end)
-
-b:Toggle("Auto Hatch",function(bool)
-    getgenv().AutoHatch = bool
-    
-    task.spawn(function()
-        while task.wait() do
-            if AutoHatch then
-                if choosed_egg then
-                    local args = {[1] = choosed_egg,[2] = "1",[3] = {}}
-                    game:GetService("ReplicatedStorage").Packages.Knit.Services.EggService.RF.Open:InvokeServer(unpack(args))
-                else
-                    warn("Please, choose your egg !")
-                end
-            end
-        end
-    end)
-end)
-
-b:Toggle("Auto Craft",function(bool)
-    getgenv().AutoCraft = bool
-    
-    task.spawn(function()
-        while task.wait(3) do
-            if AutoCraft then
-                game:GetService("ReplicatedStorage").Packages.Knit.Services.PetsService.RF.CraftAll:InvokeServer()
-            end
-        end
-    end)
-end)
-
-b:Toggle("Auto Equip",function(bool)
-    getgenv().AutoEquipBest = bool
-    
-    task.spawn(function()
-        while task.wait(3) do
-            if AutoEquipBest then
-                game:GetService("ReplicatedStorage").Packages.Knit.Services.PetsService.RF.EquipBest:InvokeServer()
-            end
-        end
-    end)
-end)
-
-b:Label("===========",{
-    TextSize = 25,
-    TextColor = Color3.fromRGB(255,255,255),
-    BgColor = Color3.fromRGB(69,69,69)
-}) 
-
-b:Dropdown("Map Teleport :",{unpack(Maps)},true,function(map)
-    if map == Maps[1] then
-        local args = {[1] = "Home"}
-        game:GetService("ReplicatedStorage").Packages.Knit.Services.WorldService.RF.Travel:InvokeServer(unpack(args))    
-    elseif map == Maps[2] then
-        local args = {[1] = "Space"}
-        game:GetService("ReplicatedStorage").Packages.Knit.Services.WorldService.RF.Travel:InvokeServer(unpack(args))
-    elseif map == Maps[3] then
-        local args = {[1] = "Ocean"}
-        game:GetService("ReplicatedStorage").Packages.Knit.Services.WorldService.RF.Travel:InvokeServer(unpack(args))
-    end  
-end)
-
-b:Button("Redeem Codes",function()
-    for i,v in (Codes) do
-        local args = {[1] = v}
-        game:GetService("ReplicatedStorage").Packages.Knit.Services.CodesService.RF.Redeem:InvokeServer(unpack(args))
-    end
-end)
-
-b:DestroyGui()
-
-c:Label("UI : Wally UI V3",{
-    TextSize = 20; -- Self Explaining
-    TextColor = Color3.fromRGB(255,255,255); -- Self Explaining
-    BgColor = Color3.fromRGB(69,69,69); -- Self Explaining
-    
-})
-
-c:Label("Made by : SQK#9773",{
-    TextSize = 15; -- Self Explaining
-    TextColor = Color3.fromRGB(255,255,255); -- Self Explaining
-    BgColor = Color3.fromRGB(69,69,69); -- Self Explaining
-    
-})
-
-c:Label("Any Problems? ^ Add me :)",{
-    TextSize = 15; -- Self Explaining
-    TextColor = Color3.fromRGB(255,255,255); -- Self Explaining
-    BgColor = Color3.fromRGB(69,69,69); -- Self Explaining
-    
-})
+-------------------------------------------------------
+-- เปิด GUI
+Main:Init()

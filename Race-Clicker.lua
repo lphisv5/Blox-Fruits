@@ -1,114 +1,146 @@
--- โหลด Library GUI หลัก
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
+--===[ Services ]===--
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- ตั้งค่าหน้าต่างหลัก
-local Main = Library.new({
-    Title = "YANZ HUB",
-    Logo = "rbxassetid://1234567890", -- โลโก้ใส่อะไรก็ได้
-    Description = "By lphisv5 | Game : 🏆 Race Clicker"
+--===[ Load NothingLibrary ]===--
+local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
+local ok_lib, NothingLibrary = pcall(function()
+    local code = game:HttpGetAsync(libURL)
+    local func, err = loadstring(code)
+    if not func then
+        warn("Loadstring error:", err)
+        return nil
+    end
+    return func()
+end)
+if not ok_lib or not NothingLibrary then
+    warn("YANZ HUB: Failed to load Nothing UI Library.")
+    return
+end
+
+--===[ Create Window ]===--
+local Window = NothingLibrary.new({
+    Title = "YANZ HUB | V0.5.0",
+    Description = "By lphisv5 | Game : 🏆 Race Clicker",
+    Keybind = Enum.KeyCode.RightShift,
+    Logo = 'http://www.roblox.com/asset/?id=125456335927282'
 })
 
--------------------------------------------------------
--- 🔥 Auto Click
--------------------------------------------------------
-local autoClick = false
-Main:CreateToggle("Auto Click (0.1s)", function(state)
-    autoClick = state
-    spawn(function()
-        while autoClick do
-            task.wait(0.1)
-            -- ระบบคลิกในเกม
-            game:GetService("ReplicatedStorage").Events.Click3:FireServer()
-            -- แสดงคำว่า CLICK ที่มุมขวาจอ
-            game.StarterGui:SetCore("SendNotification", {
-                Title = "YANZ HUB",
-                Text = "CLICK",
-                Duration = 0.1
-            })
+--===[ Tabs & Sections ]===--
+local MainTab = Window:NewTab({
+    Title = "Main",
+    Description = "Core Features",
+    Icon = "rbxassetid://7733960981"
+})
+local SpeedTab = Window:NewTab({
+    Title = "Speed Booster",
+    Description = "Unlimited Speed Settings",
+    Icon = "rbxassetid://7743869054"
+})
+
+local MainSection = MainTab:NewSection({Title = "Auto Features", Icon = "rbxassetid://7733916988", Position = "Left"})
+local SpeedSection = SpeedTab:NewSection({Title = "Speed Control", Icon = "rbxassetid://7733916988", Position = "Left"})
+
+--===[ Globals ]===--
+_G.autoClick = false
+_G.autoWin = false
+_G.autoSpeed = false
+
+--===[ Auto Click ]===--
+MainSection:NewToggle({
+    Title = "Auto Click (0.1s)",
+    Default = false,
+    Callback = function(state)
+        _G.autoClick = state
+        if state then
+            task.spawn(function()
+                while _G.autoClick do
+                    task.wait(0.1)
+                    -- ส่งคลิก
+                    pcall(function()
+                        game:GetService("ReplicatedStorage").Events.Click3:FireServer()
+                    end)
+                end
+            end)
         end
-    end)
-end)
+    end
+})
 
--------------------------------------------------------
--- 🏆 Auto Wins
--------------------------------------------------------
-local autoWin = false
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
-local lp = Players.LocalPlayer
-
--- ตำแหน่งตามสีและตัวเลข
+--===[ Auto Wins ]===--
 local checkpoints = {
-    {"ส้มอ่อน", 1},
-    {"แดงอ่อน", 3},
-    {"ฟ้าอ่อน", 4},
-    {"ม่วง", 5},
-    {"เขียว", 10},
-    {"ฟ้าใส", 25},
-    {"ชมพู่อ่อน", 50},
-    {"ดำ", 100},
-    {"ส้ม", 500},
-    {"เขียว", 1000},
-    {"ชมพู่เข้ม", 5000},
-    {"เหลือง", 10000},
-    {"น้ำเงิน", 25000},
-    {"แดงเข้ม", 50000},
-    {"ม่วงออกชมพู", 100000}
+    [1] = "ส้มอ่อน", [3] = "แดงอ่อน", [4] = "ฟ้าอ่อน", [5] = "ม่วง",
+    [10] = "เขียว", [25] = "ฟ้าใส", [50] = "ชมพู่อ่อน", [100] = "ดำ",
+    [500] = "ส้ม", [1000] = "เขียวเข้ม", [5000] = "ชมพู่เข้ม",
+    [10000] = "เหลือง", [25000] = "น้ำเงิน", [50000] = "แดงเข้ม", [100000] = "ม่วงออกชมพู"
 }
 
--- ฟังก์ชัน Teleport
-local function tpTo(part)
-    if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
-        lp.Character.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0,3,0)
+local function tpToPart(part)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = part.CFrame + Vector3.new(0,3,0)
     end
 end
 
--- เปิดใช้งาน Auto Wins
-Main:CreateToggle("Auto Wins", function(state)
-    autoWin = state
-    spawn(function()
-        while autoWin do
-            task.wait(0.5)
+MainSection:NewToggle({
+    Title = "Auto Wins",
+    Default = false,
+    Callback = function(state)
+        _G.autoWin = state
+        if state then
+            task.spawn(function()
+                while _G.autoWin do
+                    task.wait(1)
 
-            -- ตรวจสอบสถานะเกมจาก UI ด้านบน
-            local topUI = game:GetService("Players").LocalPlayer.PlayerGui.Main.Timer.Text
+                    -- ตรวจสอบ UI ด้านบน
+                    local gui = LocalPlayer:WaitForChild("PlayerGui")
+                    local timer = gui:FindFirstChild("Main") and gui.Main:FindFirstChild("Timer")
+                    local text = timer and timer.Text or ""
 
-            if string.find(topUI, "Waiting to start") then
-                -- ยังไม่เริ่ม
-            elseif string.find(topUI, "Click to build up Speed") then
-                -- จะ Auto Click ตรงนี้ถ้าเปิด Auto Wins
-                game:GetService("ReplicatedStorage").Events.Click3:FireServer()
-            else
-                -- เริ่มวิ่งแล้ว → Teleport ตาม Checkpoint
-                for _,v in ipairs(checkpoints) do
-                    local part = workspace:FindFirstChild(tostring(v[2]))
-                    if part then
-                        tpTo(part)
-                        task.wait(1)
+                    if text:find("Click to build up Speed") then
+                        -- ถ้าอยู่ช่วง Click → Auto Click
+                        game:GetService("ReplicatedStorage").Events.Click3:FireServer()
+                    elseif text:find(":") then
+                        -- ถ้ามีเวลา → วิ่งอยู่ → Teleport ตาม checkpoint
+                        for num, name in pairs(checkpoints) do
+                            local part = workspace:FindFirstChild(tostring(num))
+                            if part then
+                                tpToPart(part)
+                                task.wait(0.5)
+                            end
+                        end
+                    else
+                        -- ถ้าเวลา = 00:00 หยุด
+                        if text == "00:00.00" then
+                            _G.autoWin = false
+                        end
                     end
                 end
-            end
+            end)
         end
-    end)
-end)
+    end
+})
 
--------------------------------------------------------
--- 🚀 Speed Booster
--------------------------------------------------------
-local autoSpeed = false
-Main:CreateToggle("Speed Booster (เพิ่ม Speed ไม่จำกัด)", function(state)
-    autoSpeed = state
-    spawn(function()
-        while autoSpeed do
-            task.wait(0.2)
-            local stats = lp:FindFirstChild("leaderstats")
-            if stats and stats:FindFirstChild("Speed") then
-                stats.Speed.Value = stats.Speed.Value + 100 -- เพิ่มทีละ 100
-            end
+--===[ Speed Booster ]===--
+SpeedSection:NewToggle({
+    Title = "Enable Speed Booster",
+    Default = false,
+    Callback = function(state)
+        _G.autoSpeed = state
+        if state then
+            task.spawn(function()
+                while _G.autoSpeed do
+                    task.wait(0.2)
+                    local stats = LocalPlayer:FindFirstChild("leaderstats")
+                    if stats and stats:FindFirstChild("Speed") then
+                        stats.Speed.Value = stats.Speed.Value + 100 -- เพิ่ม Speed ทีละ 100
+                    end
+                end
+            end)
         end
-    end)
-end)
+    end
+})
 
--------------------------------------------------------
--- เปิด GUI
-Main:Init()
+print("✅ YANZ HUB Race Clicker Loaded Successfully")

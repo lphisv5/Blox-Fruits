@@ -104,7 +104,52 @@ local Discord = Credits:NewSection({
     Position = "Right"
 })
 
--- ✅ สร้าง Toggle และ Button ด้วย method ที่ถูกต้อง
+-- ✅ ตรวจสอบว่า Section มี method NewLabel หรือไม่
+if not Credit.NewLabel then
+    warn("Credit section does not have 'NewLabel' method!")
+    print("Available methods in Credit section:")
+    for k, v in pairs(Credit) do
+        if type(v) == "function" then
+            print("  - " .. k)
+        end
+    end
+    -- ลองใช้ NewTitle แทน
+    Credit:NewTitle({
+        Title = "Made By lphisv5",
+    })
+else
+    Credit:NewLabel({
+        Title = "Made By lphisv5",
+    })
+end
+
+-- ✅ ตรวจสอบว่า Section มี method NewButton หรือไม่
+if not Discord.NewButton then
+    warn("Discord section does not have 'NewButton' method!")
+    print("Available methods in Discord section:")
+    for k, v in pairs(Discord) do
+        if type(v) == "function" then
+            print("  - " .. k)
+        end
+    end
+    -- ลองใช้ NewTitle แทน
+    Discord:NewTitle({
+        Title = "Copy Discord Link",
+        Callback = function()
+            setclipboard("https://discord.gg/DfVuhsZb")
+        end,
+    })
+else
+    Discord:NewButton({
+        Title = "Copy Discord Link",
+        Description = "Copy the Arcane Discord URL",
+        Callback = function()
+            setclipboard("https://discord.gg/DfVuhsZb")
+        end,
+    })
+end
+
+-- ✅ สร้าง Toggle ด้วย method ที่ถูกต้อง
 AutoFarm:NewToggle({
     Title = "Auto Click",
     Description = "Auto CLick for you",
@@ -126,17 +171,5 @@ AutoFarm:NewToggle({
         if bool then
             awin()
         end
-    end,
-})
-
-Credit:NewLabel({
-    Title = "Made By lphisv5",
-})
-
-Discord:NewButton({
-    Title = "Copy Discord Link",
-    Description = "Copy the Arcane Discord URL",
-    Callback = function()
-        setclipboard("https://discord.gg/DfVuhsZb")
     end,
 })

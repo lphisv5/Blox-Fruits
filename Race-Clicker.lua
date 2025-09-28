@@ -44,9 +44,9 @@ function aclick()
     end)
 end
 
--- ✅ ใช้ Library.new() แทน NothingLibrary.new()
+-- ✅ สร้าง Window
 local ok_window, res_window = pcall(function()
-    Window = Library.new({
+    return Library.new({
         Title = "YANZ HUB | V0.4.9",
         SubTitle = "By lphisv5 | Game : Race Clicker",
         TabSize = 180,
@@ -59,30 +59,44 @@ if not ok_window then
     return
 end
 
--- ✅ สร้าง Tab และ Section
-local Farming = Window:Tab({
+local Window = res_window
+
+-- ✅ สร้าง Tab และ Section ด้วย method ที่ถูกต้อง
+local Farming = Window:NewTab({
     Title = "Main",
+    Description = "Main Features",
+    Icon = "rbxassetid://7733960981"
 })
 
-local Credits = Window:Tab({
+local Credits = Window:NewTab({
     Title = "Credits",
+    Description = "Credit Information",
+    Icon = "rbxassetid://7733960981"
 })
 
-local AutoFarm = Farming:Section({
+local AutoFarm = Farming:NewSection({
     Title = "Main",
+    Icon = "rbxassetid://7733916988",
+    Position = "Left"
 })
 
-local Credit = Credits:Section({
+local Credit = Credits:NewSection({
     Title = "Credit:",
+    Icon = "rbxassetid://7733916988",
+    Position = "Left"
 })
 
-local Discord = Credits:Section({
+local Discord = Credits:NewSection({
     Title = "Discord",
+    Icon = "rbxassetid://7743869054",
+    Position = "Right"
 })
 
-AutoFarm:Toggle({
+-- ✅ สร้าง Toggle และ Button ด้วย method ที่ถูกต้อง
+AutoFarm:NewToggle({
     Title = "Auto Click",
     Description = "Auto CLick for you",
+    Default = getgenv().aclick or false,
     Callback = function(bool)
         getgenv().aclick = bool
         if bool then
@@ -91,9 +105,10 @@ AutoFarm:Toggle({
     end,
 })
 
-AutoFarm:Toggle({
+AutoFarm:NewToggle({
     Title = "Auto Win",
     Description = "Auto win",
+    Default = getgenv().awin or false,
     Callback = function(bool)
         getgenv().awin = bool
         if bool then
@@ -102,11 +117,11 @@ AutoFarm:Toggle({
     end,
 })
 
-Credit:Label({
+Credit:NewLabel({
     Title = "Made By lphisv5",
 })
 
-Discord:Button({
+Discord:NewButton({
     Title = "Copy Discord Link",
     Description = "Copy the Arcane Discord URL",
     Callback = function()

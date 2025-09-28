@@ -1,6 +1,6 @@
--- YANZ HUB | Race Clicker - PROFESSIONAL FIXED VERSION
--- By: assistant (for lphisv5 request)
--- Version: V0.7.6 [ULTRA FAST AUTO CLICK, CUSTOM STAGES, UNDETECTED FLY]
+-- YANZ HUB | Race Clicker
+-- By: lphisv5
+-- Version: V0.7.6
 
 --===[ Services ]===--
 local Players = game:GetService("Players")
@@ -15,7 +15,7 @@ local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/
 local NothingLibrary = loadstring(game:HttpGet(libURL))()
 
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | V0.7.6 [ULTRA FAST AUTO CLICK]",
+    Title = "YANZ HUB | V0.7.6",
     Description = "By lphisv5 | Game : 🏆 Race Clicker",
     Keybind = Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
@@ -65,7 +65,7 @@ local function isClickTemplateActive()
 end
 
 AutoClickSection:NewToggle({
-    Title = "Auto Click (Ultra Fast Spam)",
+    Title = "Auto Click",
     Default = false,
     Callback = function(v)
         state.autoClick = v
@@ -79,18 +79,18 @@ AutoClickSection:NewToggle({
                         local centerX = screenSize.X / 2
                         local centerY = screenSize.Y / 2
                         while (tick() - startTime) < 20 and state.autoClick and (isClickToBuildActive() or isClickTemplateActive()) do
-                            for i = 1, 100 do -- เพิ่มจำนวนคลิกเป็น 100 ครั้งต่อรอบ
+                            for i = 1, 100 do
                                 task.spawn(doClick)
-                                -- คลิกตรงกลางหน้าจอ (จำลองการคลิกด้วย VirtualInput)
+                                
                                 local virtualInput = game:GetService("VirtualInputManager")
                                 virtualInput:SendMouseButtonEvent(centerX, centerY, 0, true, game)
                                 virtualInput:SendMouseButtonEvent(centerX, centerY, 0, false, game)
                             end
-                            task.wait(0.005) -- ลดหน่วงจาก 0.01 เป็น 0.005 เพื่อความเร็ว
+                            task.wait(0.005)
                         end
                         print("Spam clicks ended.")
                     end
-                    task.wait(0.02) -- ลดการตรวจสอบจาก 0.05 เป็น 0.02 เพื่อเพิ่มความถี่
+                    task.wait(0.03)
                 end
             end)
         end
@@ -130,7 +130,7 @@ local function moveToPosition(hrp, targetPos)
     local distance = (targetPos - hrp.Position).Magnitude
     local speed = math.min(distance * 50, 9999999999)
     flyVelocity.Velocity = direction * speed
-    task.wait(0.005 * (distance / 1000)) -- ลดหน่วงให้เร็วขึ้น
+    task.wait(0.005 * (distance / 1000))
     flyVelocity.Velocity = Vector3.new(0, -9.81, 0)
     task.wait(0.002)
     flyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -174,7 +174,7 @@ local function findTimer()
 end
 
 AutoWinsSection:NewToggle({
-    Title = "Auto Wins (Ultra Fast Loop TP + Undetected Fly)",
+    Title = "Auto Farm Wins",
     Default = false,
     Callback = function(v)
         state.autoWins = v
@@ -263,4 +263,4 @@ local function disableSpectate()
 end
 disableSpectate()
 
-print("✅ YANZ HUB Race Clicker Loaded Successfully [V0.7.6 ULTRA FAST AUTO CLICK]")
+print("✅ YANZ HUB Loaded Successfully")

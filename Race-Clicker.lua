@@ -38,8 +38,10 @@ function aclick()
     end)
 end
 
-local Window = Library.Window.new({
-    Title = "YANZ HUB | V0.5.1",
+local Window
+local ok_window, res_window = pcall(function()
+    return NothingLibrary.new({
+    Title = "YANZ HUB | V0.4.9",
     SubTitle = "By lphisv5 | Game : Race Clicker",
     TabSize = 180,
     Keybind = Enum.KeyCode.RightControl

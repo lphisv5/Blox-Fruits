@@ -13,7 +13,7 @@ local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/
 local NothingLibrary = loadstring(game:HttpGet(libURL))()
 
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | Race Clicker",
+    Title = "YANZ HUB | V0.6.5 [TESTING]",
     Description = "By lphisv5 | Game : 🏆 Race Clicker",
     Keybind = Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
@@ -41,7 +41,7 @@ local function doClick()
 end
 
 AutoClickSection:NewToggle({
-    Title = "Auto Click (0.1s)",
+    Title = "Auto Click",
     Default = false,
     Callback = function(v)
         state.autoClick = v
@@ -69,7 +69,7 @@ local function tpTo(num)
         for _, obj in ipairs(workspace:GetDescendants()) do
             if obj:IsA("BasePart") and tostring(obj.Name) == tostring(num) then
                 hrp.Anchored = true -- ยึดตัวละครชั่วคราว
-                hrp.CFrame = obj.CFrame + Vector3.new(0, 2, 0) -- ลดความสูงจาก 5 เป็น 2 เพื่อความสมูท
+                hrp.CFrame = obj.CFrame + Vector3.new(0, 1, 0) -- ลดความสูงจาก 5 เป็น 2 เพื่อความสมูท
                 task.wait(000.001) -- หน่วงสั้นมากเพื่อให้ CFrame เซ็ต
                 hrp.Anchored = false
                 success = true
@@ -98,16 +98,16 @@ local function findTimer()
 end
 
 AutoWinsSection:NewToggle({
-    Title = "Auto Wins (รั่วๆ)",
+    Title = "Auto Wins",
     Default = false,
     Callback = function(v)
         state.autoWins = v
         if v then
             task.spawn(function()
                 while state.autoWins do
-                    task.wait(0.03) -- ลดหน่วงจาก 0.1 เป็น 0.05 เพื่อให้เร็วสุดๆ
+                    task.wait(00.01) -- ลดหน่วงจาก 0.1 เป็น 0.05 เพื่อให้เร็วสุดๆ
                     local txt = findTimer()
-                    print("Timer Status: " .. txt) -- ดีบักสถานะ
+                    print("Timer Status: " .. txt)
                     if txt:find("Waiting") then
                         print("Waiting for race to start...")
                     elseif txt:find("Click to build") then
@@ -121,7 +121,7 @@ AutoWinsSection:NewToggle({
                         for _, num in ipairs(checkpoints) do
                             if not state.autoWins then break end
                             local success = tpTo(num)
-                            task.wait(000.001) -- ลดหน่วงจาก 0.1 เป็น 000.001 เพื่อ TP รั่วๆ
+                            task.wait(000000000000000.0000000000000001) -- ลดหน่วงจาก 0.1 เป็น 000.001 เพื่อ TP รั่วๆ
                         end
                     elseif txt:find("00:00") then
                         print("Race ended, resetting Auto Wins...")
@@ -138,7 +138,7 @@ AutoWinsSection:NewToggle({
 
 --===[ Speed Booster ]===--
 SpeedSection:NewToggle({
-    Title = "Enable Speed Booster (MAX)",
+    Title = "Speed Booster",
     Default = false,
     Callback = function(v)
         state.autoSpeed = v
@@ -175,30 +175,4 @@ SpeedSection:NewToggle({
     end
 })
 
---===[ Speed Booster ]===--
-SpeedSection:NewToggle({
-    Title = "Enable Speed Booster (MAX)",
-    Default = false,
-    Callback = function(v)
-        state.autoSpeed = v
-        if v then
-            task.spawn(function()
-                while state.autoSpeed do
-                    task.wait(0.1)
-                    pcall(function()
-                        local char = LocalPlayer.Character
-                        if char then
-                            local hum = char:FindFirstChildOfClass("Humanoid")
-                            if hum then
-                                hum.WalkSpeed = 999999999
-                                hum.JumpPower = 500
-                            end
-                        end
-                    end)
-                end
-            end)
-        end
-    end
-})
-
-print("✅ YANZ HUB Race Clicker Loaded Successfully [PRO FIXED VERSION]")
+print("✅ YANZ HUB Race Clicker Loaded Successfully")

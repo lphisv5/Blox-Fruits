@@ -1,5 +1,5 @@
 -- โหลด Library GUI หลัก
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua")))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
 
 -- ตั้งค่าหน้าต่างหลัก
 local Main = Library.new({

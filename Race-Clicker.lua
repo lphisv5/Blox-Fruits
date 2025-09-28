@@ -1,261 +1,200 @@
--- =====================
--- YANZ HUB | Advanced V1.0
--- =====================
+-- Library
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
+local library = loadstring(game:HttpGet(('https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wall%20v3')))()
 
--- =====================
--- Global variables
--- =====================
-getgenv().awin = false
-getgenv().aclick = false
-getgenv().is_racing = false
-getgenv().wins_count = 0
-getgenv().rebirths_count = 0
-getgenv().highscore_count = 0
-getgenv().topspeed_count = 0
-getgenv().hub_running = false
+local w = library:CreateWindow("🏆 - Race Clicker Script")
 
--- =====================
--- Services
--- =====================
+local b = w:CreateFolder("Main")
+local c = w:CreateFolder("Credits")
+
+-- Variables
+
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
 
--- =====================
--- Helpers
--- =====================
-local function get_hrp()
-    local char = LocalPlayer.Character
-    if char then return char:FindFirstChild("HumanoidRootPart") end
-    return nil
-end
+local lp = Players.LocalPlayer
 
-local function find_basepart(inst)
-    if not inst then return nil end
-    if inst:IsA("BasePart") then return inst end
-    local ok, bp = pcall(function() return inst:FindFirstChildWhichIsA("BasePart", true) end)
-    if ok and bp then return bp end
-    local cur = inst
-    while cur and cur.Parent do
-        cur = cur.Parent
-        if cur:IsA("BasePart") then return cur end
-        local ok2, bp2 = pcall(function() return cur:FindFirstChildWhichIsA("BasePart") end)
-        if ok2 and bp2 then return bp2 end
-    end
-    return nil
-end
+-- Tables
 
-local function safe_touch(part)
-    if not part then return end
-    local hrp = get_hrp()
-    if hrp then
-        pcall(function()
-            firetouchinterest(hrp, part, 0)
-            task.wait(0.06)
-            firetouchinterest(hrp, part, 1)
-        end)
-    end
-end
+local Maps = {"Home - 0 Rebirth", "Space - 2 Rebirth", "Ocean - 4 Rebirth"}
+local Eggs = {"5 Wins", "25 Wins", "175 Wins", "1k Wins", "10k Wins", "75k Wins", "250k Wins", "1M Wins", "2.5M Wins", "5M Wins"}
+local Codes = {"UPDATECLICKCODE", "hallowx3", "Accelhidden", "opx3code", "500KLikes", "Almost100MVisits", "1MGroupMembers", "Thankyou50M", "NewUpdate", "LetsGo5KLikes", "ThanksFor5MillionsVisits"}
 
--- =====================
--- Hub Main Thread
--- =====================
-local function hub_loop()
-    if getgenv().hub_running then return end
-    getgenv().hub_running = true
+-- Main
 
-    local click_func = nil
-    -- detect click function
-    task.spawn(function()
-        local ok, gc = pcall(getgc)
-        if ok and type(gc) == "table" then
-            for _, f in pairs(gc) do
-                if type(f) == "function" then
-                    local info = pcall(debug.getinfo, f)
-                    if info and info.name and tostring(info.name):lower():find("click") then
-                        click_func = f
-                        print("[Hub] Click function found via getgc:", info.name)
-                        break
-                    end
-                end
-            end
-        end
-        -- fallback RemoteEvent / ClickDetector
-        if not click_func then
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj:IsA("ClickDetector") then
-                    click_func = function() pcall(fireclickdetector, obj) end
-                    print("[Hub] Using ClickDetector:", obj:GetFullName())
-                    break
-                end
-            end
-        end
-    end)
-
-    -- main loop
-    task.spawn(function()
-        local race_number = 1
-        while true do
-            task.wait(0.03)
-
-            -- Auto Click
-            if getgenv().aclick and click_func then
-                pcall(click_func)
-            end
-
-            -- Auto Win
-            if getgenv().awin then
-                for _, v in pairs(Workspace:GetDescendants()) do
-                    if tostring(v.Name):lower():find("touchinterest") then
-                        local part = find_basepart(v.Parent)
-                        if part then safe_touch(part) end
-                    end
-                    if v:IsA("TextLabel") and v.Text and tostring(v.Text):lower():find("click") then
-                        local part = find_basepart(v) or find_basepart(v.Parent)
-                        if part then safe_touch(part) end
-                    end
-                end
-            end
-
-            -- Race Mode
-            if getgenv().is_racing then
-                -- TP to Number
-                local found = false
-                for _, v in pairs(Workspace:GetDescendants()) do
-                    if tostring(v.Name) == ("Number" .. race_number) then
-                        local part = find_basepart(v)
-                        if part then
-                            local hrp = get_hrp()
-                            if hrp then hrp.CFrame = part.CFrame + Vector3.new(0,3,0) end
-                            found = true
-                            break
-                        end
-                    end
-                end
-                race_number = found and race_number+1 or race_number+1
-                if race_number > 100 then race_number = 1 end
-            end
-        end
-    end)
-end
-
--- =====================
--- Status Updater
--- =====================
-local function update_status()
-    task.spawn(function()
-        while true do
-            task.wait(1)
-            local rebirths, wins, highscore, topspeed = 0,0,0,0
-            for _, v in pairs(Workspace:GetDescendants()) do
-                if v:IsA("TextLabel") and v.Text then
-                    local t = v.Text:lower()
-                    local n = tonumber(v.Text:match("%d+"))
-                    if n then
-                        if t:find("rebirths") then rebirths = n
-                        elseif t:find("wins") then wins = n
-                        elseif t:find("highscore") then highscore = n
-                        elseif t:find("topspeed") then topspeed = n
-                        end
-                    end
-                end
-            end
-            getgenv().rebirths_count = rebirths
-            getgenv().wins_count = wins
-            getgenv().highscore_count = highscore
-            getgenv().topspeed_count = topspeed
-        end
-    end)
-end
-
--- =====================
--- GUI Setup
--- =====================
-local ok_window, res_window = pcall(function()
-    return Library.new({
-        Title = "YANZ HUB | V0.5.0",
-        SubTitle = "By lphisv5 | Game: 🏆 Race Clicker",
-        TabSize = 180,
-        Keybind = Enum.KeyCode.RightControl
-    })
+local delay
+b:Slider("Auto Race Delay ( /s )",{
+    min = 0.01; -- min value of the slider
+    max = 1; -- max value of the slider
+    precise = true; -- max 2 decimals
+},function(value)
+    delay = value
 end)
-if not ok_window then
-    warn("Failed to create window:", res_window)
-    return
-end
-local Window = res_window
 
-local Farming = Window:NewTab({Title="Main", Description="Main Features", Icon="rbxassetid://7733960981"})
-local StatusTab = Window:NewTab({Title="Status", Description="Current Status", Icon="rbxassetid://7733960981"})
-local Credits = Window:NewTab({Title="Credits", Description="Credit Information", Icon="rbxassetid://7733960981"})
+b:Toggle("Auto Race",function(bool)
+    getgenv().AutoFinish = bool
+    
+    task.spawn(function()
+        while task.wait() do
+            if AutoFinish then
+                pcall(function()
+                    if lp.PlayerGui.TimerUI.RaceTimer.Visible then
+                        local char = lp.Character
+                        local hum = char.Humanoid
+                        local hrp = char.HumanoidRootPart
+                        
+                        hrp.CFrame = hrp.CFrame + Vector3.new(50000, 0, 0)
+                        task.wait(delay)
+                    end
+                end)
+            end
+        end
+    end)
+end)
 
-local AutoFarm = Farming:NewSection({Title="Main", Icon="rbxassetid://7733916988", Position="Left"})
-local StatusSection = StatusTab:NewSection({Title="Status Info", Icon="rbxassetid://7733916988", Position="Left"})
-local Credit = Credits:NewSection({Title="Credit:", Icon="rbxassetid://7733916988", Position="Left"})
-local Discord = Credits:NewSection({Title="Discord", Icon="rbxassetid://7743869054", Position="Right"})
+b:Toggle("Auto Speed",function(bool)
+    getgenv().AutoClick = bool
+    
+    task.spawn(function()
+        while task.wait() do
+            if AutoClick then
+                if lp.PlayerGui.ClicksUI.ClickHelper.Visible == true then
+                    game:GetService("ReplicatedStorage").Packages.Knit.Services.ClickService.RF.Click:InvokeServer()
+                end
+            end
+        end
+    end)
+end)
 
--- =====================
--- Status Labels
--- =====================
-local RebirthsLabel = StatusSection:NewTitle({Title="😇 Rebirths: 0"})
-local WinsLabel = StatusSection:NewTitle({Title="🏁 Wins: 0"})
-local HighscoreLabel = StatusSection:NewTitle({Title="⭐ Highscore: 0"})
-local TopSpeedLabel = StatusSection:NewTitle({Title="🏃 TopSpeed: 0"})
+b:Toggle("Auto Rebirth",function(bool)
+    getgenv().AutoRebirth = bool
+    
+    task.spawn(function()
+        while task.wait() do
+            if AutoRebirth then
+                game:GetService("ReplicatedStorage").Packages.Knit.Services.RebirthService.RF.Rebirth:InvokeServer()
+                task.wait(5)
+            end
+        end
+    end)
+end)
 
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if RebirthsLabel and RebirthsLabel.SetTitle then RebirthsLabel:SetTitle("😇 Rebirths: "..getgenv().rebirths_count) end
-        if WinsLabel and WinsLabel.SetTitle then WinsLabel:SetTitle("🏁 Wins: "..getgenv().wins_count) end
-        if HighscoreLabel and HighscoreLabel.SetTitle then HighscoreLabel:SetTitle("⭐ Highscore: "..getgenv().highscore_count) end
-        if TopSpeedLabel and TopSpeedLabel.SetTitle then TopSpeedLabel:SetTitle("🏃 TopSpeed: "..getgenv().topspeed_count) end
+warn("Ty for using my script bro <3 !")
+
+b:Label("===========",{
+    TextSize = 25,
+    TextColor = Color3.fromRGB(255,255,255),
+    BgColor = Color3.fromRGB(69,69,69)
+}) 
+
+local choosed_egg
+b:Dropdown("Choose Egg",{unpack(Eggs)},true,function(egg)
+    if egg == Eggs[1] then
+       choosed_egg = "Starter01"
+    elseif egg == Eggs[2] then
+        choosed_egg = "Starter02"
+    elseif egg == Eggs[3] then
+        choosed_egg = "Starter03"
+    elseif egg == Eggs[4] then
+        choosed_egg = "Starter04"
+    elseif egg == Eggs[5] then
+        choosed_egg = "Pro01"
+    elseif egg == Eggs[6] then
+        choosed_egg = "Pro02"
+    elseif egg == Eggs[7] then
+        choosed_egg = "Pro03"
+    elseif egg == Eggs[8] then
+        choosed_egg = "Space01"
+    elseif egg == Eggs[9] then
+        choosed_egg = "Ocean01"
     end
 end)
 
--- =====================
--- Toggles
--- =====================
-AutoFarm:NewToggle({
-    Title="Auto Click",
-    Description="Auto Click for you",
-    Default=false,
-    Callback=function(val)
-        getgenv().aclick = val
+b:Toggle("Auto Hatch",function(bool)
+    getgenv().AutoHatch = bool
+    
+    task.spawn(function()
+        while task.wait() do
+            if AutoHatch then
+                if choosed_egg then
+                    local args = {[1] = choosed_egg,[2] = "1",[3] = {}}
+                    game:GetService("ReplicatedStorage").Packages.Knit.Services.EggService.RF.Open:InvokeServer(unpack(args))
+                else
+                    warn("Please, choose your egg !")
+                end
+            end
+        end
+    end)
+end)
+
+b:Toggle("Auto Craft",function(bool)
+    getgenv().AutoCraft = bool
+    
+    task.spawn(function()
+        while task.wait(3) do
+            if AutoCraft then
+                game:GetService("ReplicatedStorage").Packages.Knit.Services.PetsService.RF.CraftAll:InvokeServer()
+            end
+        end
+    end)
+end)
+
+b:Toggle("Auto Equip",function(bool)
+    getgenv().AutoEquipBest = bool
+    
+    task.spawn(function()
+        while task.wait(3) do
+            if AutoEquipBest then
+                game:GetService("ReplicatedStorage").Packages.Knit.Services.PetsService.RF.EquipBest:InvokeServer()
+            end
+        end
+    end)
+end)
+
+b:Label("===========",{
+    TextSize = 25,
+    TextColor = Color3.fromRGB(255,255,255),
+    BgColor = Color3.fromRGB(69,69,69)
+}) 
+
+b:Dropdown("Map Teleport :",{unpack(Maps)},true,function(map)
+    if map == Maps[1] then
+        local args = {[1] = "Home"}
+        game:GetService("ReplicatedStorage").Packages.Knit.Services.WorldService.RF.Travel:InvokeServer(unpack(args))    
+    elseif map == Maps[2] then
+        local args = {[1] = "Space"}
+        game:GetService("ReplicatedStorage").Packages.Knit.Services.WorldService.RF.Travel:InvokeServer(unpack(args))
+    elseif map == Maps[3] then
+        local args = {[1] = "Ocean"}
+        game:GetService("ReplicatedStorage").Packages.Knit.Services.WorldService.RF.Travel:InvokeServer(unpack(args))
+    end  
+end)
+
+b:Button("Redeem Codes",function()
+    for i,v in (Codes) do
+        local args = {[1] = v}
+        game:GetService("ReplicatedStorage").Packages.Knit.Services.CodesService.RF.Redeem:InvokeServer(unpack(args))
     end
-})
-AutoFarm:NewToggle({
-    Title="Auto Win",
-    Description="Auto Win",
-    Default=false,
-    Callback=function(val)
-        getgenv().awin = val
-    end
-})
-AutoFarm:NewToggle({
-    Title="Race Mode",
-    Description="Auto Race Mode",
-    Default=false,
-    Callback=function(val)
-        getgenv().is_racing = val
-    end
+end)
+
+b:DestroyGui()
+
+c:Label("UI : Wally UI V3",{
+    TextSize = 20; -- Self Explaining
+    TextColor = Color3.fromRGB(255,255,255); -- Self Explaining
+    BgColor = Color3.fromRGB(69,69,69); -- Self Explaining
+    
 })
 
--- =====================
--- Credits & Discord
--- =====================
-Credit:NewTitle({Title="Created by lphisv5"})
-Credit:NewTitle({Title="Created by id2_lphisv5"})
-Discord:NewButton({
-    Title="Join Discord",
-    Description="https://discord.gg/DfVuhsZb",
-    Callback=function() setclipboard("https://discord.gg/DfVuhsZb") end
+c:Label("Made by : SQK#9773",{
+    TextSize = 15; -- Self Explaining
+    TextColor = Color3.fromRGB(255,255,255); -- Self Explaining
+    BgColor = Color3.fromRGB(69,69,69); -- Self Explaining
+    
 })
 
--- =====================
--- Start Hub
--- =====================
-hub_loop()
-update_status()
+c:Label("Any Problems? ^ Add me :)",{
+    TextSize = 15; -- Self Explaining
+    TextColor = Color3.fromRGB(255,255,255); -- Self Explaining
+    BgColor = Color3.fromRGB(69,69,69); -- Self Explaining
+    
+})

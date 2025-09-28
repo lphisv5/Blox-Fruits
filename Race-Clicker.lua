@@ -141,7 +141,7 @@ end
 local ok_window, res_window = pcall(function()
     return Library.new({
         Title = "YANZ HUB | V0.4.9",
-        SubTitle = "By lphisv5 | Game : Race Clicker",
+        SubTitle = "By lphisv5 | Game : 🏆 Race Clicker",
         TabSize = 180,
         Keybind = Enum.KeyCode.RightControl
     })
@@ -308,14 +308,19 @@ spawn(function()
     end
 end)
 
--- ✅ ใช้ NewTitle แทน NewLabel
+-- ✅ แก้ไข Credit Section
 Credit:NewTitle({
-    Title = "Made By lphisv5",
+    Title = "Created by lphisv5"
 })
 
+Credit:NewTitle({
+    Title = "Created by id2_lphisv5"
+})
+
+-- ✅ แก้ไข Discord Section
 Discord:NewButton({
-    Title = "Copy Discord Link",
-    Description = "Copy the Arcane Discord URL",
+    Title = "Join Discord",
+    Description = "https://discord.gg/DfVuhsZb",
     Callback = function()
         setclipboard("https://discord.gg/DfVuhsZb")
     end,

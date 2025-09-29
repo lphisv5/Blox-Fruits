@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -70,7 +71,7 @@ currentTheme = Saved.Theme or "Default"
 
 -- ================== Window ==================
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | V0.4.2", -- Updated version
+    Title = "YANZ HUB | V0.5.0",
     Description = "By lphisv5 | Game: +1 Blocks Every Second",
     Keybind = Enum.KeyCode[GUIKey] or Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282',
@@ -136,7 +137,7 @@ local function FastAttack()
     if VirtualInputManager then
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(posX, posY, 0, true, cam, 1)
-            task.wait(0.01) -- Small delay to simulate click
+            task.wait(0.01)
             VirtualInputManager:SendMouseButtonEvent(posX, posY, 0, false, cam, 1)
         end)
     end
@@ -148,7 +149,7 @@ local function startAutoFarm()
     loopThread = task.spawn(function()
         while isLoopRunning do
             pcall(FastAttack)
-            task.wait(0.5 + math.random() * 1.5) -- Random delay for anti-detection
+            task.wait(0.5 + math.random() * 1.5)
         end
         loopThread = nil
     end)
@@ -164,127 +165,80 @@ MainControlsSection:NewToggle({
     end
 })
 
--- Anti-AFK Section (Replaced Fast Block)
-local AntiAFKSection = MainTab:NewSection({ Title = "Anti-AFK", Position = "Right" })
-local isAntiAFKEnabled, antiAFKThread = false, nil
-local AntiAFKStatusLabel = AntiAFKSection:NewTitle("Status: Sleeping")
-AntiAFKSection:NewTitle("(Press F6)")
+-- FAME Tab
+local FameTab = Window:NewTab({ Title = "FAME", Description = "Auto Fame Features" })
+local FameSection = FameTab:NewSection({ Title = "Auto Fame", Position = "Left" })
 
-local function startAntiAFK()
-    if antiAFKThread then return end
-    antiAFKThread = task.spawn(function()
-        while isAntiAFKEnabled do
-            local vu = game:GetService("VirtualUser")
-            pcall(function()
-                vu:CaptureController()
-                vu:ClickButton1(Vector2.new(0, 0)) -- Click at origin (0, 0)
-            end)
-            task.wait(19 * 60) -- Click every 19 minutes
-        end
-        antiAFKThread = nil
-    end)
-end
-
-local function stopAntiAFK()
-    isAntiAFKEnabled = false
-    -- Thread will stop naturally
-end
-
-local function updateAntiAFKStatus()
-    AntiAFKStatusLabel:Set(isAntiAFKEnabled and "Status: Working" or "Status: Sleeping")
-end
-
-AntiAFKSection:NewToggle({
-    Title = "Enable Anti-AFK",
-    Default = false,
-    Callback = function(v)
-        isAntiAFKEnabled = v
-        updateAntiAFKStatus()
-        if v then startAntiAFK() end
-    end
-})
-
-addConn(UserInputService.InputBegan:Connect(function(input, processed)
-    if processed then return end
-    if input.KeyCode == Enum.KeyCode.F6 then
-        isAntiAFKEnabled = not isAntiAFKEnabled
-        updateAntiAFKStatus()
-        if isAntiAFKEnabled then startAntiAFK() end
-    end
-end))
-
--- Settings Tab
-local SettingsTab = Window:NewTab({ Title = "Settings", Description = "Configuration" })
-
--- Auto Fame Section (NEW)
-local AutoFameSection = SettingsTab:NewSection({ Title = "Auto Fame", Position = "Left" })
+-- Auto Fame Variables
 local isAutoFameEnabled = false
-local autoFameThread = nil
+local autoFameConnection = nil
 
 local function startAutoFame()
-    if autoFameThread then return end
-    autoFameThread = task.spawn(function()
-        while isAutoFameEnabled do
-            local vu = game:GetService("VirtualUser")
-            pcall(function()
-                vu:CaptureController()
-                vu:ClickButton1(Vector2.new(0, 0)) -- Click at origin (0, 0)
-            end)
-            task.wait(1) -- คลิกทุก 1 วินาที
-        end
-        autoFameThread = nil
+    if autoFameConnection then autoFameConnection:Disconnect() end
+    local vu = game:GetService("VirtualUser")
+    autoFameConnection = RunService.Stepped:Connect(function()
+        vu:CaptureController()
+        vu:ClickButton1(Vector2.new(0, 0))
     end)
 end
 
 local function stopAutoFame()
-    isAutoFameEnabled = false
-    -- Thread will stop naturally
+    if autoFameConnection then
+        autoFameConnection:Disconnect()
+        autoFameConnection = nil
+    end
 end
 
-AutoFameSection:NewToggle({
+FameSection:NewToggle({
     Title = "Enable Auto Fame",
     Default = false,
-    Callback = function(v)
-        isAutoFameEnabled = v
-        if v then startAutoFame() else stopAutoFame() end
+    Callback = function(value)
+        isAutoFameEnabled = value
+        if isAutoFameEnabled then
+            startAutoFame()
+        else
+            stopAutoFame()
+        end
     end
 })
 
--- Anti-AFK in Settings (Same as before)
-local SettingsAntiAFKSection = SettingsTab:NewSection({ Title = "Anti-AFK", Position = "Left" })
-local isSettingsAntiAFKEnabled = false
+-- Settings Tab
+local SettingsTab = Window:NewTab({ Title = "Settings", Description = "Configuration" })
+local SettingsFameSection = SettingsTab:NewSection({ Title = "Auto Fame", Position = "Left" })
 
-local function startSettingsAntiAFK()
-    if antiAFKThread then return end
-    antiAFKThread = task.spawn(function()
-        while isSettingsAntiAFKEnabled do
-            local vu = game:GetService("VirtualUser")
-            pcall(function()
-                vu:CaptureController()
-                vu:ClickButton1(Vector2.new(0, 0)) -- Click at origin (0, 0)
-            end)
-            task.wait(1) -- Original Anti-AFK behavior (every second for safety)
-        end
-        antiAFKThread = nil
+local isSettingsAutoFameEnabled = false
+
+local function startSettingsAutoFame()
+    if autoFameConnection then return end
+    local vu = game:GetService("VirtualUser")
+    autoFameConnection = RunService.Stepped:Connect(function()
+        vu:CaptureController()
+        vu:ClickButton1(Vector2.new(0, 0))
     end)
 end
 
-local function stopSettingsAntiAFK()
-    isSettingsAntiAFKEnabled = false
-    -- Thread will stop naturally
+local function stopSettingsAutoFame()
+    if autoFameConnection then
+        autoFameConnection:Disconnect()
+        autoFameConnection = nil
+    end
 end
 
-SettingsAntiAFKSection:NewToggle({
-    Title = "Anti-AFK",
+SettingsFameSection:NewToggle({
+    Title = "Auto Fame",
     Default = false,
-    Callback = function(v)
-        isSettingsAntiAFKEnabled = v
-        if v then startSettingsAntiAFK() else stopSettingsAntiAFK() end
+    Callback = function(value)
+        isSettingsAutoFameEnabled = value
+        if value then
+            startSettingsAutoFame()
+        else
+            stopSettingsAutoFame()
+        end
     end
 })
 
 -- Auto-Save Toggle
-SettingsAntiAFKSection:NewToggle({
+SettingsFameSection:NewToggle({
     Title = "Auto-Save Settings",
     Default = AutoSave,
     Callback = function(v)
@@ -393,9 +347,8 @@ UtilitySection:NewButton({
 -- Cleanup
 local function cleanup()
     isLoopRunning = false
-    stopAntiAFK()
-    stopSettingsAntiAFK()
     stopAutoFame()
+    stopSettingsAutoFame()
     for _, c in ipairs(connections) do
         pcall(function() if c.Disconnect then c:Disconnect() end end)
     end

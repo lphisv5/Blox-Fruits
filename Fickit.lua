@@ -40,7 +40,7 @@ end
 local Window
 local ok_window, res_window = pcall(function()
     return NothingLibrary.new({
-        Title = "YANZ HUB | V0.1.7",
+        Title = "YANZ HUB | V0.1.8",
         Description = "By lphisv5 | Game : Fich IT",
         Keybind = Enum.KeyCode.RightShift,
         Logo = 'http://www.roblox.com/asset/?id=125456335927282'

@@ -1,4 +1,4 @@
--- Services
+
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
@@ -65,12 +65,13 @@ local Saved = loadSettings()
 local ClickX = Saved.ClickX or 10
 local ClickY = Saved.ClickY or 10
 local GUIKey = Saved.GUIKey or "RightShift"
-local AutoSave = Saved.AutoSave or true -- New: Auto-save toggle
+local AutoSave = Saved.AutoSave or true
+local UseHitbox = Saved.UseHitbox or false
 currentTheme = Saved.Theme or "Default"
 
 -- ================== Window ==================
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | V0.4.0", -- Updated version
+    Title = "YANZ HUB | V0.4.1", -- Updated version
     Description = "By lphisv5 | Game: +1 Blocks Every Second",
     Keybind = Enum.KeyCode[GUIKey] or Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282',
@@ -98,6 +99,8 @@ local StatusLabel = MainControlsSection:NewTitle("Status: Sleeping")
 -- Globals
 local isLoopRunning, lastRun, loopThread = false, false, nil
 local connections = {}
+local hitbox = nil
+local antiAFKThread = nil
 
 local function addConn(conn)
     if conn then table.insert(connections, conn) end
@@ -126,13 +129,48 @@ local function updateStatus()
     end
 end
 
--- FastAttack (Click only, custom position)
+-- Create Transparent Hitbox
+local function createHitbox()
+    if hitbox then return end
+    hitbox = Instance.new("Part")
+    hitbox.Name = "YANZHitbox"
+    hitbox.Transparency = 1
+    hitbox.Size = Vector3.new(5, 5, 5) -- Adjustable size
+    hitbox.Anchored = true
+    hitbox.CanCollide = false
+    hitbox.Parent = workspace
+    Instance.new("ClickDetector", hitbox)
+    addConn(RunService.Heartbeat:Connect(function()
+        if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
+            hitbox.CFrame = LocalPlayer.Character.PrimaryPart.CFrame * CFrame.new(0, 0, -5) -- In front of player
+        end
+    end))
+end
+
+local function destroyHitbox()
+    if hitbox then
+        hitbox:Destroy()
+        hitbox = nil
+    end
+end
+
+if UseHitbox then createHitbox() end
+
+-- FastAttack (Click only, custom position or hitbox)
 local function FastAttack()
     local cam = workspace.CurrentCamera
     if not cam then return end
-    local viewport = cam.ViewportSize
-    local posX = math.floor(viewport.X * (ClickX / 100))
-    local posY = math.floor(viewport.Y * (ClickY / 100))
+    local posX, posY
+    if UseHitbox and hitbox then
+        local vec, onScreen = cam:WorldToViewportPoint(hitbox.Position)
+        if not onScreen then return end
+        posX = vec.X
+        posY = vec.Y
+    else
+        local viewport = cam.ViewportSize
+        posX = math.floor(viewport.X * (ClickX / 100))
+        posY = math.floor(viewport.Y * (ClickY / 100))
+    end
     if VirtualInputManager then
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(posX, posY, 0, true, cam, 1)
@@ -207,24 +245,34 @@ end))
 -- Settings Tab
 local SettingsTab = Window:NewTab({ Title = "Settings", Description = "Configuration" })
 local AntiAFKSection = SettingsTab:NewSection({ Title = "Anti-AFK", Position = "Left" })
-local isAntiAFKEnabled, antiAFKConnection = false, nil
+local isAntiAFKEnabled = false
 
 local function startAntiAFK()
-    if antiAFKConnection then antiAFKConnection:Disconnect() end
-    local vu = game:GetService("VirtualUser")
-    antiAFKConnection = addConn(RunService.Stepped:Connect(function()
-        pcall(function()
-            vu:CaptureController()
-            vu:ClickButton1(Vector2.new(0, 0))
-        end)
-    end))
+    if antiAFKThread then return end
+    antiAFKThread = task.spawn(function()
+        while isAntiAFKEnabled do
+            if not (isLoopRunning or isFastBlockRunning) then
+                local cam = workspace.CurrentCamera
+                if cam and VirtualInputManager then
+                    local viewport = cam.ViewportSize
+                    local randX = math.random(0, viewport.X)
+                    local randY = math.random(0, viewport.Y)
+                    pcall(function()
+                        VirtualInputManager:SendMouseButtonEvent(randX, randY, 0, true, cam, 1)
+                        task.wait(0.01)
+                        VirtualInputManager:SendMouseButtonEvent(randX, randY, 0, false, cam, 1)
+                    end)
+                end
+            end
+            task.wait(19 * 60) -- Every 19 minutes
+        end
+        antiAFKThread = nil
+    end)
 end
 
 local function stopAntiAFK()
-    if antiAFKConnection then
-        antiAFKConnection:Disconnect()
-        antiAFKConnection = nil
-    end
+    isAntiAFKEnabled = false
+    -- Thread will stop naturally
 end
 
 AntiAFKSection:NewToggle({
@@ -236,14 +284,14 @@ AntiAFKSection:NewToggle({
     end
 })
 
--- Auto-Save Toggle (New Feature)
+-- Auto-Save Toggle
 AntiAFKSection:NewToggle({
     Title = "Auto-Save Settings",
     Default = AutoSave,
     Callback = function(v)
         AutoSave = v
         if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave, UseHitbox = UseHitbox })
         end
     end
 })
@@ -258,7 +306,7 @@ ClickSection:NewSlider({
     Callback = function(v)
         ClickX = v
         if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave, UseHitbox = UseHitbox })
         end
     end
 })
@@ -270,10 +318,29 @@ ClickSection:NewSlider({
     Callback = function(v)
         ClickY = v
         if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave, UseHitbox = UseHitbox })
         end
     end
 })
+
+-- Hitbox Toggle
+local HitboxSection = SettingsTab:NewSection({ Title = "Hitbox" })
+HitboxSection:NewToggle({
+    Title = "Enable Transparent Hitbox",
+    Default = UseHitbox,
+    Callback = function(v)
+        UseHitbox = v
+        if v then
+            createHitbox()
+        else
+            destroyHitbox()
+        end
+        if AutoSave then
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave, UseHitbox = UseHitbox })
+        end
+    end
+})
+HitboxSection:NewTitle("Uses a transparent hitbox in front of player for clicks")
 
 -- GUI Key Input
 local KeySection = SettingsTab:NewSection({ Title = "GUI Key" })
@@ -285,7 +352,7 @@ KeySection:NewInput({
             GUIKey = txt
             Window:SetKeybind(Enum.KeyCode[txt])
             if AutoSave then
-                saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+                saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave, UseHitbox = UseHitbox })
             end
         end
     end
@@ -301,7 +368,7 @@ ThemeSection:NewDropdown({
         currentTheme = choice
         Window:SetTheme(choice)
         if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave, UseHitbox = UseHitbox })
         end
     end
 })
@@ -345,8 +412,8 @@ UtilitySection:NewButton({
 
 -- Cleanup
 local function cleanup()
-    isLoopRunning, isFastBlockRunning = false, false
-    stopAntiAFK()
+    isLoopRunning, isFastBlockRunning, isAntiAFKEnabled = false, false, false
+    destroyHitbox()
     for _, c in ipairs(connections) do
         pcall(function() if c.Disconnect then c:Disconnect() end end)
     end

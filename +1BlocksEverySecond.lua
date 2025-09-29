@@ -57,7 +57,7 @@ local AutoSave = Saved.AutoSave or true
 
 -- ================== Window ==================
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | V0.5.0",
+    Title = "YANZ HUB | V0.5.8",
     Description = "By lphisv5 | Game: +1 Blocks Every Second",
     Keybind = Enum.KeyCode[GUIKey] or Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
@@ -73,8 +73,8 @@ local locationsWorld1 = {
 }
 
 local locationsWorld2 = {
-    ["World 2 Portal"] = Vector3.new(8190.00, 19.11, -38.60),
-    ["World 1 Portal"] = Vector3.new(-41.00,9.48,-31.43)
+    ["World 2"] = Vector3.new(8190.00, 19.11, -38.60),
+    ["World 1"] = Vector3.new(-41.00,9.48,-31.43)
 }
 
 local eggsWorld1 = {
@@ -142,7 +142,7 @@ local autoHatchConnection = nil
 
 local function startAutoHatch(eggName, eggPos, targetWorld)
     if getCurrentWorld() ~= targetWorld then
-        teleportTo(targetWorld == 2 and Vector3.new(65.00, 4.30, 97.97) or locationsWorld2["World 1 Portal"])
+        teleportTo(targetWorld == 2 and Vector3.new(65.00, 4.30, 97.97) or locationsWorld2["World 1"])
         task.wait(2)
     end
     teleportTo(eggPos)
@@ -212,11 +212,10 @@ FameSection:NewToggle({
 
 -- TELEPORT Tab
 local TeleportTab = Window:NewTab({ Title = "TELEPORT", Description = "Teleport Features" })
-local World1Section = TeleportTab:NewSection({ Title = "World 1 Locations", Position = "Left" })
-local World2Section = TeleportTab:NewSection({ Title = "World 2 Locations", Position = "Right" })
+local World1Section = TeleportTab:NewSection({ Title = "Teleport World", Position = "Left" })
+local World2Section = TeleportTab:NewSection({ Title = "Teleport World", Position = "Right" })
 
 for name, pos in pairs(locationsWorld1) do World1Section:NewButton({ Title = name, Callback = function() teleportTo(pos) end }) end
-World1Section:NewButton({ Title = "World 2 Portal", Callback = function() teleportTo(Vector3.new(65.00, 4.30, 97.97)) end })
 for name, pos in pairs(locationsWorld2) do World2Section:NewButton({ Title = name, Callback = function() teleportTo(pos) end }) end
 
 -- EGGS Tab

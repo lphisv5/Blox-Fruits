@@ -33,17 +33,33 @@ local Window = NothingLibrary.new({
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
 })
 
--- Tabs & Sections
+-- HOME Tab (โปรโมท Discord)
+local HomeTab = Window:NewTab({Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981"})
+local HomeSection = HomeTab:NewSection({Title = "Home", Icon = "rbxassetid://7733916988", Position = "Left"})
+
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Icon = "rbxassetid://7733960981",
+    Callback = function()
+        pcall(function()
+            setclipboard("https://discord.gg/DfVuhsZb")
+            NothingLibrary:Notify({
+                Title = "Copied!",
+                Content = "Successfully copied the link",
+                Duration = 5
+            })
+        end)
+    end
+})
+
+-- MAIN Tab (Auto Farm Block)
 local MainTab = Window:NewTab({Title = "MAIN", Description = "Auto Farm Features", Icon = "rbxassetid://7733960981"})
 local MainControlsSection = MainTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
-local MainSettingsSection = MainTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
 
 -- Status Label
 local StatusLabel = MainControlsSection:NewTitle("Status: Sleeping")
 
--- Globals / Config
-local clickDelay = 0.1
-local autoClickPos = {X = nil, Y = nil}
+-- Globals
 local isLoopRunning = false
 local lastRun = false
 local loopThread = nil
@@ -73,11 +89,12 @@ local function updateStatus()
     end
 end
 
--- Safe Click (รองรับ background click บน Windows)
-local function SafeClick(pos)
-    if not pos or not pos.X or not pos.Y then return end
+-- Safe Click (background click Windows)
+local function SafeClick()
     local cam = workspace.CurrentCamera
     if not cam then return end
+    local viewport = cam.ViewportSize
+    local pos = {X = viewport.X/2, Y = viewport.Y/2}
 
     if VirtualInputManager then
         pcall(function()
@@ -87,19 +104,14 @@ local function SafeClick(pos)
     end
 end
 
--- Click Loop
-local function ClickLoop()
-    local posToClick = autoClickPos.X and autoClickPos.Y and autoClickPos or {X = workspace.CurrentCamera.ViewportSize.X/2, Y = workspace.CurrentCamera.ViewportSize.Y/2}
-    SafeClick(posToClick)
-end
-
--- Start Auto Farm
+-- Auto Farm Loop
 local function startAutoFarm()
     if loopThread then return end
     loopThread = task.spawn(function()
         while isLoopRunning do
-            pcall(ClickLoop)
-            task.wait(clickDelay)
+            SafeClick()
+            -- Delay 0.5 – 2 วินาที แบบสุ่ม
+            task.wait(0.5 + math.random() * 1.5)
         end
         loopThread = nil
     end)
@@ -113,49 +125,6 @@ MainControlsSection:NewToggle({
         isLoopRunning = value
         updateStatus()
         if isLoopRunning then startAutoFarm() end
-    end
-})
-
--- Set Click Position
-MainControlsSection:NewButton({
-    Title = "SET FARM POSITION",
-    Callback = function()
-        local settingPosition = true
-        updateLabel(StatusLabel, "🖱️ Click anywhere to set farm position...")
-        local conn
-        conn = addConn(UserInputService.InputBegan:Connect(function(input, processed)
-            if processed or not settingPosition then return end
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                local mousePos = UserInputService:GetMouseLocation()
-                autoClickPos = {X = mousePos.X, Y = mousePos.Y}
-                updateLabel(StatusLabel, "✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
-                settingPosition = false
-                if conn then conn:Disconnect() end
-                task.wait(1)
-                updateStatus()
-            end
-        end))
-        task.delay(10, function()
-            if settingPosition then
-                settingPosition = false
-                if conn then conn:Disconnect() end
-                updateLabel(StatusLabel, "❌ Position set cancelled")
-                task.wait(2)
-                updateStatus()
-            end
-        end)
-    end
-})
-
--- Speed Slider
-MainSettingsSection:NewSlider({
-    Title = "Farm Delay (seconds)",
-    Min = 0.01,
-    Max = 2,
-    Default = 0.1,
-    Callback = function(value)
-        clickDelay = value
-        updateStatus()
     end
 })
 

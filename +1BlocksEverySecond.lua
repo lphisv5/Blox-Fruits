@@ -227,9 +227,50 @@ addConn(UserInputService.InputBegan:Connect(function(input, processed)
     end
 end))
 
+-- ============= NEW: Settings Tab =============
+
+local SettingsTab = Window:NewTab({Title = "Settings", Description = "Configuration", Icon = "rbxassetid://7733960981"})
+local AntiAFKSection = SettingsTab:NewSection({Title = "Anti-AFK", Icon = "rbxassetid://7733916988", Position = "Left"})
+
+-- Anti-AFK Variables
+local isAntiAFKEnabled = false
+local antiAFKConnection = nil
+
+local function startAntiAFK()
+    if antiAFKConnection then antiAFKConnection:Disconnect() end
+    local vu = game:GetService("VirtualUser")
+    antiAFKConnection = RunService.Stepped:Connect(function()
+        vu:CaptureController()
+        vu:ClickButton1(Vector2.new(0, 0)) -- คลิกที่จุดเริ่มต้น (ด้านบนซ้าย)
+    end)
+end
+
+local function stopAntiAFK()
+    if antiAFKConnection then
+        antiAFKConnection:Disconnect()
+        antiAFKConnection = nil
+    end
+end
+
+AntiAFKSection:NewToggle({
+    Title = "Anti-AFK",
+    Default = false,
+    Callback = function(value)
+        isAntiAFKEnabled = value
+        if isAntiAFKEnabled then
+            startAntiAFK()
+        else
+            stopAntiAFK()
+        end
+    end
+})
+
+-- =============================================
+
 -- Cleanup
 local function cleanup()
     isLoopRunning = false
+    stopAntiAFK()
     for _, c in ipairs(connections) do
         pcall(function() if c and c.Disconnect then c:Disconnect() end end)
     end
@@ -243,6 +284,4 @@ addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
 
--- Initial status
 updateStatus()
-print("YANZ HUB - Auto Farm Block (FastAttack) Loaded")

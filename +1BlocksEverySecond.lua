@@ -1,14 +1,10 @@
 -- Services
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
 
 -- Player
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
-local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 
 -- Virtual Input
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
@@ -37,31 +33,22 @@ local Window = NothingLibrary.new({
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
 })
 
--- Tabs
-local HomeTab = Window:NewTab({Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981"})
-local MainTab = Window:NewTab({Title = "MAIN", Description = "Auto Click Features", Icon = "rbxassetid://7733960981"})
-
--- Sections
-local HomeSection = HomeTab:NewSection({Title = "Home", Icon = "rbxassetid://7733916988", Position = "Left"})
+-- Tabs & Sections
+local MainTab = Window:NewTab({Title = "MAIN", Description = "Auto Farm Features", Icon = "rbxassetid://7733960981"})
 local MainControlsSection = MainTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
 local MainSettingsSection = MainTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
 
--- UI Labels
-local posLabel = MainControlsSection:NewTitle("Player Pos: Waiting...")
-local heightLabel = HomeSection:NewTitle("Height: Waiting...")
-local StatusLabel = MainControlsSection:NewTitle("Status: Initializing...")
+-- Status Label
+local StatusLabel = MainControlsSection:NewTitle("Status: Sleeping")
 
 -- Globals / Config
 local clickDelay = 0.1
-local humanizeClicks = false
 local autoClickPos = {X = nil, Y = nil}
-local lastClickPos = nil
 local isLoopRunning = false
 local clickCount = 0
 local loopThread = nil
-
--- Connections
 local connections = {}
+
 local function addConn(conn) if conn then table.insert(connections, conn) end return conn end
 
 -- Helpers
@@ -75,27 +62,29 @@ local function updateLabel(lbl, text)
     end)
 end
 
-local function updateStatusLabel()
-    local statusText = "Status: " .. (isLoopRunning and "Running" or "Ready")
-    statusText = statusText .. " | Delay: " .. string.format("%.2f", clickDelay) .. "s"
-    statusText = statusText .. " | Humanization: " .. (humanizeClicks and "ON" or "OFF")
-    statusText = statusText .. " | Clicks: " .. clickCount
-    statusText = statusText .. " | Last Pos: " .. (lastClickPos and string.format("(%.0f, %.0f)", lastClickPos.X, lastClickPos.Y) or "N/A")
-    updateLabel(StatusLabel, statusText)
+local function updateStatus()
+    if isLoopRunning then
+        updateLabel(StatusLabel, "Status: Working")
+    elseif not isLoopRunning and clickCount > 0 then
+        updateLabel(StatusLabel, "Status: Not Working")
+    else
+        updateLabel(StatusLabel, "Status: Sleeping")
+    end
 end
 
--- Safe Click
+-- Safe Click (รองรับ background click บน Windows)
 local function SafeClick(pos)
     if not pos or not pos.X or not pos.Y then return end
     local cam = workspace.CurrentCamera
     if not cam then return end
-    local viewport = cam.ViewportSize
-    if pos.X < 0 or pos.Y < 0 or pos.X > viewport.X or pos.Y > viewport.Y then return end
-    if not VirtualInputManager then return end
-    pcall(function()
-        VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, cam, 1)
-        VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, cam, 1)
-    end)
+
+    -- Windows background click
+    if VirtualInputManager then
+        pcall(function()
+            VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, cam, 1)
+            VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, false, cam, 1)
+        end)
+    end
 end
 
 -- Click Loop
@@ -103,52 +92,38 @@ local function ClickLoop()
     local posToClick = autoClickPos.X and autoClickPos.Y and autoClickPos or {X = workspace.CurrentCamera.ViewportSize.X/2, Y = workspace.CurrentCamera.ViewportSize.Y/2}
     SafeClick(posToClick)
     clickCount = clickCount + 1
-    lastClickPos = posToClick
-    updateStatusLabel()
+    updateStatus()
 end
 
--- Start / Stop AutoClicker
-local function startAutoClicker()
+-- Start Auto Farm
+local function startAutoFarm()
     if loopThread then return end
     loopThread = task.spawn(function()
         while isLoopRunning do
             pcall(ClickLoop)
-            local delayTime = humanizeClicks and clickDelay * (0.8 + math.random() * 0.4) or clickDelay
-            task.wait(delayTime)
+            task.wait(clickDelay)
         end
         loopThread = nil
     end)
 end
 
--- Home Button
-HomeSection:NewButton({
-    Title = "Join Discord",
-    Icon = "rbxassetid://7733960981",
-    Callback = function()
-        pcall(function()
-            setclipboard("https://discord.gg/DfVuhsZb")
-            NothingLibrary:Notify({Title = "Copied!", Content = "Successfully copied the link", Duration = 5})
-        end)
-    end
-})
-
--- Auto Click Toggle
+-- Auto Farm Toggle
 MainControlsSection:NewToggle({
-    Title = "Auto Click",
-    Default = isLoopRunning,
+    Title = "Auto Farm Block",
+    Default = false,
     Callback = function(value)
         isLoopRunning = value
-        updateStatusLabel()
-        if isLoopRunning then startAutoClicker() end
+        updateStatus()
+        if isLoopRunning then startAutoFarm() end
     end
 })
 
 -- Set Click Position
 MainControlsSection:NewButton({
-    Title = "SET CLICK POSITION",
+    Title = "SET FARM POSITION",
     Callback = function()
         local settingPosition = true
-        updateLabel(StatusLabel, "🖱️ Click anywhere to set position...")
+        updateLabel(StatusLabel, "🖱️ Click anywhere to set farm position...")
         local conn
         conn = addConn(UserInputService.InputBegan:Connect(function(input, processed)
             if processed or not settingPosition then return end
@@ -159,7 +134,7 @@ MainControlsSection:NewButton({
                 settingPosition = false
                 if conn then conn:Disconnect() end
                 task.wait(1)
-                updateStatusLabel()
+                updateStatus()
             end
         end))
         task.delay(10, function()
@@ -168,7 +143,7 @@ MainControlsSection:NewButton({
                 if conn then conn:Disconnect() end
                 updateLabel(StatusLabel, "❌ Position set cancelled")
                 task.wait(2)
-                updateStatusLabel()
+                updateStatus()
             end
         end)
     end
@@ -176,78 +151,26 @@ MainControlsSection:NewButton({
 
 -- Speed Slider
 MainSettingsSection:NewSlider({
-    Title = "Click Delay (seconds)",
+    Title = "Farm Delay (seconds)",
     Min = 0.01,
     Max = 2,
-    Default = clickDelay,
+    Default = 0.1,
     Callback = function(value)
         clickDelay = value
-        updateStatusLabel()
-        pcall(function()
-            NothingLibrary:Notify({Title = "Speed Updated", Content = "Click delay set to " .. string.format("%.2f", value) .. "s", Duration = 2})
-        end)
+        updateStatus()
     end
 })
-
--- Humanization Toggle
-MainSettingsSection:NewToggle({
-    Title = "Enable Humanization",
-    Default = humanizeClicks,
-    Callback = function(value)
-        humanizeClicks = value
-        updateStatusLabel()
-        pcall(function()
-            NothingLibrary:Notify({Title = "Humanization " .. (value and "Enabled" or "Disabled"), Content = value and "Click timing randomized" or "Click timing consistent", Duration = 2})
-        end)
-    end
-})
-
--- Position Updater
-local function startPositionUpdater(char)
-    if humanoidRootPart and humanoidRootPart.Parent then
-        humanoidRootPart = char:WaitForChild("HumanoidRootPart")
-    end
-    -- Disconnect old RenderStepped
-    for i=#connections,1,-1 do
-        local c = connections[i]
-        if c and c.Name == "RenderStepped" then
-            c:Disconnect()
-            table.remove(connections, i)
-        end
-    end
-    local renderConn = RunService.RenderStepped:Connect(function()
-        pcall(function()
-            if humanoidRootPart and humanoidRootPart.Parent then
-                local pos = humanoidRootPart.Position
-                updateLabel(posLabel, string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
-                updateLabel(heightLabel, string.format("Height: Y=%.2f", pos.Y))
-            else
-                updateLabel(posLabel, "Player Pos: Waiting...")
-                updateLabel(heightLabel, "Height: Waiting...")
-            end
-        end)
-    end)
-    renderConn.Name = "RenderStepped"
-    addConn(renderConn)
-end
-
--- Init Position Updater
-if LocalPlayer.Character then startPositionUpdater(LocalPlayer.Character) end
-addConn(LocalPlayer.CharacterAdded:Connect(startPositionUpdater))
 
 -- Emergency Stop F6/F7
 addConn(UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
         isLoopRunning = not isLoopRunning
-        updateStatusLabel()
-        if isLoopRunning then startAutoClicker() end
+        updateStatus()
+        if isLoopRunning then startAutoFarm() end
     elseif input.KeyCode == Enum.KeyCode.F7 then
         isLoopRunning = false
-        updateStatusLabel()
-        pcall(function()
-            NothingLibrary:Notify({Title = "FORCE STOPPED", Content = "Auto Clicker stopped by F7", Duration = 2})
-        end)
+        updateStatus()
     end
 end))
 
@@ -269,5 +192,5 @@ addConn(Players.PlayerRemoving:Connect(function(player)
 end))
 
 -- Initial Status
-updateStatusLabel()
-print("YANZ HUB - Loaded Successfully")
+updateStatus()
+print("YANZ HUB - Auto Farm Block Script Loaded Successfully")

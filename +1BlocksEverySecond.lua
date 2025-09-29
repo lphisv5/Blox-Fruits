@@ -45,7 +45,7 @@ local StatusLabel = MainControlsSection:NewTitle("Status: Sleeping")
 local clickDelay = 0.1
 local autoClickPos = {X = nil, Y = nil}
 local isLoopRunning = false
-local clickCount = 0
+local lastRun = false
 local loopThread = nil
 local connections = {}
 
@@ -64,8 +64,9 @@ end
 
 local function updateStatus()
     if isLoopRunning then
+        lastRun = true
         updateLabel(StatusLabel, "Status: Working")
-    elseif not isLoopRunning and clickCount > 0 then
+    elseif not isLoopRunning and lastRun then
         updateLabel(StatusLabel, "Status: Not Working")
     else
         updateLabel(StatusLabel, "Status: Sleeping")
@@ -78,7 +79,6 @@ local function SafeClick(pos)
     local cam = workspace.CurrentCamera
     if not cam then return end
 
-    -- Windows background click
     if VirtualInputManager then
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(pos.X, pos.Y, 0, true, cam, 1)
@@ -91,8 +91,6 @@ end
 local function ClickLoop()
     local posToClick = autoClickPos.X and autoClickPos.Y and autoClickPos or {X = workspace.CurrentCamera.ViewportSize.X/2, Y = workspace.CurrentCamera.ViewportSize.Y/2}
     SafeClick(posToClick)
-    clickCount = clickCount + 1
-    updateStatus()
 end
 
 -- Start Auto Farm

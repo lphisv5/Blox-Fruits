@@ -18,7 +18,7 @@ if ok_vim then VirtualInputManager = vim end
 local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
 local NothingLibrary
 local ok_lib, lib = pcall(function()
-    local code = game:HttpGetAsync(libURL)
+    local code = game:HttpGet(libURL)
     if code then
         local func, err = loadstring(code)
         if not func then warn("Loadstring error:", err) return nil end
@@ -63,7 +63,7 @@ local Window = NothingLibrary.new({
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
 })
 
--- Locations and Eggs
+-- ================== Locations and Eggs ==================
 local locationsWorld1 = {
     LOBBY = Vector3.new(-41.97, 9.48, 32.55),
     ["Gem Shop"] = Vector3.new(-90.08, 3.52, -51.50),
@@ -93,56 +93,38 @@ local eggsWorld2 = {
     ["Space Clover Egg 699R$"] = Vector3.new(8161.00, 18.68, -125.50)
 }
 
--- Check current world based on player position
+-- ================== Helper Functions ==================
 local function getCurrentWorld()
-    local playerPos = LocalPlayer.Character and LocalPlayer.Character.HumanoidRootPart.Position
+    local playerPos = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position
     if not playerPos then return 1 end
     return playerPos.X > 8000 and 2 or 1
 end
 
--- Enhanced Teleport Function
 local function teleportTo(position)
     pcall(function()
-        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character.Humanoid or LocalPlayer.Character.Humanoid.Health <= 0 then
+        if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
             NothingLibrary:Notify({ Title = "Error", Content = "Character not loaded or dead.", Duration = 5 })
             return
         end
 
-        local humanoidRootPart = LocalPlayer.Character.HumanoidRootPart
-        local targetCFrame = CFrame.new(position)
-
-        -- Check for safe teleport position to avoid collisions
-        local rayOrigin = position + Vector3.new(0, 5, 0)
-        local rayDirection = Vector3.new(0, -10, 0)
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        local targetCFrame = CFrame.new(position + Vector3.new(0, 3, 0))
         local raycastParams = RaycastParams.new()
         raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
         raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-        local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, raycastParams)
 
-        if raycastResult then
-            targetCFrame = CFrame.new(raycastResult.Position + Vector3.new(0, 3, 0))
-        else
-            targetCFrame = CFrame.new(position + Vector3.new(0, 3, 0))
-        end
+        local rayResult = Workspace:Raycast(position + Vector3.new(0,5,0), Vector3.new(0,-10,0), raycastParams)
+        if rayResult then targetCFrame = CFrame.new(rayResult.Position + Vector3.new(0,3,0)) end
 
-        -- Smooth teleport using TweenService
-        local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-        local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = targetCFrame})
+        local tween = TweenService:Create(hrp, TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {CFrame = targetCFrame})
         tween:Play()
-        
         tween.Completed:Wait()
         task.wait(0.1)
 
-        -- Verify position
-        local newPos = humanoidRootPart.Position
-        local distance = (newPos - position).Magnitude
-        if distance > 5 then
-            NothingLibrary:Notify({ Title = "Teleport Warning", Content = "Teleport may have failed. Retrying...", Duration = 5 })
-            humanoidRootPart.CFrame = targetCFrame
+        if (hrp.Position - position).Magnitude > 5 then
+            hrp.CFrame = targetCFrame
             task.wait(0.5)
-            newPos = humanoidRootPart.Position
-            distance = (newPos - position).Magnitude
-            if distance > 5 then
+            if (hrp.Position - position).Magnitude > 5 then
                 NothingLibrary:Notify({ Title = "Teleport Error", Content = "Failed to teleport accurately.", Duration = 5 })
                 return
             end
@@ -152,55 +134,34 @@ local function teleportTo(position)
     end)
 end
 
--- Auto Hatch Function
+-- ================== Auto Hatch ==================
 local isAutoHatchEnabled = false
 local autoHatchConnection = nil
 
 local function startAutoHatch(eggName, eggPos, targetWorld)
-    local currentWorld = getCurrentWorld()
-    if currentWorld ~= targetWorld then
+    if getCurrentWorld() ~= targetWorld then
         teleportTo(targetWorld == 2 and Vector3.new(65.00, 4.30, 97.97) or locationsWorld2["World 1 Portal"])
         task.wait(2)
     end
-    
     teleportTo(eggPos)
-    
     if autoHatchConnection then autoHatchConnection:Disconnect() end
+
     autoHatchConnection = RunService.Heartbeat:Connect(function()
         pcall(function()
-            local args = {
-                [1] = eggName:match("^(.+) %d+.*$") or eggName
-            }
+            local args = { eggName:match("^(.+) %d+.*$") or eggName }
             game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("HatchEgg"):FireServer(unpack(args))
         end)
     end)
+    isAutoHatchEnabled = true
 end
 
 local function stopAutoHatch()
-    if autoHatchConnection then
-        autoHatchConnection:Disconnect()
-        autoHatchConnection = nil
-    end
+    if autoHatchConnection then autoHatchConnection:Disconnect() end
+    autoHatchConnection = nil
     isAutoHatchEnabled = false
 end
 
--- HOME Tab
-local HomeTab = Window:NewTab({ Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981" })
-local HomeSection = HomeTab:NewSection({ Title = "Home", Position = "Left" })
-HomeSection:NewButton({
-    Title = "Join Discord",
-    Callback = function()
-        pcall(function()
-            setclipboard("https://discord.gg/DfVuhsZb")
-            NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
-        end)
-    end
-})
-
--- FAME Tab
-local FameTab = Window:NewTab({ Title = "FAME", Description = "Auto Fame Features" })
-local FameSection = FameTab:NewSection({ Title = "Auto Fame", Position = "Left" })
-
+-- ================== Auto Fame ==================
 local isAutoFameEnabled = false
 local autoFameConnection = nil
 local vu = game:GetService("VirtualUser")
@@ -212,36 +173,38 @@ local function startAutoFameAndAntiAFK()
         if not cam then return end
         local viewport = cam.ViewportSize
 
-        pcall(function()
-            vu:CaptureController()
-            vu:ClickButton1(Vector2.new(0, 0))
-        end)
-
+        pcall(function() vu:CaptureController() vu:ClickButton1(Vector2.new(0,0)) end)
         task.wait(1)
-        pcall(function()
-            vu:CaptureController()
-            vu:ClickButton1(Vector2.new(0, viewport.Y - 1))
-        end)
+        pcall(function() vu:CaptureController() vu:ClickButton1(Vector2.new(0,viewport.Y-1)) end)
     end)
 end
 
 local function stopAutoFameAndAntiAFK()
-    if autoFameConnection then
-        autoFameConnection:Disconnect()
-        autoFameConnection = nil
-    end
+    if autoFameConnection then autoFameConnection:Disconnect() end
+    autoFameConnection = nil
 end
 
+-- ================== GUI Tabs ==================
+-- HOME Tab
+local HomeTab = Window:NewTab({ Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981" })
+local HomeSection = HomeTab:NewSection({ Title = "Home", Position = "Left" })
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Callback = function()
+        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
+        NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
+    end
+})
+
+-- FAME Tab
+local FameTab = Window:NewTab({ Title = "FAME", Description = "Auto Fame Features" })
+local FameSection = FameTab:NewSection({ Title = "Auto Fame", Position = "Left" })
 FameSection:NewToggle({
     Title = "Auto Fame",
     Default = false,
     Callback = function(value)
         isAutoFameEnabled = value
-        if isAutoFameEnabled then
-            startAutoFameAndAntiAFK()
-        else
-            stopAutoFameAndAntiAFK()
-        end
+        if value then startAutoFameAndAntiAFK() else stopAutoFameAndAntiAFK() end
     end
 })
 
@@ -250,30 +213,9 @@ local TeleportTab = Window:NewTab({ Title = "TELEPORT", Description = "Teleport 
 local World1Section = TeleportTab:NewSection({ Title = "World 1 Locations", Position = "Left" })
 local World2Section = TeleportTab:NewSection({ Title = "World 2 Locations", Position = "Right" })
 
-for name, pos in pairs(locationsWorld1) do
-    World1Section:NewButton({
-        Title = name,
-        Callback = function()
-            teleportTo(pos)
-        end
-    })
-end
-
-World1Section:NewButton({
-    Title = "World 2 Portal",
-    Callback = function()
-        teleportTo(Vector3.new(65.00, 4.30, 97.97))
-    end
-})
-
-for name, pos in pairs(locationsWorld2) do
-    World2Section:NewButton({
-        Title = name,
-        Callback = function()
-            teleportTo(pos)
-        end
-    })
-end
+for name, pos in pairs(locationsWorld1) do World1Section:NewButton({ Title = name, Callback = function() teleportTo(pos) end }) end
+World1Section:NewButton({ Title = "World 2 Portal", Callback = function() teleportTo(Vector3.new(65.00, 4.30, 97.97)) end })
+for name, pos in pairs(locationsWorld2) do World2Section:NewButton({ Title = name, Callback = function() teleportTo(pos) end }) end
 
 -- EGGS Tab
 local EggsTab = Window:NewTab({ Title = "EGGS", Description = "Egg Locations & Auto Hatch" })
@@ -284,11 +226,7 @@ for eggName, eggPos in pairs(eggsWorld1) do
     EggsWorld1Section:NewButton({
         Title = eggName,
         Callback = function()
-            if isAutoHatchEnabled then
-                stopAutoHatch()
-                NothingLibrary:Notify({ Title = "Auto Hatch", Content = "Stopped previous Auto Hatch.", Duration = 5 })
-            end
-            isAutoHatchEnabled = true
+            if isAutoHatchEnabled then stopAutoHatch() end
             startAutoHatch(eggName, eggPos, 1)
             NothingLibrary:Notify({ Title = "Auto Hatch", Content = "Started Auto Hatch for " .. eggName, Duration = 5 })
         end
@@ -299,11 +237,7 @@ for eggName, eggPos in pairs(eggsWorld2) do
     EggsWorld2Section:NewButton({
         Title = eggName,
         Callback = function()
-            if isAutoHatchEnabled then
-                stopAutoHatch()
-                NothingLibrary:Notify({ Title = "Auto Hatch", Content = "Stopped previous Auto Hatch.", Duration = 5 })
-            end
-            isAutoHatchEnabled = true
+            if isAutoHatchEnabled then stopAutoHatch() end
             startAutoHatch(eggName, eggPos, 2)
             NothingLibrary:Notify({ Title = "Auto Hatch", Content = "Started Auto Hatch for " .. eggName, Duration = 5 })
         end
@@ -312,106 +246,42 @@ end
 
 EggsTab:NewSection({ Title = "Auto Hatch Control", Position = "Left" }):NewButton({
     Title = "Stop Auto Hatch",
-    Callback = function()
-        stopAutoHatch()
-        NothingLibrary:Notify({ Title = "Auto Hatch", Content = "Auto Hatch stopped.", Duration = 5 })
-    end
+    Callback = function() stopAutoHatch() NothingLibrary:Notify({ Title = "Auto Hatch", Content = "Auto Hatch stopped.", Duration = 5 }) end
 })
 
--- Settings Tab
+-- SETTINGS Tab
 local SettingsTab = Window:NewTab({ Title = "Settings", Description = "Configuration" })
-local SettingsFameSection = SettingsTab:NewSection({ Title = "Auto Fame", Position = "Left" })
-
-SettingsFameSection:NewToggle({
-    Title = "Auto Save Settings",
-    Default = AutoSave,
-    Callback = function(v)
-        AutoSave = v
-        if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, AutoSave = AutoSave })
-        end
-    end
-})
-
 local ClickSection = SettingsTab:NewSection({ Title = "Click Position" })
-ClickSection:NewSlider({
-    Title = "Click X (%)",
-    Min = 0,
-    Max = 100,
-    Default = ClickX,
-    Callback = function(v)
-        ClickX = v
-        if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, AutoSave = AutoSave })
-        end
-    end
-})
-ClickSection:NewSlider({
-    Title = "Click Y (%)",
-    Min = 0,
-    Max = 100,
-    Default = ClickY,
-    Callback = function(v)
-        ClickY = v
-        if AutoSave then
-            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, AutoSave = AutoSave })
-        end
-    end
-})
+ClickSection:NewSlider({ Title = "Click X (%)", Min = 0, Max = 100, Default = ClickX, Callback = function(v) ClickX = v if AutoSave then saveSettings({ClickX=ClickX, ClickY=ClickY, GUIKey=GUIKey, AutoSave=AutoSave}) end end })
+ClickSection:NewSlider({ Title = "Click Y (%)", Min = 0, Max = 100, Default = ClickY, Callback = function(v) ClickY = v if AutoSave then saveSettings({ClickX=ClickX, ClickY=ClickY, GUIKey=GUIKey, AutoSave=AutoSave}) end end })
 
 local UtilitySection = SettingsTab:NewSection({ Title = "Utilities", Position = "Right" })
-UtilitySection:NewButton({
-    Title = "Rejoin",
-    Callback = function()
-        pcall(function()
-            TeleportService:Teleport(game.PlaceId, LocalPlayer)
-        end)
-    end
-})
-
+UtilitySection:NewButton({ Title = "Rejoin", Callback = function() pcall(function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end) end })
 UtilitySection:NewButton({
     Title = "Server Hop",
     Callback = function()
         pcall(function()
-            local servers = {}
-            local cursor = ""
+            local servers, cursor = {}, ""
             repeat
-                local req = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or ""))
+                local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"..(cursor~="" and "&cursor="..cursor or ""))
                 local data = HttpService:JSONDecode(req)
-                for _, s in ipairs(data.data) do
-                    if s.playing < s.maxPlayers and s.id ~= game.JobId then
-                        table.insert(servers, s.id)
-                    end
-                end
+                for _, s in ipairs(data.data) do if s.playing < s.maxPlayers and s.id ~= game.JobId then table.insert(servers,s.id) end end
                 cursor = data.nextPageCursor
             until not cursor
-            if #servers > 0 then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
-            else
-                NothingLibrary:Notify({ Title = "Server Hop", Content = "No available servers found. Rejoining current server.", Duration = 5 })
-                TeleportService:Teleport(game.PlaceId, LocalPlayer)
-            end
+            if #servers > 0 then TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1,#servers)], LocalPlayer)
+            else NothingLibrary:Notify({ Title = "Server Hop", Content = "No available servers found. Rejoining current server.", Duration = 5 }) TeleportService:Teleport(game.PlaceId, LocalPlayer) end
         end)
     end
 })
 
--- Cleanup
+-- ================== Cleanup ==================
 local connections = {}
-local function addConn(connection)
-    table.insert(connections, connection)
-end
-
+local function addConn(conn) table.insert(connections, conn) end
 local function cleanup()
-    isAutoHatchEnabled = false
     stopAutoHatch()
     stopAutoFameAndAntiAFK()
-    for _, c in ipairs(connections) do
-        pcall(function() if c.Disconnect then c:Disconnect() end end)
-    end
+    for _, c in ipairs(connections) do pcall(function() if c.Disconnect then c:Disconnect() end end) end
     connections = {}
     pcall(function() if Window and Window.Destroy then Window:Destroy() end end)
 end
-
-addConn(Players.PlayerRemoving:Connect(function(player)
-    if player == LocalPlayer then cleanup() end
-end))
+addConn(Players.PlayerRemoving:Connect(function(player) if player == LocalPlayer then cleanup() end end))

@@ -62,9 +62,15 @@ local AutoClickTab = Window:NewTab({
     Description = "Auto Click Features",
     Icon = "rbxassetid://7733960981"
 })
+local TeleportTab = Window:NewTab({
+    Title = "Teleport",
+    Description = "Teleport to Locations",
+    Icon = "rbxassetid://7733960981"
+})
 local HomeSection = HomeTab:NewSection({Title = "Main Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
 local AutoClickSection = AutoClickTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
 local SettingsSection = AutoClickTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
+local TeleportSection = TeleportTab:NewSection({Title = "Locations", Icon = "rbxassetid://7733916988", Position = "Left"})
 
 -- Position Label in UI
 local posLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
@@ -98,7 +104,6 @@ HomeSection:NewButton({
     Callback = function()
         pcall(function()
             setclipboard("https://discord.gg/DfVuhsZb")
-            
             NothingLibrary:Notify({
                 Title = "Join Our Discord!",
                 Content = "Discord link has been copied to your clipboard! - https://discord.gg/DfVuhsZb",
@@ -230,6 +235,51 @@ for _, speedData in ipairs(speeds) do
                     })
                 end
             end)
+        end
+    })
+end
+
+-- Safe Teleport Function
+local function SafeTeleport(position)
+    if not humanoidRootPart or not humanoidRootPart.Parent then
+        updateLabel(StatusLabel, "❌ Error: Character not found")
+        return
+    end
+    pcall(function()
+        local tweenInfo = TweenInfo.new(
+            1, -- Duration (1 second for smooth teleport)
+            Enum.EasingStyle.Linear,
+            Enum.EasingDirection.InOut
+        )
+        local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(position)})
+        tween:Play()
+        updateLabel(StatusLabel, "✅ Teleported to: " .. tostring(position))
+        task.spawn(function()
+            task.wait(2)
+            if not _G.isLoopRunning then
+                updateLabel(StatusLabel, "Status: Ready")
+            end
+        end)
+    end)
+end
+
+-- Teleport Locations
+local locations = {
+    {name = "Fisherman Island", pos = Vector3.new(93.29, 17.00, 2823.20)},
+    {name = "Coral Reefs", pos = Vector3.new(-2768.11, 20.11, 2083.68)},
+    {name = "Kohana", pos = Vector3.new(-643.90, 35.72, 599.1)},
+    {name = "Esoteric Depths", pos = Vector3.new(2035.09, 27.00, 1388.06)},
+    {name = "Crystal Island", pos = Vector3.new(895.45, 30.20, 5000.37)},
+    {name = "Tropical Grove", pos = Vector3.new(-2066.23, 6.38, 3733.50)},
+    {name = "Lost Isle", pos = Vector3.new(-3666.00, 37.50, 983.85)},
+    {name = "Weather Machine", pos = Vector3.new(-1515.33, 6.54, 1871.41)}
+}
+
+for _, location in ipairs(locations) do
+    TeleportSection:NewButton({
+        Title = "Teleport to " .. location.name,
+        Callback = function()
+            SafeTeleport(location.pos)
         end
     })
 end

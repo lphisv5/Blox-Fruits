@@ -3,16 +3,19 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 -- VirtualInput
-local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
-if not ok_vim then VirtualInputManager = nil end
+local VirtualInputManager
+local ok_vim, vim = pcall(game.GetService, game, "VirtualInputManager")
+if ok_vim then VirtualInputManager = vim end
 
 -- Library Loader
 local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
-local ok_lib, NothingLibrary = pcall(function()
+local NothingLibrary
+local ok_lib, lib = pcall(function()
     local code = game:HttpGetAsync(libURL)
     if code then
         local func, err = loadstring(code)
@@ -20,10 +23,11 @@ local ok_lib, NothingLibrary = pcall(function()
         return func()
     end
 end)
-if not ok_lib or not NothingLibrary then
+if not ok_lib or not lib then
     warn("YANZ HUB: Failed to load Nothing UI Library")
     return
 end
+NothingLibrary = lib
 
 -- ================== Theme Presets ==================
 local Themes = {
@@ -41,15 +45,14 @@ local currentTheme = "Default"
 
 -- ================== Save System ==================
 local SaveFolder = "YANZ_HUB"
-local SaveFile = SaveFolder.."/settings.json"
-local HttpService = game:GetService("HttpService")
+local SaveFile = SaveFolder .. "/settings.json"
 
--- executor must support writefile / readfile
 local function saveSettings(data)
-    if not writefile then return end
+    if not writefile or not isfolder or not makefolder then return end
     if not isfolder(SaveFolder) then makefolder(SaveFolder) end
-    writefile(SaveFile, HttpService:JSONEncode(data))
+    pcall(function() writefile(SaveFile, HttpService:JSONEncode(data)) end)
 end
+
 local function loadSettings()
     if not isfile or not readfile or not isfile(SaveFile) then return {} end
     local ok, decoded = pcall(function()
@@ -62,47 +65,65 @@ local Saved = loadSettings()
 local ClickX = Saved.ClickX or 10
 local ClickY = Saved.ClickY or 10
 local GUIKey = Saved.GUIKey or "RightShift"
+local AutoSave = Saved.AutoSave or true -- New: Auto-save toggle
 currentTheme = Saved.Theme or "Default"
 
 -- ================== Window ==================
 local Window = NothingLibrary.new({
-    Title = "YANZ HUB | V0.3.0",
-    Description = "By lphisv5 | Game : +1 Blocks Every Second",
+    Title = "YANZ HUB | V0.4.0", -- Updated version
+    Description = "By lphisv5 | Game: +1 Blocks Every Second",
     Keybind = Enum.KeyCode[GUIKey] or Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282',
     Theme = currentTheme
 })
 
 -- HOME
-local HomeTab = Window:NewTab({Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981"})
-local HomeSection = HomeTab:NewSection({Title = "Home", Position = "Left"})
+local HomeTab = Window:NewTab({ Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981" })
+local HomeSection = HomeTab:NewSection({ Title = "Home", Position = "Left" })
 HomeSection:NewButton({
     Title = "Join Discord",
     Callback = function()
         pcall(function()
             setclipboard("https://discord.gg/DfVuhsZb")
-            NothingLibrary:Notify({Title = "Copied!", Content = "Link copied to clipboard", Duration = 5})
+            NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
         end)
     end
 })
 
 -- MAIN Tab
-local MainTab = Window:NewTab({Title = "MAIN", Description = "Auto Farm Features"})
-local MainControlsSection = MainTab:NewSection({Title = "Controls", Position = "Left"})
+local MainTab = Window:NewTab({ Title = "MAIN", Description = "Auto Farm Features" })
+local MainControlsSection = MainTab:NewSection({ Title = "Controls", Position = "Left" })
 local StatusLabel = MainControlsSection:NewTitle("Status: Sleeping")
 
 -- Globals
 local isLoopRunning, lastRun, loopThread = false, false, nil
 local connections = {}
 
-local function addConn(conn) if conn then table.insert(connections, conn) end return conn end
-local function updateLabel(lbl, text) if not lbl then return end pcall(function()
-    if lbl.Set then lbl:Set(tostring(text)) elseif lbl.SetText then lbl:SetText(tostring(text)) end
-end) end
+local function addConn(conn)
+    if conn then table.insert(connections, conn) end
+    return conn
+end
+
+local function updateLabel(lbl, text)
+    if not lbl then return end
+    pcall(function()
+        if lbl.Set then
+            lbl:Set(tostring(text))
+        elseif lbl.SetText then
+            lbl:SetText(tostring(text))
+        end
+    end)
+end
+
 local function updateStatus()
-    if isLoopRunning then lastRun = true; updateLabel(StatusLabel, "Status: Working")
-    elseif not isLoopRunning and lastRun then updateLabel(StatusLabel, "Status: Not Working")
-    else updateLabel(StatusLabel, "Status: Sleeping") end
+    if isLoopRunning then
+        lastRun = true
+        updateLabel(StatusLabel, "Status: Working")
+    elseif not isLoopRunning and lastRun then
+        updateLabel(StatusLabel, "Status: Not Working")
+    else
+        updateLabel(StatusLabel, "Status: Sleeping")
+    end
 end
 
 -- FastAttack (Click only, custom position)
@@ -110,11 +131,12 @@ local function FastAttack()
     local cam = workspace.CurrentCamera
     if not cam then return end
     local viewport = cam.ViewportSize
-    local posX = math.floor(viewport.X * (ClickX/100))
-    local posY = math.floor(viewport.Y * (ClickY/100))
+    local posX = math.floor(viewport.X * (ClickX / 100))
+    local posY = math.floor(viewport.Y * (ClickY / 100))
     if VirtualInputManager then
         pcall(function()
             VirtualInputManager:SendMouseButtonEvent(posX, posY, 0, true, cam, 1)
+            task.wait(0.01) -- Small delay to simulate click
             VirtualInputManager:SendMouseButtonEvent(posX, posY, 0, false, cam, 1)
         end)
     end
@@ -126,11 +148,12 @@ local function startAutoFarm()
     loopThread = task.spawn(function()
         while isLoopRunning do
             pcall(FastAttack)
-            task.wait(0.5 + math.random() * 1.5)
+            task.wait(0.5 + math.random() * 1.5) -- Random delay for anti-detection
         end
         loopThread = nil
     end)
 end
+
 MainControlsSection:NewToggle({
     Title = "Auto Farm Block",
     Default = false,
@@ -142,7 +165,7 @@ MainControlsSection:NewToggle({
 })
 
 -- Fast Block Section
-local FastBlockSection = MainTab:NewSection({Title = "Auto Fast Block", Position = "Right"})
+local FastBlockSection = MainTab:NewSection({ Title = "Auto Fast Block", Position = "Right" })
 local isFastBlockRunning, fastBlockThread = false, nil
 local FastStatusLabel = FastBlockSection:NewTitle("Status: Sleeping")
 FastBlockSection:NewTitle("(Press F6)")
@@ -152,14 +175,16 @@ local function startAutoFastBlock()
     fastBlockThread = task.spawn(function()
         while isFastBlockRunning do
             pcall(FastAttack)
-            task.wait(0.01)
+            task.wait(0.01) -- Faster interval for fast block
         end
         fastBlockThread = nil
     end)
 end
+
 local function updateFastStatus()
     FastStatusLabel:Set(isFastBlockRunning and "Status: Working" or "Status: Sleeping")
 end
+
 FastBlockSection:NewToggle({
     Title = "Enable Auto Fast Block",
     Default = false,
@@ -169,6 +194,7 @@ FastBlockSection:NewToggle({
         if v then startAutoFastBlock() end
     end
 })
+
 addConn(UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
@@ -179,37 +205,78 @@ addConn(UserInputService.InputBegan:Connect(function(input, processed)
 end))
 
 -- Settings Tab
-local SettingsTab = Window:NewTab({Title = "Settings", Description = "Configuration"})
-local AntiAFKSection = SettingsTab:NewSection({Title = "Anti-AFK", Position = "Left"})
+local SettingsTab = Window:NewTab({ Title = "Settings", Description = "Configuration" })
+local AntiAFKSection = SettingsTab:NewSection({ Title = "Anti-AFK", Position = "Left" })
 local isAntiAFKEnabled, antiAFKConnection = false, nil
+
 local function startAntiAFK()
     if antiAFKConnection then antiAFKConnection:Disconnect() end
     local vu = game:GetService("VirtualUser")
-    antiAFKConnection = RunService.Stepped:Connect(function()
-        vu:CaptureController()
-        vu:ClickButton1(Vector2.new(0, 0))
-    end)
+    antiAFKConnection = addConn(RunService.Stepped:Connect(function()
+        pcall(function()
+            vu:CaptureController()
+            vu:ClickButton1(Vector2.new(0, 0))
+        end)
+    end))
 end
-local function stopAntiAFK() if antiAFKConnection then antiAFKConnection:Disconnect() antiAFKConnection=nil end end
+
+local function stopAntiAFK()
+    if antiAFKConnection then
+        antiAFKConnection:Disconnect()
+        antiAFKConnection = nil
+    end
+end
+
 AntiAFKSection:NewToggle({
     Title = "Anti-AFK",
     Default = false,
-    Callback = function(v) isAntiAFKEnabled = v if v then startAntiAFK() else stopAntiAFK() end end
+    Callback = function(v)
+        isAntiAFKEnabled = v
+        if v then startAntiAFK() else stopAntiAFK() end
+    end
 })
 
--- Click position sliders
-local ClickSection = SettingsTab:NewSection({Title = "Click Position"})
+-- Auto-Save Toggle (New Feature)
+AntiAFKSection:NewToggle({
+    Title = "Auto-Save Settings",
+    Default = AutoSave,
+    Callback = function(v)
+        AutoSave = v
+        if AutoSave then
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+        end
+    end
+})
+
+-- Click Position Sliders
+local ClickSection = SettingsTab:NewSection({ Title = "Click Position" })
 ClickSection:NewSlider({
-    Title = "Click X (%)", Min = 0, Max = 100, Default = ClickX,
-    Callback = function(v) ClickX = v; saveSettings({ClickX=ClickX,ClickY=ClickY,GUIKey=GUIKey,Theme=currentTheme}) end
+    Title = "Click X (%)",
+    Min = 0,
+    Max = 100,
+    Default = ClickX,
+    Callback = function(v)
+        ClickX = v
+        if AutoSave then
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+        end
+    end
 })
 ClickSection:NewSlider({
-    Title = "Click Y (%)", Min = 0, Max = 100, Default = ClickY,
-    Callback = function(v) ClickY = v; saveSettings({ClickX=ClickX,ClickY=ClickY,GUIKey=GUIKey,Theme=currentTheme}) end
+    Title = "Click Y (%)",
+    Min = 0,
+    Max = 100,
+    Default = ClickY,
+    Callback = function(v)
+        ClickY = v
+        if AutoSave then
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+        end
+    end
 })
 
 -- GUI Key Input
-local KeySection = SettingsTab:NewSection({Title = "GUI Key"})
+local KeySection = SettingsTab:NewSection({ Title = "GUI Key" })
 KeySection:NewInput({
     Title = "Press Key",
     Placeholder = GUIKey,
@@ -217,13 +284,15 @@ KeySection:NewInput({
         if Enum.KeyCode[txt] then
             GUIKey = txt
             Window:SetKeybind(Enum.KeyCode[txt])
-            saveSettings({ClickX=ClickX,ClickY=ClickY,GUIKey=GUIKey,Theme=currentTheme})
+            if AutoSave then
+                saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+            end
         end
     end
 })
 
 -- Theme Section
-local ThemeSection = SettingsTab:NewSection({Title = "Themes"})
+local ThemeSection = SettingsTab:NewSection({ Title = "Themes" })
 ThemeSection:NewDropdown({
     Title = "Select Theme",
     Items = Themes,
@@ -231,31 +300,43 @@ ThemeSection:NewDropdown({
     Callback = function(choice)
         currentTheme = choice
         Window:SetTheme(choice)
-        saveSettings({ClickX=ClickX,ClickY=ClickY,GUIKey=GUIKey,Theme=currentTheme})
+        if AutoSave then
+            saveSettings({ ClickX = ClickX, ClickY = ClickY, GUIKey = GUIKey, Theme = currentTheme, AutoSave = AutoSave })
+        end
     end
 })
 
 -- Utility Section
-local UtilitySection = SettingsTab:NewSection({Title = "Utilities", Position = "Right"})
+local UtilitySection = SettingsTab:NewSection({ Title = "Utilities", Position = "Right" })
 UtilitySection:NewButton({
     Title = "Rejoin",
     Callback = function()
-        TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        pcall(function()
+            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        end)
     end
 })
+
 UtilitySection:NewButton({
     Title = "Server Hop",
     Callback = function()
         pcall(function()
             local servers = {}
-            local req = game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")
-            local data = HttpService:JSONDecode(req)
-            for _,s in ipairs(data.data) do
-                if s.playing < s.maxPlayers then table.insert(servers, s.id) end
-            end
+            local cursor = ""
+            repeat
+                local req = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100" .. (cursor ~= "" and "&cursor=" .. cursor or ""))
+                local data = HttpService:JSONDecode(req)
+                for _, s in ipairs(data.data) do
+                    if s.playing < s.maxPlayers and s.id ~= game.JobId then
+                        table.insert(servers, s.id)
+                    end
+                end
+                cursor = data.nextPageCursor
+            until not cursor
             if #servers > 0 then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1,#servers)], LocalPlayer)
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], LocalPlayer)
             else
+                NothingLibrary:Notify({ Title = "Server Hop", Content = "No available servers found. Rejoining current server.", Duration = 5 })
                 TeleportService:Teleport(game.PlaceId, LocalPlayer)
             end
         end)
@@ -266,10 +347,17 @@ UtilitySection:NewButton({
 local function cleanup()
     isLoopRunning, isFastBlockRunning = false, false
     stopAntiAFK()
-    for _, c in ipairs(connections) do pcall(function() if c.Disconnect then c:Disconnect() end end) end
+    for _, c in ipairs(connections) do
+        pcall(function() if c.Disconnect then c:Disconnect() end end)
+    end
     connections = {}
     pcall(function() if Window and Window.Destroy then Window:Destroy() end end)
 end
-Players.PlayerRemoving:Connect(function(player) if player == LocalPlayer then cleanup() end end)
 
-updateStatus(); updateFastStatus()
+addConn(Players.PlayerRemoving:Connect(function(player)
+    if player == LocalPlayer then cleanup() end
+end))
+
+-- Initialize
+updateStatus()
+updateFastStatus()

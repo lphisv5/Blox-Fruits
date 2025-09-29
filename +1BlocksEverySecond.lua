@@ -65,24 +65,25 @@ local Window = NothingLibrary.new({
 
 -- ================== Locations and Eggs ==================
 local locationsWorld1 = {
-    LOBBY = Vector3.new(-41.97, 9.48, 32.55),
+    ["Lobby"] = Vector3.new(-41.00,9.48,-31.43),
     ["Gem Shop"] = Vector3.new(-90.08, 3.52, -51.50),
-    ["Dark Matter Machine"] = Vector3.new(90.00, 3.48, 96.15),
-    ["Toxic Machine"] = Vector3.new(90.00, 3.48, 65.50),
-    ["Golden Machine"] = Vector3.new(85.00, 3.48, 32.85)
+    ["Dark Matter Machine"] = Vector3.new(90.48, 3.48, -96.46),
+    ["Toxic Machine"] = Vector3.new(90.61, 3.48, -65.11),
+    ["Golden Machine"] = Vector3.new(86.33, 3.48, -32.67)
 }
 
 local locationsWorld2 = {
-    ["World 1 Portal"] = Vector3.new(8190.00, 19.11, -38.60)
+    ["World 2 Portal"] = Vector3.new(8190.00, 19.11, -38.60),
+    ["World 1 Portal"] = Vector3.new(-41.00,9.48,-31.43)
 }
 
 local eggsWorld1 = {
     ["Grass Egg 500 Blocks"] = Vector3.new(-52.90, 9.48, -42.95),
-    ["Stone Egg 3.5K Blocks"] = Vector3.new(-52.60, 9.48, 51.70),
+    ["Stone Egg 3.5K Blocks"] = Vector3.new(-52.10, 9.48, -52.75), 
     ["Christmas Egg 10K Blocks"] = Vector3.new(-25.77, 9.48, -27.70),
-    ["Void Egg 25K Blocks"] = Vector3.new(-53.15, 9.48, 27.55),
+    ["Void Egg 25K Blocks"] = Vector3.new(-53.70, 9.48, -47.62),
     ["Atlantis Egg 100K Blocks"] = Vector3.new(-30.55, 9.48, -42.60),
-    ["Lava Egg 500K Blocks"] = Vector3.new(-31.25, 9.48, 52.55),
+    ["Lava Egg 500K Blocks"] = Vector3.new(-30.80, 9.48, -52.55),
     ["Limited Egg 399R$"] = Vector3.new(-34.25, 9.48, -27.45)
 }
 
@@ -100,6 +101,7 @@ local function getCurrentWorld()
     return playerPos.X > 8000 and 2 or 1
 end
 
+-- Advanced Teleport
 local function teleportTo(position)
     pcall(function()
         if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
@@ -109,26 +111,26 @@ local function teleportTo(position)
 
         local hrp = LocalPlayer.Character.HumanoidRootPart
         local targetCFrame = CFrame.new(position + Vector3.new(0, 3, 0))
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
-        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 
-        local rayResult = Workspace:Raycast(position + Vector3.new(0,5,0), Vector3.new(0,-10,0), raycastParams)
-        if rayResult then targetCFrame = CFrame.new(rayResult.Position + Vector3.new(0,3,0)) end
-
-        local tween = TweenService:Create(hrp, TweenInfo.new(0.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {CFrame = targetCFrame})
-        tween:Play()
-        tween.Completed:Wait()
-        task.wait(0.1)
-
-        if (hrp.Position - position).Magnitude > 5 then
-            hrp.CFrame = targetCFrame
-            task.wait(0.5)
-            if (hrp.Position - position).Magnitude > 5 then
-                NothingLibrary:Notify({ Title = "Teleport Error", Content = "Failed to teleport accurately.", Duration = 5 })
-                return
+        local currentY = hrp.Position.Y
+        if position.Y < currentY - 2 then
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+            local rayResult = Workspace:Raycast(position + Vector3.new(0, 5, 0), Vector3.new(0, -50, 0), raycastParams)
+            if rayResult then
+                targetCFrame = CFrame.new(raycastResult.Position + Vector3.new(0, 3, 0))
             end
         end
+
+        -- Tween TP
+        local tween = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {CFrame = targetCFrame})
+        tween:Play()
+        tween.Completed:Wait()
+        task.wait(0.05)
+
+        -- Lock final position
+        hrp.CFrame = targetCFrame
 
         NothingLibrary:Notify({ Title = "Teleport", Content = "Teleported successfully!", Duration = 5 })
     end)

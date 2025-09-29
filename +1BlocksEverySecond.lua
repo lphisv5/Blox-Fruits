@@ -119,29 +119,26 @@ local function teleportTo(position)
             raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
             local rayResult = Workspace:Raycast(position + Vector3.new(0, 5, 0), Vector3.new(0, -50, 0), raycastParams)
             if rayResult then
-                targetCFrame = CFrame.new(raycastResult.Position + Vector3.new(0, 3, 0))
+                targetCFrame = CFrame.new(rayResult.Position + Vector3.new(0, 3, 0))
             end
         end
 
-        -- Tween TP
         local tween = TweenService:Create(hrp, TweenInfo.new(0.35, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {CFrame = targetCFrame})
         tween:Play()
         tween.Completed:Wait()
         task.wait(0.05)
 
-        -- Lock final position
         hrp.CFrame = targetCFrame
-
         NothingLibrary:Notify({ Title = "Teleport", Content = "Teleported successfully!", Duration = 5 })
     end)
 end
 
 -- ================== Auto Hatch ==================
-local isAutoHatchEnabled = false
+local isAuetoHatchEnabled = false
 local autoHatchConnection = nil
 
 local function startAutoHatch(eggName, eggPos, targetWorld)
-    if getCurrentWorld() ~= targetWorld then
+    if getCurrntWorld() ~= targetWorld then
         teleportTo(targetWorld == 2 and Vector3.new(65.00, 4.30, 97.97) or locationsWorld2["World 1"])
         task.wait(2)
     end

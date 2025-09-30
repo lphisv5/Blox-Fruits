@@ -34,41 +34,14 @@ local state = {
 }
 
 --===[ Auto Click ]===--
+--===[ Auto Click ]===--
+local autoClickConnection = nil
+
 local function doClick()
     local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Click3")
     if remote and remote.FireServer then
         remote:FireServer()
-    else
-        warn("Remote Click3 not found!")
     end
-end
-
-local function isClickToBuildActive()
-    local gui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gui then return false end
-    for _, c in ipairs(gui:GetDescendants()) do
-        if c:IsA("TextLabel") then
-            if string.lower(c.Text):find("click to build") then
-                return true
-            end
-        end
-    end
-    return false
-end
-
-local function isClickTemplateActive()
-    local gui = LocalPlayer:FindFirstChild("PlayerGui")
-    if not gui then return false end
-    local clicksUI = gui:FindFirstChild("ClicksUI")
-    if clicksUI then
-        local clickTemplate = clicksUI:FindFirstChild("ClickTemplate")
-        if clickTemplate and clickTemplate:IsA("TextLabel") then
-            if string.lower(clickTemplate.Text):find("click") then
-                return true
-            end
-        end
-    end
-    return false
 end
 
 AutoClickSection:NewToggle({
@@ -77,25 +50,19 @@ AutoClickSection:NewToggle({
     Callback = function(v)
         state.autoClick = v
         if v then
-            task.spawn(function()
-                while state.autoClick do
-                    if isClickToBuildActive() or isClickTemplateActive() then
-                        print("Click detected! Starting ultra fast spam clicks...")
-                        local startTime = tick()
-                        while (tick() - startTime) < 20 and state.autoClick and (isClickToBuildActive() or isClickTemplateActive()) do
-                            for i = 1, 50 do
-                                task.spawn(doClick)
-                            end
-                            task.wait(0.01)
-                        end
-                        print("Spam clicks ended.")
-                    end
-                    task.wait(0.05)
-                end
+            if autoClickConnection then autoClickConnection:Disconnect() end
+            autoClickConnection = RunService.Heartbeat:Connect(function()
+                doClick()
             end)
+            print("✅ Auto Click started.")
+        else
+            if autoClickConnection then autoClickConnection:Disconnect() end
+            autoClickConnection = nil
+            print("⛔ Auto Click stopped.")
         end
     end
 })
+
 
 
 --===[ Auto Wins ]===--

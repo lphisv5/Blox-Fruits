@@ -23,7 +23,7 @@ local Window = NothingLibrary.new({
 })
 
 --===[ Tabs ]===--
-local HomeTab = Window:NewTab({ Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981" })
+local HomeSection = HomeTab:NewSection({Title = "Main Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
 local MainTab = Window:NewTab({Title="Main", Description="Auto System", Icon="rbxassetid://7733960981"})
 local AutoClickSection = MainTab:NewSection({Title="Auto Click", Icon="rbxassetid://7733916988", Position="Left"})
 local AutoWinsSection = MainTab:NewSection({Title="Auto Wins", Icon="rbxassetid://7733916988", Position="Right"})
@@ -34,6 +34,15 @@ local state = {
     autoWins = false
 }
 
+--===[ HOME ]===--
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Default = false,
+    Callback = function()
+        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
+        NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
+    end
+})
 
 --===[ Auto Click ]===--
 local autoClickConnection = nil
@@ -198,15 +207,6 @@ AutoWinsSection:NewToggle({
     end
 })
 
-
---===[ HOME ]===--
-HomeSection:NewButton({
-    Title = "Join Discord",
-    Callback = function()
-        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
-        NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
-    end
-})
 
 
 --===[ Anti-Jump and Anti-Follow Fix ]===--

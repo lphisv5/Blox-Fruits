@@ -33,7 +33,7 @@ local state = {
     autoWins = false
 }
 
---===[ Auto Click ]===--
+
 --===[ Auto Click ]===--
 local autoClickConnection = nil
 
@@ -54,11 +54,9 @@ AutoClickSection:NewToggle({
             autoClickConnection = RunService.Heartbeat:Connect(function()
                 doClick()
             end)
-            print("✅ Auto Click started.")
         else
             if autoClickConnection then autoClickConnection:Disconnect() end
             autoClickConnection = nil
-            print("⛔ Auto Click stopped.")
         end
     end
 })

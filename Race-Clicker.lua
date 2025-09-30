@@ -34,6 +34,18 @@ local state = {
 }
 
 
+-- HOME Tab
+local HomeTab = Window:NewTab({ Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981" })
+local HomeSection = HomeTab:NewSection({ Title = "Home", Position = "Left" })
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Callback = function()
+        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
+        NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
+    end
+})
+
+
 --===[ Auto Click ]===--
 local autoClickConnection = nil
 

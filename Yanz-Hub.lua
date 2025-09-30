@@ -1,5 +1,9 @@
 local HttpService = game:GetService("HttpService")
 local savePath = "YanzHub/keydata.json"
+
+local webhookExpired = "https://discord.com/api/webhooks/1422733445070590005/WlxjdLcVDnkmqSDQqOMHTZHxEXoJj9xj49p629i1DHC4qcB6XZRB6zVlSvXItvLk2G-R" -- ส่งคีย์หมดอายุ
+local webhookUsed = "https://discord.com/api/webhooks/1422733264384163962/U2p2h1NLwsUtNEjlRdrDawrVJ4fiziL8sp7XB5bf2qSQ2ZjtGJj6JpHdxUNfMjWkmIIh"      -- ส่งคีย์ใช้งาน
+
 local validKeys = {
    "YANZ-KEY-OQQ4NM968Y6BRGH02T1PM3ENJWU0FVRGGIQWGUMPM1A79WHNAK",
    "YANZ-KEY-P0R2A31BU2YW0TG99YL4Y1OPIJQ5JLUQ8PPRO5CRINBCO4V7IR",
@@ -75,7 +79,18 @@ local validKeys = {
    "YANZ-KEY-V51218C5LT3UUCKIP8TKZO67RIJTDEDIX9ZUXHWEIGJ5HIN61G"
 }
 
-
+local function sendWebhook(url, key, message)
+    local data = {
+        embeds = {{
+            title = message,
+            description = "Key: `" .. key .. "`",
+            color = 16711680
+        }}
+    }
+    pcall(function()
+        HttpService:PostAsync(url, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
+    end)
+end
 
 local function saveKey(key)
    local data = {
@@ -92,8 +107,17 @@ local function checkSavedKey()
       local success, data = pcall(function()
          return HttpService:JSONDecode(json)
       end)
-      if success and data.key and table.find(validKeys, data.key) and (os.time() - data.timestamp) < 86400 then
-         return true, data.key
+      if success and data.key then
+         local expired = (os.time() - data.timestamp) >= 86400
+         local valid = table.find(validKeys, data.key)
+         if expired then
+             sendWebhook(webhookExpired, data.key, "Key Expired")
+             return false
+         end
+         if valid then
+             sendWebhook(webhookUsed, data.key, "Key Used")
+             return true, data.key
+         end
       end
    end
    return false
@@ -127,69 +151,45 @@ if valid then
 end
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
 local Window = Rayfield:CreateWindow({
    Name = "Yanz Hub Key System",
    LoadingTitle = "Loading Yanz Hub",
    LoadingSubtitle = "by Yanz",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "YanzHub",
-      FileName = "KeyConfig"
-   },
-   Discord = {
-      Enabled = false,
-   },
+   ConfigurationSaving = { Enabled = true, FolderName = "YanzHub", FileName = "KeyConfig" },
+   Discord = { Enabled = false },
    KeySystem = false
 })
 
 local Tab = Window:CreateTab("Key", 4483362458)
-
 local enteredKey = ""
 
 local Input = Tab:CreateInput({
    Name = "Enter Key",
    PlaceholderText = "YANZ-KEY-...",
    RemoveTextAfterFocusLost = false,
-   Callback = function(Text)
-      enteredKey = Text
-   end,
+   Callback = function(Text) enteredKey = Text end,
 })
 
 local CheckButton = Tab:CreateButton({
    Name = "Check Key",
    Callback = function()
       if enteredKey == "" then
-         Rayfield:Notify({
-            Title = "Error",
-            Content = "Please enter a key first.",
-            Duration = 3,
-            Image = 4483362458,
-         })
+         Rayfield:Notify({Title = "Error", Content = "Please enter a key first.", Duration = 3, Image = 4483362458})
          return
       end
-      
+
       if table.find(validKeys, enteredKey) then
+         sendWebhook(webhookUsed, enteredKey, "Key Used")
          local success, err = pcall(loadGameScript)
-         
          if success then
             saveKey(enteredKey)
             Rayfield:Destroy()
          else
-            Rayfield:Notify({
-               Title = "Load Error",
-               Content = "Failed to load the script: " .. tostring(err),
-               Duration = 5,
-               Image = 4483362458,
-            })
+            Rayfield:Notify({Title = "Load Error", Content = "Failed to load the script: " .. tostring(err), Duration = 5, Image = 4483362458})
          end
       else
-         Rayfield:Notify({
-            Title = "Invalid Key",
-            Content = "The entered key is invalid.",
-            Duration = 3,
-            Image = 4483362458,
-         })
+         Rayfield:Notify({Title = "Invalid Key", Content = "The entered key is invalid.", Duration = 3, Image = 4483362458})
+         sendWebhook(webhookExpired, enteredKey, "Invalid/Expired Key")
       end
    end,
 })
@@ -198,11 +198,6 @@ local GetButton = Tab:CreateButton({
    Name = "Get Key",
    Callback = function()
       setclipboard("https://lphisv5.github.io/v4/checking.html")
-      Rayfield:Notify({
-         Title = "Copied to Clipboard",
-         Content = "Key page URL has been copied to your clipboard!",
-         Duration = 3,
-         Image = 4483362458,
-      })
+      Rayfield:Notify({Title = "Copied to Clipboard", Content = "Key page URL has been copied to your clipboard!", Duration = 3, Image = 4483362458})
    end,
 })

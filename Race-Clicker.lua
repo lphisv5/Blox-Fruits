@@ -28,19 +28,6 @@ local HomeTab = Window:NewTab({
     Description = "Home Features",
     Icon = "rbxassetid://7733960981"
 })
-local MainTab = Window:NewTab({Title="Main", Description="Auto System", Icon="rbxassetid://7733960981"})
-local AutoClickSection = MainTab:NewSection({Title="Auto Click", Icon="rbxassetid://7733916988", Position="Left"})
-local AutoWinsSection = MainTab:NewSection({Title="Auto Wins", Icon="rbxassetid://7733916988", Position="Right"})
-
---===[ States ]===--
-local state = {
-    autoClick = false,
-    autoWins = false
-}
-
-
-
-
 local HomeSection = HomeTab:NewSection({
     Title = "Home",
     Position = "Left"
@@ -68,6 +55,20 @@ HomeSection:NewButton({
         end
     end
 })
+local MainTab = Window:NewTab({Title="Main", Description="Auto System", Icon="rbxassetid://7733960981"})
+local AutoClickSection = MainTab:NewSection({Title="Auto Click", Icon="rbxassetid://7733916988", Position="Left"})
+local AutoWinsSection = MainTab:NewSection({Title="Auto Wins", Icon="rbxassetid://7733916988", Position="Right"})
+
+--===[ States ]===--
+local state = {
+    autoClick = false,
+    autoWins = false
+}
+
+
+
+
+
 
 
 

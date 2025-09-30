@@ -134,7 +134,7 @@ local function moveToPosition(hrp, targetPos)
     task.wait(0.0001 * (distance / 1000))
     flyVelocity.Velocity = Vector3.new(0, -9.81, 0)
     task.wait(0.0001)
-    flyVelocity.Velocity = Vector3.new(0, 0, 0)
+    flyVelocity.Velocity = Vector3.new(0, 1, 0)
     hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 1, 0))
 end
 

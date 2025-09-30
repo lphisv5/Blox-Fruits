@@ -162,26 +162,29 @@ end
 
 -- ================== Auto Fame ==================
 local isAutoFameEnabled = false
-local autoFameConnection = nil
-local vu = game:GetService("VirtualUser")
+    local autoFameConnection = nil
+    local vu = game:GetService("VirtualUser")
 
-local function startAutoFameAndAntiAFK()
-    if autoFameConnection then autoFameConnection:Disconnect() end
-    autoFameConnection = RunService.Heartbeat:Connect(function()
-        local cam = workspace.CurrentCamera
-        if not cam then return end
-        local viewport = cam.ViewportSize
+    local function startAutoFameAndAntiAFK()
+        if autoFameConnection then autoFameConnection:Disconnect() end
+        autoFameConnection = RunService.Heartbeat:Connect(function()
+            local cam = workspace.CurrentCamera
+            if not cam then return end
+            local viewport = cam.ViewportSize
 
-        pcall(function() vu:CaptureController() vu:ClickButton1(Vector2.new(0,0)) end)
-        task.wait(1)
-        pcall(function() vu:CaptureController() vu:ClickButton1(Vector2.new(0,viewport.Y-1)) end)
-    end)
-end
+            local clickPos1 = Vector2.new(viewport.X * (ClickX / 100), viewport.Y * (ClickY / 100))
+            local clickPos2 = Vector2.new(viewport.X * (ClickX / 100), viewport.Y - 1)
 
-local function stopAutoFameAndAntiAFK()
-    if autoFameConnection then autoFameConnection:Disconnect() end
-    autoFameConnection = nil
-end
+            pcall(function() vu:CaptureController() vu:ClickButton1(clickPos1) end)
+            task.wait(1)
+            pcall(function() vu:CaptureController() vu:ClickButton1(clickPos2) end)
+        end)
+    end
+
+    local function stopAutoFameAndAntiAFK()
+        if autoFameConnection then autoFameConnection:Disconnect() end
+        autoFameConnection = nil
+    end
 
 -- ================== GUI Tabs ==================
 -- HOME Tab

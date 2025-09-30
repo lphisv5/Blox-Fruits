@@ -3,12 +3,12 @@
 -- Version: V0.7.6
 
 --===[ Services ]===--
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInput = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 --===[ Load UI Lib ]===--
@@ -48,7 +48,7 @@ local function isClickToBuildActive()
     if not gui then return false end
     for _, c in ipairs(gui:GetDescendants()) do
         if c:IsA("TextLabel") then
-            if c.Text == "Click to build" then
+            if string.lower(c.Text):find("click to build") then
                 return true
             end
         end
@@ -63,7 +63,7 @@ local function isClickTemplateActive()
     if clicksUI then
         local clickTemplate = clicksUI:FindFirstChild("ClickTemplate")
         if clickTemplate and clickTemplate:IsA("TextLabel") then
-            if clickTemplate.Text:find("Click!") then
+            if string.lower(clickTemplate.Text):find("click") then
                 return true
             end
         end
@@ -82,25 +82,21 @@ AutoClickSection:NewToggle({
                     if isClickToBuildActive() or isClickTemplateActive() then
                         print("Click detected! Starting ultra fast spam clicks...")
                         local startTime = tick()
-                        local screenSize = game:GetService("GuiService"):GetScreenResolution()
-                        local centerX = screenSize.X / 2
-                        local centerY = screenSize.Y / 2
                         while (tick() - startTime) < 20 and state.autoClick and (isClickToBuildActive() or isClickTemplateActive()) do
-                            for i = 1, 100 do
+                            for i = 1, 50 do
                                 task.spawn(doClick)
-                                VirtualInput:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
-                                VirtualInput:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
                             end
-                            task.wait(0.005)
+                            task.wait(0.01)
                         end
                         print("Spam clicks ended.")
                     end
-                    task.wait(0.03)
+                    task.wait(0.05)
                 end
             end)
         end
     end
 })
+
 
 --===[ Auto Wins ]===--
 local stages = {

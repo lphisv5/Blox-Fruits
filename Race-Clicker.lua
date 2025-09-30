@@ -22,7 +22,20 @@ local Window = NothingLibrary.new({
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
 })
 
---===[ HOME Tab ]===--
+--===[ Tabs ]===--
+local MainTab = Window:NewTab({Title="Main", Description="Auto System", Icon="rbxassetid://7733960981"})
+local AutoClickSection = MainTab:NewSection({Title="Auto Click", Icon="rbxassetid://7733916988", Position="Left"})
+local AutoWinsSection = MainTab:NewSection({Title="Auto Wins", Icon="rbxassetid://7733916988", Position="Right"})
+
+--===[ States ]===--
+local state = {
+    autoClick = false,
+    autoWins = false
+}
+
+
+
+-- HOME Tab
 local HomeTab = Window:NewTab({
     Title = "HOME",
     Description = "Home Features",
@@ -30,8 +43,7 @@ local HomeTab = Window:NewTab({
 })
 
 local HomeSection = HomeTab:NewSection({
-    Title = "Main Controls",
-    Icon = "rbxassetid://7733916988",
+    Title = "Home",
     Position = "Left"
 })
 
@@ -58,30 +70,7 @@ HomeSection:NewButton({
     end
 })
 
---===[ Main Tab ]===--
-local MainTab = Window:NewTab({
-    Title = "Main",
-    Description = "Auto System",
-    Icon = "rbxassetid://7733960981"
-})
 
-local AutoClickSection = MainTab:NewSection({
-    Title = "Auto Click",
-    Icon = "rbxassetid://7733916988",
-    Position = "Left"
-})
-
-local AutoWinsSection = MainTab:NewSection({
-    Title = "Auto Wins",
-    Icon = "rbxassetid://7733916988",
-    Position = "Right"
-})
-
---===[ States ]===--
-local state = {
-    autoClick = false,
-    autoWins = false
-}
 
 --===[ Auto Click ]===--
 local autoClickConnection = nil
@@ -109,6 +98,8 @@ AutoClickSection:NewToggle({
         end
     end
 })
+
+
 
 --===[ Auto Wins ]===--
 local stages = {
@@ -204,13 +195,16 @@ AutoWinsSection:NewToggle({
                     local txt = findTimer()
                     print("Timer Status: " .. txt)
                     if txt:find("Waiting") then
+                        print("Waiting for race to start...")
                         task.wait(0.05)
                     elseif txt:find("Click to build") then
+                        print("Spamming clicks...")
                         for i = 1, 30 do
                             doClick()
                             task.wait(0.03)
                         end
                     elseif txt:match("%d%d:%d%d") then
+                        print("Race in progress, starting ultra fast TP loop...")
                         local lastTimerUpdate = tick()
                         while txt:match("%d%d:%d%d") and state.autoWins do
                             for i = 1, #stages do
@@ -223,20 +217,24 @@ AutoWinsSection:NewToggle({
                             RunService.Heartbeat:Wait()
                         end
                     elseif txt:find("00:00") then
+                        print("Race ended, resetting Auto Wins...")
                         state.autoWins = false
                         break
                     else
+                        print("Unknown timer state: " .. txt)
                         task.wait(0.05)
                     end
                 end
                 if flyVelocity then flyVelocity:Destroy() end
                 if humanoid then
                     humanoid.JumpPower = 50
+                    print("Undetected fly mode deactivated.")
                 end
             end)
         end
     end
 })
+
 
 --===[ Anti-Jump and Anti-Follow Fix ]===--
 RunService.Heartbeat:Connect(function()
@@ -261,6 +259,7 @@ local function disableSpectate()
             if obj:IsA("ScreenGui") or obj:IsA("BillboardGui") then
                 if obj.Name:find("Leaderboard") or obj.Name:find("Spectate") or obj.Name:find("Track") then
                     obj.Enabled = false
+                    print("Disabled GUI: " .. obj.Name)
                 end
             end
         end

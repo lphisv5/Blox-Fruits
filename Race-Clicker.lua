@@ -23,53 +23,25 @@ local Window = NothingLibrary.new({
 })
 
 --===[ Tabs ]===--
+local HomeSection = HomeTab:NewSection({ Title = "Home", Position = "Left" })
+HomeSection:NewButton({
+    Title = "Join Discord",
+    Callback = function()
+        pcall(function() setclipboard("https://discord.gg/DfVuhsZb") end)
+        NothingLibrary:Notify({ Title = "Copied!", Content = "Link copied to clipboard", Duration = 5 })
+    end
+})
+
 local MainTab = Window:NewTab({Title="Main", Description="Auto System", Icon="rbxassetid://7733960981"})
 local AutoClickSection = MainTab:NewSection({Title="Auto Click", Icon="rbxassetid://7733916988", Position="Left"})
 local AutoWinsSection = MainTab:NewSection({Title="Auto Wins", Icon="rbxassetid://7733916988", Position="Right"})
+local HomeTab = Window:NewTab({ Title = "HOME", Description = "Home Features", Icon = "rbxassetid://7733960981" })
 
 --===[ States ]===--
 local state = {
     autoClick = false,
     autoWins = false
 }
-
-
-
--- HOME Tab
-local HomeTab = Window:NewTab({
-    Title = "HOME",
-    Description = "Home Features",
-    Icon = "rbxassetid://7733960981"
-})
-
-local HomeSection = HomeTab:NewSection({
-    Title = "Home",
-    Position = "Left"
-})
-
-HomeSection:NewButton({
-    Title = "Join Discord",
-    Callback = function()
-        local success, err = pcall(function()
-            setclipboard("https://discord.gg/DfVuhsZb")
-        end)
-
-        if success then
-            NothingLibrary:Notify({
-                Title = "Copied!",
-                Content = "Discord link copied to clipboard",
-                Duration = 5
-            })
-        else
-            NothingLibrary:Notify({
-                Title = "Error",
-                Content = "Failed to copy link: " .. tostring(err),
-                Duration = 5
-            })
-        end
-    end
-})
-
 
 
 --===[ Auto Click ]===--

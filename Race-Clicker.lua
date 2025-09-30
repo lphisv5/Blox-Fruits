@@ -3,7 +3,6 @@
 -- Version: V0.7.6
 
 --===[ Services ]===--
-local LocalPlayer = Players.LocalPlayer
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")

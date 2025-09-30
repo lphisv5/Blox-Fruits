@@ -129,7 +129,7 @@ local function moveToPosition(hrp, targetPos)
     if not flyVelocity then return end
     local direction = (targetPos - hrp.Position).Unit
     local distance = (targetPos - hrp.Position).Magnitude
-    local speed = math.min(distance * 50, 999999999999)
+    local speed = math.min(distance * 50, 9999999)
     flyVelocity.Velocity = direction * speed
     task.wait(0.0001 * (distance / 1000))
     flyVelocity.Velocity = Vector3.new(0, -9.81, 0)

@@ -3,10 +3,12 @@
 -- Version: V0.7.6
 
 --===[ Services ]===--
+local LocalPlayer = Players.LocalPlayer
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInput = game:GetService("VirtualInputManager")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -16,7 +18,7 @@ local NothingLibrary = loadstring(game:HttpGet(libURL))()
 
 local Window = NothingLibrary.new({
     Title = "YANZ HUB | V0.7.6",
-    Description = "By lphisv5 | Game : 🏆 Race Clicker",
+    Description = "By lphisv5 | Game : ⚡ Race Clicker",
     Keybind = Enum.KeyCode.RightShift,
     Logo = 'http://www.roblox.com/asset/?id=125456335927282'
 })
@@ -37,6 +39,8 @@ local function doClick()
     local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Click3")
     if remote and remote.FireServer then
         remote:FireServer()
+    else
+        warn("Remote Click3 not found!")
     end
 end
 
@@ -44,8 +48,10 @@ local function isClickToBuildActive()
     local gui = LocalPlayer:FindFirstChild("PlayerGui")
     if not gui then return false end
     for _, c in ipairs(gui:GetDescendants()) do
-        if c:IsA("TextLabel") and c.Text == "Click to build" then
-            return true
+        if c:IsA("TextLabel") then
+            if c.Text == "Click to build" then
+                return true
+            end
         end
     end
     return false
@@ -57,8 +63,10 @@ local function isClickTemplateActive()
     local clicksUI = gui:FindFirstChild("ClicksUI")
     if clicksUI then
         local clickTemplate = clicksUI:FindFirstChild("ClickTemplate")
-        if clickTemplate and clickTemplate:IsA("TextLabel") and clickTemplate.Text:find("Click!") then
-            return true
+        if clickTemplate and clickTemplate:IsA("TextLabel") then
+            if clickTemplate.Text:find("Click!") then
+                return true
+            end
         end
     end
     return false
@@ -81,10 +89,8 @@ AutoClickSection:NewToggle({
                         while (tick() - startTime) < 20 and state.autoClick and (isClickToBuildActive() or isClickTemplateActive()) do
                             for i = 1, 100 do
                                 task.spawn(doClick)
-                                
-                                local virtualInput = game:GetService("VirtualInputManager")
-                                virtualInput:SendMouseButtonEvent(centerX, centerY, 0, true, game)
-                                virtualInput:SendMouseButtonEvent(centerX, centerY, 0, false, game)
+                                VirtualInput:SendMouseButtonEvent(centerX, centerY, 0, true, game, 0)
+                                VirtualInput:SendMouseButtonEvent(centerX, centerY, 0, false, game, 0)
                             end
                             task.wait(0.005)
                         end
@@ -128,9 +134,9 @@ local function moveToPosition(hrp, targetPos)
     if not flyVelocity then return end
     local direction = (targetPos - hrp.Position).Unit
     local distance = (targetPos - hrp.Position).Magnitude
-    local speed = math.min(distance * 50, 9999999999)
+    local speed = math.min(distance * 50, 999999999999)
     flyVelocity.Velocity = direction * speed
-    task.wait(0.005 * (distance / 1000))
+    task.wait(0.003 * (distance / 1000))
     flyVelocity.Velocity = Vector3.new(0, -9.81, 0)
     task.wait(0.002)
     flyVelocity.Velocity = Vector3.new(0, 0, 0)
@@ -231,6 +237,7 @@ AutoWinsSection:NewToggle({
     end
 })
 
+
 --===[ Anti-Jump and Anti-Follow Fix ]===--
 RunService.Heartbeat:Connect(function()
     pcall(function()
@@ -239,7 +246,6 @@ RunService.Heartbeat:Connect(function()
             humanoid.Jump = false
             humanoid.JumpPower = 0
         end
-        -- ล็อกกล้อง
         if Workspace.CurrentCamera then
             Workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
             Workspace.CurrentCamera.CameraSubject = LocalPlayer.Character and LocalPlayer.Character.Humanoid
@@ -262,5 +268,3 @@ local function disableSpectate()
     end
 end
 disableSpectate()
-
-print("✅ YANZ HUB Loaded Successfully")

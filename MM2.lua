@@ -1,1048 +1,435 @@
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
-
-local HttpService = game:GetService("HttpService")
-local TeleportService = game:GetService("TeleportService")
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
 local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
-local Window = Fluent:CreateWindow({
-    Title = "Murder Mystery 2 Menu",
-    SubTitle = "by Goiaba.lua",
-    TabWidth = 100,
-    Size = UDim2.fromOffset(670, 460),
-    Acrylic = true, -- The blur may be detectable, setting this to false disables blur entirely
-    Theme = "Dark",
-    MinimizeKey = Enum.KeyCode.LeftControl -- Used when theres no MinimizeKeybind
-})
+local highlightEnabled = false
+local autoCollectEnabled = false
+local gunDropESPEnabled = false
+local playerSpeed = 16
+local defaultGravity = Workspace.Gravity
+local attackEnabled = false
+local teleportYOffset = 5 -- Y-axis offset to prevent falling through the map
 
---Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional
-local Tabs = {
-    Main = Window:AddTab({ Title = "Main", Icon = "home" }),
-    Movement = Window:AddTab({ Title = "Movement", Icon = "user" }),
-    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
-}
-
-local ESPSection = Tabs.Main:AddSection("ESP")
-
-local Options = Fluent.Options
-
-local function createToggle(tab, name, callback, description)
-    local toggle = tab:AddToggle(name, {
-        Title = name,
-        Description = description or "",
-        Default = false,
-        Callback = function(state)
-            callback(state)
-        end
-    })
-    return toggle
+local function createHighlight(instance)
+    local highlight = Instance.new("Highlight")
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0.5
+    highlight.Parent = instance
+    return highlight
 end
 
-local playerHighlights = {}  
-local coinHighlights = {}
+local function createBillboardGui(player)
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Size = UDim2.new(0, 100, 0, 50)
+    billboardGui.AlwaysOnTop = true
+    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+    billboardGui.Name = "UsernameDisplay"
 
-local murdererESPEnabled = false
-local sheriffESPEnabled = false
-local innocentESPEnabled = false
-local coinESPEnabled = false
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = player.Name
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.TextStrokeTransparency = 0
+    textLabel.Parent = billboardGui
 
-local function updateESPForPlayer(player)
-    if not player.Character then
-        if playerHighlights[player] then
-            playerHighlights[player]:Destroy()
-            playerHighlights[player] = nil
-        end
-        return
-    end
+    return billboardGui
+end
 
-    local character = player.Character
+local function highlightPlayer(player, color)
+    local character = player.Character or Workspace:FindFirstChild(player.Name)
+    if character then
+        local highlight = character:FindFirstChildOfClass("Highlight") or createHighlight(character)
+        highlight.FillColor = color
+        highlight.OutlineColor = color
 
-    local function hasTool(toolName)
-        local found = false
-        if player:FindFirstChild("Backpack") then
-            for _, tool in ipairs(player.Backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name == toolName then
-                    found = true
-                    break
-                end
+        local head = character:FindFirstChild("Head")
+        if head then
+            local existingGui = head:FindFirstChild("UsernameDisplay")
+            if not existingGui then
+                local billboardGui = createBillboardGui(player)
+                billboardGui.Parent = head
             end
-        end
-        if not found then
-            for _, item in ipairs(character:GetChildren()) do
-                if item:IsA("Tool") and item.Name == toolName then
-                    found = true
-                    break
-                end
-            end
-        end
-        return found
-    end
-
-    local isMurderer = hasTool("Knife")
-    local isSheriff = (not isMurderer) and hasTool("Gun")
-    local isInnocent = (not isMurderer and not isSheriff)
-
-    local desiredColor
-    if isMurderer and murdererESPEnabled then
-        desiredColor = Color3.new(1, 0, 0)
-    elseif isSheriff and sheriffESPEnabled then
-        desiredColor = Color3.new(0, 0, 1)
-    elseif isInnocent and innocentESPEnabled then
-        desiredColor = Color3.new(0, 1, 0)
-    end
-
-    if desiredColor then
-        if not playerHighlights[player] then
-            local h = Instance.new("Highlight")
-            h.Name = "ESPHighlight"
-            h.FillTransparency = 0.5
-            h.OutlineTransparency = 1
-            h.Adornee = character
-            h.FillColor = desiredColor
-            h.Parent = character
-            playerHighlights[player] = h
-        else
-            playerHighlights[player].FillColor = desiredColor
-            if playerHighlights[player].Adornee ~= character then
-                playerHighlights[player].Adornee = character
-            end
-        end
-    else
-        if playerHighlights[player] then
-            playerHighlights[player]:Destroy()
-            playerHighlights[player] = nil
         end
     end
 end
 
-createToggle(Tabs.Main, "Murderer ESP", function(state)
-    murdererESPEnabled = state
-    if state then
-        spawn(function()
-            while murdererESPEnabled do
-                local success, err = pcall(function()
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer then
-                            updateESPForPlayer(player)
-                        end
-                    end
-                end)
-                if not success then
-                end
-                wait(1)
-            end
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and playerHighlights[player] then
-                    playerHighlights[player]:Destroy()
-                    playerHighlights[player] = nil
-                end
-            end
-        end)
-    end
-end, "Highlight the murderer in red.")
-
-createToggle(Tabs.Main, "Sheriff ESP", function(state)
-    sheriffESPEnabled = state
-    if state then
-        spawn(function()
-            while sheriffESPEnabled do
-                local success, err = pcall(function()
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer then
-                            updateESPForPlayer(player)
-                        end
-                    end
-                end)
-                if not success then
-                end
-                wait(1)
-            end
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and playerHighlights[player] then
-                    playerHighlights[player]:Destroy()
-                    playerHighlights[player] = nil
-                end
-            end
-        end)
-    end
-end, "Highlight the sheriff in blue.")
-
-createToggle(Tabs.Main, "Innocent ESP", function(state)
-    innocentESPEnabled = state
-    if state then
-        spawn(function()
-            while innocentESPEnabled do
-                local success, err = pcall(function()
-                    for _, player in ipairs(Players:GetPlayers()) do
-                        if player ~= LocalPlayer then
-                            updateESPForPlayer(player)
-                        end
-                    end
-                end)
-                if not success then
-                end
-                wait(1)
-            end
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and playerHighlights[player] then
-                    playerHighlights[player]:Destroy()
-                    playerHighlights[player] = nil
-                end
-            end
-        end)
-    end
-end, "Highlight players who are innocent in green.")
-
-createToggle(Tabs.Main, "Coin ESP", function(state)
-    coinESPEnabled = state
-    if state then
-        spawn(function()
-            while coinESPEnabled do
-                local success, err = pcall(function()
-                    for _, container in ipairs(workspace:GetDescendants()) do
-                        if container:IsA("Model") and container.Name == "CoinContainer" then
-                            for _, coinServer in ipairs(container:GetChildren()) do
-                                if coinServer.Name == "Coin_Server" then
-                                    local coinVisual = coinServer:FindFirstChild("CoinVisual")
-                                    if coinVisual then
-                                        local mainCoin = coinVisual:FindFirstChild("MainCoin")
-                                        if mainCoin and mainCoin:IsA("MeshPart") then
-                                            if not coinHighlights[mainCoin] then
-                                                local h = Instance.new("Highlight")
-                                                h.Name = "CoinESPHighlight"
-                                                h.FillColor = Color3.fromRGB(0, 255, 255)
-                                                h.FillTransparency = 0.5
-                                                h.OutlineTransparency = 1
-                                                h.Adornee = mainCoin
-                                                h.Parent = mainCoin
-                                                coinHighlights[mainCoin] = h
-                                            end
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end)
-                if not success then
-                end
-                wait(0.1)
-            end
-            for coinObj, h in pairs(coinHighlights) do
-                if h then
-                    h:Destroy()
-                end
-            end
-            coinHighlights = {}
-        end)
-    end
-end, "Highlight all coins in yellow.")
-
-local gunESPEnabled = false
-local gunHighlight = nil
-
-createToggle(Tabs.Main, "Gun ESP", function(state)
-    gunESPEnabled = state
-    if state then
-        spawn(function()
-            while gunESPEnabled do
-                local success, err = pcall(function()
-                    for _, obj in ipairs(workspace:GetDescendants()) do
-                        if obj:IsA("BasePart") and obj.Name == "GunDrop" then
-                            if not gunHighlight then
-                                local h = Instance.new("Highlight")
-                                h.Name = "GunESPHighlight"
-                                h.FillColor = Color3.fromRGB(255, 255, 0)
-                                h.FillTransparency = 0.5
-                                h.OutlineTransparency = 1
-                                h.Adornee = obj
-                                h.Parent = obj
-                                gunHighlight = h
-                            elseif gunHighlight.Adornee ~= obj then
-                                gunHighlight.Adornee = obj
-                            end
-                        end
-                    end
-                end)
-                if not success then end
-                task.wait(0.1)
-            end
-            if gunHighlight then
-                gunHighlight:Destroy()
-                gunHighlight = nil
-            end
-        end)
-    else
-        if gunHighlight then
-            gunHighlight:Destroy()
-            gunHighlight = nil
-        end
-    end
-end, "Highlight the GunDrop in yellow.")
-
-local InnocentSection = Tabs.Main:AddSection("Innocent")
-
-Tabs.Main:AddButton({
-    Title = "TP to Gun (If Spawned)",
-    Description = "Teleports to the Gun if it's dropped on the map.",
-    Callback = function()
-        local gun = nil
-
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v.Name == "GunDrop" and v:IsA("BasePart") then
-                gun = v
-                break
-            end
+local function removeHighlight(player)
+    local character = player.Character or Workspace:FindFirstChild(player.Name)
+    if character then
+        local highlight = character:FindFirstChildOfClass("Highlight")
+        if highlight then
+            highlight:Destroy()
         end
 
-        if gun then
-            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local hrp = char:WaitForChild("HumanoidRootPart")
-            hrp.CFrame = gun.CFrame + Vector3.new(0, 5, 0)
-            Fluent:Notify({
-                Title = "Gun Found",
-                Content = "Teleported to the Gun!",
-                Duration = 3
-            })
-        else
-            Fluent:Notify({
-                Title = "Gun Not Found",
-                Content = "No GunDrop found in the map!",
-                Duration = 3
-            })
-        end
-    end
-})
-
-Tabs.Main:AddParagraph({
-    Title = "TP to Gun (If Spawned) 'X'",
-    Content = "KeyBind: 'X'."
-})
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        wait(0.5)
-        if murdererESPEnabled or sheriffESPEnabled or innocentESPEnabled then
-            updateESPForPlayer(player)
-        end
-    end)
-end)
-
---local UIS = game:GetService("UserInputService")
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    -- ðŸ”« TP to Gun - Tecla "X"
-    if input.KeyCode == Enum.KeyCode.X then
-        local gun = nil
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v.Name == "GunDrop" and v:IsA("BasePart") then
-                gun = v
-                break
-            end
-        end
-
-        if gun then
-            local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-            local hrp = char:WaitForChild("HumanoidRootPart")
-            hrp.CFrame = gun.CFrame + Vector3.new(0, 5, 0)
-            Fluent:Notify({
-                Title = "Gun Found",
-                Content = "Teleported to the Gun!",
-                Duration = 3
-            })
-        else
-            Fluent:Notify({
-                Title = "Gun Not Found",
-                Content = "No GunDrop found in the map!",
-                Duration = 3
-            })
-        end
-    end
-end)
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-
-    -- ðŸ”« Shoot Murder - Tecla "Z"
-    if input.KeyCode == Enum.KeyCode.Z then
-        -- Executa a funÃ§Ã£o do Shoot Murder
-        -- ðŸ” Detectar quem tem Knife (Backpack ou MÃ£o)
-        for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-            if player ~= game.Players.LocalPlayer then
-                local hasKnife = false
-
-                if player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Knife") then
-                    hasKnife = true
-                end
-
-                if player.Character and player.Character:FindFirstChild("Knife") then
-                    hasKnife = true
-                end
-
-                if hasKnife then
-                    murder = player
-                    break
-                end
-            end
-        end
-
-        if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
-            local hrp = murder.Character.HumanoidRootPart
-            local murderPos = hrp.Position
-
-            -- ðŸŽ¯ Lead Shot baseado no ping real e velocidade do murder
-            local velocity = hrp.Velocity
-
-            -- Obter o ping atual (em segundos)
-            local pingMs = 0
-            local stats = game:GetService("Stats")
-            if stats:FindFirstChild("Network") and stats.Network:FindFirstChild("ServerStatsItem") then
-                local pingStat = stats.Network.ServerStatsItem:FindFirstChild("Data Ping")
-                if pingStat then
-                    pingMs = pingStat:GetValue()
-                end
-            end
-            local pingSec = math.clamp(pingMs / 1000, 0, 1) -- limite mÃ¡ximo 1s
-
-            -- Calcular offset
-            local leadOffset = velocity * pingSec
-
-            -- Se o murder estiver parado, sem offset
-            if velocity.Magnitude < 2 then
-                leadOffset = Vector3.new(0, 0, 0)
-            end
-
-            local targetPos = murderPos + leadOffset
-
-            local args = {
-                1,
-                Vector3.new(targetPos.X, targetPos.Y, targetPos.Z),
-                "AH2"
-            }
-
-            game:GetService("Players").LocalPlayer.Character:WaitForChild("Gun"):WaitForChild("KnifeLocal"):WaitForChild("CreateBeam"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-
-            Fluent:Notify({
-                Title = "Shot Fired",
-                Content = "Fired ahead of " .. murder.Name,
-                Duration = 3
-            })
-        else
-            Fluent:Notify({
-                Title = "Error",
-                Content = "No player holding Knife found!",
-                Duration = 3
-            })
-        end
-    end
-end)
-
-local SheriffSection = Tabs.Main:AddSection("Sheriff")
-
-local loopTPMurder = false
-local loopShootMurder = false
-
-createToggle(Tabs.Main, "Kill Murderer", function(state)
-    loopTPMurder = state
-    loopShootMurder = state
-
-    if state then
-        -- ðŸ”— Loop de Teleport
-        task.spawn(function()
-            while loopTPMurder do
-                local murder = nil
-
-                -- ðŸ” Detectar quem tem Knife (Backpack ou MÃ£o)
-                for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-                    if player ~= game.Players.LocalPlayer then
-                        local hasKnife = false
-
-                        if player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Knife") then
-                            hasKnife = true
-                        end
-
-                        if player.Character and player.Character:FindFirstChild("Knife") then
-                            hasKnife = true
-                        end
-
-                        if hasKnife then
-                            murder = player
-                            break
-                        end
-                    end
-                end
-
-                if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = murder.Character.HumanoidRootPart
-
-                    -- ðŸ”— TP pras COSTAS do Murder
-                    local myChar = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-                    local myHRP = myChar:WaitForChild("HumanoidRootPart")
-
-                    local backCFrame = hrp.CFrame * CFrame.new(0, 0, 15)
-                    myHRP.CFrame = backCFrame + Vector3.new(0, 0, 0)
-
-                end
-
-                task.wait(0) -- ðŸ” Delay do TP (rÃ¡pido)
-            end
-        end)
-
-        -- ðŸ”« Loop de Shoot
-        task.spawn(function()
-            while loopShootMurder do
-                local murder = nil
-
-                -- ðŸ” Detectar quem tem Knife (Backpack ou MÃ£o)
-                for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-                    if player ~= game.Players.LocalPlayer then
-                        local hasKnife = false
-
-                        if player:FindFirstChild("Backpack") and player.Backpack:FindFirstChild("Knife") then
-                            hasKnife = true
-                        end
-
-                        if player.Character and player.Character:FindFirstChild("Knife") then
-                            hasKnife = true
-                        end
-
-                        if hasKnife then
-                            murder = player
-                            break
-                        end
-                    end
-                end
-
-                if murder and murder.Character and murder.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = murder.Character.HumanoidRootPart
-                    local murderPos = hrp.Position
-
-                    -- ðŸŽ¯ Lead Shot baseado no ping real e velocidade do murder
-                    local velocity = hrp.Velocity
-
-                    -- Obter o ping atual (em segundos)
-                    local pingMs = 0
-                    local stats = game:GetService("Stats")
-                    if stats:FindFirstChild("Network") and stats.Network:FindFirstChild("ServerStatsItem") then
-                        local pingStat = stats.Network.ServerStatsItem:FindFirstChild("Data Ping")
-                        if pingStat then
-                            pingMs = pingStat:GetValue()
-                        end
-                    end
-                    local pingSec = math.clamp(pingMs / 1000, 0, 1) -- limite mÃ¡ximo 1s
-
-                    -- Calcular offset
-                    local leadOffset = velocity * pingSec
-
-                    -- Se o murder estiver parado, sem offset
-                    if velocity.Magnitude < 2 then
-                        leadOffset = Vector3.new(0, 0, 0)
-                    end
-
-                    local targetPos = murderPos + leadOffset
-
-                    local args = {
-                        1,
-                        Vector3.new(targetPos.X, targetPos.Y, targetPos.Z),
-                        "AH2"
-                    }
-
-                    game:GetService("Players").LocalPlayer.Character:WaitForChild("Gun"):WaitForChild("KnifeLocal"):WaitForChild("CreateBeam"):WaitForChild("RemoteFunction"):InvokeServer(unpack(args))
-
-                    Fluent:Notify({
-                        Title = "Shot Fired",
-                        Content = "Fired ahead of " .. murder.Name,
-                        Duration = 3
-                    })
-                else
-                    Fluent:Notify({
-                        Title = "Error",
-                        Content = "No player holding Knife found!",
-                        Duration = 3
-                    })
-                end
-
-                task.wait(0) -- ðŸ”« Delay do Shoot (AjustÃ¡vel â€” 2 segundos padrÃ£o)
-            end
-        end)
-    end
-end, "TP to the Murderer, and shoot.")
-
-Tabs.Main:AddParagraph({
-    Title = "Shoot Murder 'Z'",
-    Content = "KeyBind: 'Z'."
-})
-
-local MurdererSection = Tabs.Main:AddSection("Murderer")
-
-local loopTPStab = false
-
-createToggle(Tabs.Main, "Kill All", function(state)
-    loopTPStab = state
-
-    if state then
-        task.spawn(function()
-            while loopTPStab do
-                local closestPlayer = nil
-                local shortestDistance = math.huge
-
-                for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-                    if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChildOfClass("Humanoid").Health > 0 then
-                        local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-                        local hrp = char:WaitForChild("HumanoidRootPart")
-                        local distance = (player.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
-
-                        if distance < shortestDistance then
-                            shortestDistance = distance
-                            closestPlayer = player
-                        end
-                    end
-                end
-
-                if closestPlayer then
-                    local char = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
-                    local hrp = char:WaitForChild("HumanoidRootPart")
-                    local targetHRP = closestPlayer.Character:WaitForChild("HumanoidRootPart")
-
-                    -- Teleport atÃ© o player
-                    hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 0, 0) -- Leve offset pra nÃ£o bugar
-
-                    -- Executar Stab
-                    local knife = game.Players.LocalPlayer.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife")
-                    if knife then
-                        knife:WaitForChild("Stab"):FireServer("Down")
-                    end
-                end
-
-                task.wait(0) -- Delay entre cada tp/stab
-            end
-        end)
-    end
-end, "Teleport to nearest players and auto stab.")
-
-local PlayerSection = Tabs.Movement:AddSection("Movement")
-
-local WalkspeedSlider = Tabs.Movement:AddSlider("Walkspeed", {
-    Title = "Walkspeed",
-    Description = "Adjust your player's walkspeed.",
-    Default = 16,
-    Min = 0,
-    Max = 100,
-    Rounding = 0,
-    Callback = function(Value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
-        end
-    end
-})
-
-local JumpPowerSlider = Tabs.Movement:AddSlider("JumpPower", {
-    Title = "Jump Power",
-    Description = "Adjust your player's jump power.",
-    Default = 50,
-    Min = 0,
-    Max = 200,
-    Increment = 1,
-    Rounding = 0,
-    Callback = function(Value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = Value
-        end
-    end
-})
-
-local defaultGravity = workspace.Gravity
-
-local GravitySlider = Tabs.Movement:AddSlider("Gravity", {
-    Title = "Gravity",
-    Description = "Adjust the game gravity.",
-    Default = workspace.Gravity,
-    Min = 0,
-    Max = 999,
-    Rounding = 0,
-    Callback = function(Value)
-        workspace.Gravity = Value
-    end
-})
-
-local FOVSlider = Tabs.Movement:AddSlider("FOV", {
-    Title = "Field of View",
-    Description = "Adjust the camera's field of view.",
-    Default = Camera.FieldOfView,
-    Min = 20,
-    Max = 120,
-    Rounding = 1,
-    Callback = function(Value)
-        Camera.FieldOfView = Value
-    end
-})
-
-local InfJumpToggle = Tabs.Movement:AddToggle("InfJump", {
-    Title = "Infinite Jump",
-    Default = false,
-    Description = "Enable infinite jump."
-})
-
-local InfJumpEnabled = false
-local InfJumpConnection
-
-InfJumpToggle:OnChanged(function()
-    InfJumpEnabled = InfJumpToggle.Value
-    if InfJumpEnabled then
-        InfJumpConnection = UserInputService.JumpRequest:Connect(function()
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-                LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end)
-    else
-        if InfJumpConnection then
-            InfJumpConnection:Disconnect()
-        end
-    end
-end)
-
-local NoclipToggle = Tabs.Movement:AddToggle("Noclip", {
-    Title = "Noclip",
-    Default = false,
-    Description = "Enable noclip (walk through walls)."
-})
-
-local NoclipEnabled = false
-NoclipToggle:OnChanged(function()
-    NoclipEnabled = NoclipToggle.Value
-end)
-
-RunService.Stepped:Connect(function()
-    if NoclipEnabled and LocalPlayer.Character then
-        for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
+        local head = character:FindFirstChild("Head")
+        if head then
+            local usernameDisplay = head:FindFirstChild("UsernameDisplay")
+            if usernameDisplay then
+                usernameDisplay:Destroy()
             end
         end
     end
-end)
+end
 
-local FlyToggle = Tabs.Movement:AddToggle("Fly", {
-    Title = "Fly",
-    Default = false,
-    Description = "Enable flying mode."
-})
-
-local FlySpeedSlider = Tabs.Movement:AddSlider("FlySpeed", {
-    Title = "Fly Speed",
-    Description = "Adjust your fly speed.",
-    Default = 50,
-    Min = 10,
-    Max = 999,
-    Rounding = 0,
-    Callback = function(Value)
+local function hasTool(player, toolName)
+    local character = player.Character or Workspace:FindFirstChild(player.Name)
+    if character and character:FindFirstChild(toolName) then
+        return true
     end
-})
+    
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack and backpack:FindFirstChild(toolName) then
+        return true
+    end
 
-local FlyEnabled = false
-local FlyBodyVelocity, FlyBodyGyro
-local FlyConnection
+    return false
+end
 
-FlyToggle:OnChanged(function()
-    FlyEnabled = FlyToggle.Value
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-
-    if FlyEnabled then
-        FlyBodyVelocity = Instance.new("BodyVelocity")
-        FlyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        FlyBodyVelocity.Parent = hrp
-
-        FlyBodyGyro = Instance.new("BodyGyro")
-        FlyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-        FlyBodyGyro.CFrame = hrp.CFrame
-        FlyBodyGyro.Parent = hrp
-
-        FlyConnection = RunService.RenderStepped:Connect(function()
-            local direction = Vector3.new()
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                direction = direction + (Camera.CFrame.LookVector)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                direction = direction - (Camera.CFrame.LookVector)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                direction = direction - (Camera.CFrame.RightVector)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                direction = direction + (Camera.CFrame.RightVector)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.E) then
-                direction = direction + Vector3.new(0, 1, 0)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
-                direction = direction - Vector3.new(0, 1, 0)
-            end
-
-            FlyBodyVelocity.Velocity = direction * FlySpeedSlider.Value
-            if direction.Magnitude > 0 then
-                FlyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + direction)
+local function checkPlayers()
+    local murdererFound = false
+    local sheriffFound = false
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player and player.Character then
+            local hasKnife = hasTool(player, "Knife")
+            local hasGun = hasTool(player, "Gun")
+            
+            if hasKnife then
+                highlightPlayer(player, Color3.new(1, 0, 0)) -- Red for murderer
+                murdererFound = true
+            elseif hasGun then
+                highlightPlayer(player, Color3.new(0, 0, 1)) -- Blue for sheriff
+                sheriffFound = true
             else
-                FlyBodyGyro.CFrame = hrp.CFrame
+                highlightPlayer(player, Color3.new(0, 1, 0)) -- Green for others
             end
-        end)
-    else
-        if FlyConnection then
-            FlyConnection:Disconnect()
-        end
-        if FlyBodyVelocity then
-            FlyBodyVelocity:Destroy()
-        end
-        if FlyBodyGyro then
-            FlyBodyGyro:Destroy()
         end
     end
-end)
-
-Tabs.Movement:AddButton({
-    Title = "Restore to Default",
-    Description = "Reset to default values.",
-    Callback = function()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
-            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").JumpPower = 50
-            WalkspeedSlider:SetValue(16)
-            JumpPowerSlider:SetValue(50)
-            workspace.Gravity = defaultGravity
-            GravitySlider:SetValue(defaultGravity)
-        end
-    end
-})
-
-local TeleportSection = Tabs.Movement:AddSection("Player Teleport")
-
-local playerAddedConnection, playerRemovedConnection
-
-local function getPlayerNames()
-    local names = {}
-    local players = Players:GetPlayers()
     
-    for _, player in ipairs(players) do
-        if player ~= LocalPlayer and player:IsA("Player") then
-            table.insert(names, player.Name)
+    if not murdererFound then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player and player.Character and not hasTool(player, "Gun") then
+                highlightPlayer(player, Color3.new(0, 1, 0)) -- Green for others if no murderer
+            end
         end
-    end
-    return names
-end
-
-local TeleportDropdown = Tabs.Movement:AddDropdown("TeleportToPlayer", {
-    Title = "Teleport to Player",
-    Description = "Select a player to teleport to their position.",
-    Values = getPlayerNames(),
-    Multi = false,
-    Default = nil
-})
-
-TeleportDropdown:OnChanged(function(selected)
-    if not selected or selected == "" then return end
-    
-    local target = Players:FindFirstChild(selected)
-    if not target then
-        Fluent:Notify({
-            Title = "Teleport Failed",
-            Content = "Player not found: " .. tostring(selected),
-            Duration = 3
-        })
-        return
-    end
-
-    local success, err = pcall(function()
-        local targetChar = target.Character or target.CharacterAdded:Wait()
-        local targetHRP = targetChar:WaitForChild("HumanoidRootPart")
-        
-        local localChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local localHRP = localChar:WaitForChild("HumanoidRootPart")
-        
-        localHRP.CFrame = targetHRP.CFrame + Vector3.new(0, 5, 0)
-        
-        Fluent:Notify({
-            Title = "Teleport Success",
-            Content = "Teleported to " .. target.Name,
-            Duration = 3
-        })
-    end)
-    
-    if not success then
-        Fluent:Notify({
-            Title = "Teleport Error",
-            Content = "Failed to teleport: " .. tostring(err),
-            Duration = 5
-        })
-    end
-end)
-
-Tabs.Movement:AddButton({
-    Title = "Refresh Player List",
-    Description = "Update the teleport dropdown with current players.",
-    Callback = function()
-        TeleportDropdown:SetValues(getPlayerNames())
-        Fluent:Notify({
-            Title = "Player List",
-            Content = "Player list has been updated",
-            Duration = 2
-        })
-    end
-})
-
-local utilitiesSection = Tabs.Settings:AddSection("Utilities")
-
-Tabs.Settings:AddButton({
-    Title = "Rejoin",
-    Description = "Rejoin the current server.",
-    Callback = function()
-        local TeleportService = game:GetService("TeleportService")
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
-        TeleportService:Teleport(game.PlaceId, LocalPlayer)
-    end
-})
-
-local function serverhop()
-    local function tryHttpRequest(url)
-        if syn and syn.request then
-            local response = syn.request({
-                Url = url,
-                Method = "GET"
-            })
-            return true, HttpService:JSONDecode(response.Body)
-        end
-        if request then
-            local response = request({
-                Url = url,
-                Method = "GET"
-            })
-            return true, HttpService:JSONDecode(response.Body)
-        end
-        if http and http.request then
-            local response = http.request({
-                Url = url,
-                Method = "GET"
-            })
-            return true, HttpService:JSONDecode(response.Body)
-        end
-        local success, response = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url))
-        end)
-        if success then
-            return true, response
-        end
-        return false, nil
-    end
-
-    local url = string.format("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100&excludeFullGames=true", game.PlaceId)
-    local success, response = tryHttpRequest(url)
-
-    if not success or not response or not response.data then
-        Fluent:Notify({
-            Title = "Serverhop",
-            Content = "Failed to fetch server list. Your executor may not support HTTP requests.",
-            Duration = 5
-        })
-        return
-    end
-
-    local servers = {}
-    for _, v in ipairs(response.data) do
-        if type(v) == "table" and tonumber(v.playing) and tonumber(v.maxPlayers) and v.playing < v.maxPlayers and v.id ~= game.JobId then
-            table.insert(servers, v.id)
-        end
-    end
-
-    if #servers > 0 then
-        Fluent:Notify({
-            Title = "Serverhop",
-            Content = "Joining a new server...",
-            Duration = 3
-        })
-        TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], Players.LocalPlayer)
-    else
-        Fluent:Notify({
-            Title = "Serverhop",
-            Content = "Couldn't find a server with available slots.",
-            Duration = 5
-        })
     end
 end
 
-Tabs.Settings:AddButton({
-    Title = "Serverhop",
-    Description = "Join a different server with available slots.",
+local function loopCheckPlayers()
+    while highlightEnabled do
+        checkPlayers()
+        wait(1) -- Adjust the delay as needed
+    end
+    if not highlightEnabled then
+        for _, player in ipairs(Players:GetPlayers()) do
+            removeHighlight(player)
+        end
+    end
+end
+
+local function teleportToCoin(player, coinPosition)
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.CFrame = CFrame.new(coinPosition + Vector3.new(0, teleportYOffset, 0))
+    end
+end
+
+local function isPlayerInRange(player)
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local position = character.HumanoidRootPart.Position
+        return (position.X > -110.301956 and position.X < -9.69793701) and
+               (position.Y > 310.059998 and position.Y < 311.059998) and
+               (position.Z > -10.69793701 and position.Z < 10.302063)
+    end
+    return false
+end
+
+local function collectCoins()
+    autoCollectEnabled = true
+    while autoCollectEnabled do
+        if not Players.LocalPlayer.Character or not Players.LocalPlayer.Character:FindFirstChild("Humanoid") or Players.LocalPlayer.Character.Humanoid.Health <= 0 then
+            autoCollectEnabled = false
+            break
+        end
+        local player = Players.LocalPlayer
+        if not isPlayerInRange(player) then
+            local coinContainer = Workspace:FindFirstChild("Normal"):FindFirstChild("CoinContainer")
+            if coinContainer then
+                for _, coin in ipairs(coinContainer:GetChildren()) do
+                    if coin:IsA("Part") then
+                        teleportToCoin(player, coin.Position)
+                        wait(2) -- Delay of 2 seconds between teleports
+                    end
+                end
+            end
+        end
+        wait(1) -- Adjust delay between checks if necessary
+    end
+end
+
+local function highlightGunDrop()
+    while gunDropESPEnabled do
+        local gunDrop = Workspace:FindFirstChild("GunDrop")
+        if gunDrop then
+            local highlight = gunDrop:FindFirstChildOfClass("Highlight") or createHighlight(gunDrop)
+            highlight.FillColor = Color3.new(0, 0, 0) -- Black color
+
+            local existingGui = gunDrop:FindFirstChild("GunDropDisplay")
+            if not existingGui then
+                local billboardGui = Instance.new("BillboardGui")
+                billboardGui.Size = UDim2.new(0, 100, 0, 50)
+                billboardGui.AlwaysOnTop = true
+                billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+                billboardGui.Name = "GunDropDisplay"
+
+                local textLabel = Instance.new("TextLabel")
+                textLabel.Size = UDim2.new(1, 0, 1, 0)
+                textLabel.BackgroundTransparency = 1
+                textLabel.Text = "Gun Drop"
+                textLabel.TextColor3 = Color3.new(0, 0, 0)
+                textLabel.TextStrokeTransparency = 0
+                textLabel.Parent = billboardGui
+
+                billboardGui.Parent = gunDrop
+            end
+        end
+        wait(1) -- Adjust delay as needed
+    end
+
+    if not gunDropESPEnabled then
+        local gunDrop = Workspace:FindFirstChild("GunDrop")
+        if gunDrop then
+            local highlight = gunDrop:FindFirstChildOfClass("Highlight")
+            if highlight then
+                highlight:Destroy()
+            end
+
+            local gunDropDisplay = gunDrop:FindFirstChild("GunDropDisplay")
+            if gunDropDisplay then
+                gunDropDisplay:Destroy()
+            end
+        end
+    end
+end
+
+local function teleportToGunDrop()
+    local gunDrop = Workspace:FindFirstChild("GunDrop")
+    if gunDrop then
+        local player = Players.LocalPlayer
+        teleportToCoin(player, gunDrop.Position)
+    end
+end
+
+local function getClosestPlayers(range)
+    local localPlayer = Players.LocalPlayer
+    local localCharacter = localPlayer.Character
+    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return {} end
+    
+    local closestPlayers = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local distance = (localCharacter.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+            if distance <= range then
+                table.insert(closestPlayers, player)
+            end
+        end
+    end
+    return closestPlayers
+end
+
+local function attackClosestPlayers()
+    attackEnabled = true
+    while attackEnabled do
+        local closestPlayers = getClosestPlayers(300)
+        for _, player in ipairs(closestPlayers) do
+            local localPlayer = Players.LocalPlayer
+            local localCharacter = localPlayer.Character
+            if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") and localCharacter:FindFirstChildOfClass("Tool") then
+                local tool = localCharacter:FindFirstChildOfClass("Tool")
+                local humanoidRootPart = localCharacter.HumanoidRootPart
+                local targetHumanoidRootPart = player.Character.HumanoidRootPart
+                
+                humanoidRootPart.CFrame = targetHumanoidRootPart.CFrame
+                tool:Activate()
+                wait(0.1) -- Adjust the delay as needed
+            end
+        end
+        wait(1) -- Adjust delay between checks if necessary
+    end
+end
+
+local function stopAttacking()
+    attackEnabled = false
+end
+
+local function setSpeed(speed)
+    playerSpeed = speed
+    local character = Players.LocalPlayer.Character
+    if character and character:FindFirstChildOfClass("Humanoid") then
+        character:FindFirstChildOfClass("Humanoid").WalkSpeed = playerSpeed
+    end
+end
+
+local function setGravity(newGravity)
+    Workspace.Gravity = newGravity
+end
+
+local function resetGravity()
+    Workspace.Gravity = defaultGravity
+end
+
+local function teleportToModelCenter(model)
+    local localPlayer = Players.LocalPlayer
+    local localCharacter = localPlayer.Character
+    if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+        if model.PrimaryPart then
+            localCharacter.HumanoidRootPart.CFrame = model.PrimaryPart.CFrame + Vector3.new(0, teleportYOffset, 0)
+        else
+            local totalPosition = Vector3.new(0, 0, 0)
+            local numParts = 0
+
+            for _, part in ipairs(model:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    totalPosition = totalPosition + part.Position
+                    numParts = numParts + 1
+                end
+            end
+
+            if numParts > 0 then
+                local averagePosition = totalPosition / numParts
+                localCharacter.HumanoidRootPart.CFrame = CFrame.new(averagePosition + Vector3.new(0, teleportYOffset, 0))
+            else
+                print("No parts found in the model.")
+            end
+        end
+    end
+end
+
+local function teleportToLobby()
+    teleportToModelCenter(Workspace.Lobby)
+end
+
+local function teleportToMap()
+    teleportToModelCenter(Workspace.Normal.Map)
+end
+
+local Window = OrionLib:MakeWindow({Name = "Player Highlighter", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
+
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+MainTab:AddToggle({
+    Name = "Enable Highlighting",
+    Default = false,
+    Callback = function(value)
+        highlightEnabled = value
+        if highlightEnabled then
+            loopCheckPlayers()
+        else
+            for _, player in ipairs(Players:GetPlayers()) do
+                removeHighlight(player)
+            end
+        end
+    end    
+})
+
+MainTab:AddButton({
+    Name = "Start Auto Collect Coins",
     Callback = function()
-        local success, err = pcall(serverhop)
-        if not success then
-            Fluent:Notify({
-                Title = "Serverhop Error",
-                Content = "An error occurred: " .. tostring(err),
-                Duration = 5
-            })
+        collectCoins()
+    end    
+})
+
+MainTab:AddToggle({
+    Name = "Gun Drop ESP",
+    Default = false,
+    Callback = function(value)
+        gunDropESPEnabled = value
+        if gunDropESPEnabled then
+            highlightGunDrop()
         end
     end
 })
 
-playerAddedConnection = Players.PlayerAdded:Connect(function(player)
-    TeleportDropdown:SetValues(getPlayerNames())
-end)
-
-playerRemovedConnection = Players.PlayerRemoving:Connect(function(player)
-    TeleportDropdown:SetValues(getPlayerNames())
-end)
-
-game:GetService("UserInputService").WindowFocused:Connect(function()
-    if playerAddedConnection then
-        playerAddedConnection:Disconnect()
-    end
-    if playerRemovedConnection then
-        playerRemovedConnection:Disconnect()
-    end
-end)
-
--- Addons:
--- SaveManager (Allows you to have a configuration system)
--- InterfaceManager (Allows you to have a interface managment system)
-
--- Hand the library over to our managers
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-
--- Ignore keys that are used by ThemeManager.
--- (we dont want configs to save themes, do we?)
-SaveManager:IgnoreThemeSettings()
-
--- You can add indexes of elements the save manager should ignore
-SaveManager:SetIgnoreIndexes({})
-
--- use case for doing it this way:
--- a script hub could have themes in a global folder
--- and game configs in a separate folder per game
-InterfaceManager:SetFolder("FluentScriptHub")
-SaveManager:SetFolder("FluentScriptHub/specific-game")
-
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
-Window:SelectTab(1)
-
--- NotificaÃ§Ã£o de inicializaÃ§Ã£o
-Fluent:Notify({
-    Title = "Murder Mystery 2 Menu",
-    Content = "The script has been loaded. Press LeftControl to toggle.",
-    Duration = 5
+MainTab:AddButton({
+    Name = "Teleport to Gun Drop",
+    Callback = function()
+        teleportToGunDrop()
+    end    
 })
 
--- You can use the SaveManager:LoadAutoloadConfig() to load a config
--- which has been marked to be one that auto loads!
-SaveManager:LoadAutoloadConfig()
+MainTab:AddButton({
+    Name = "Start Attacking Closest Players",
+    Callback = function()
+        attackClosestPlayers()
+    end    
+})
+
+MainTab:AddButton({
+    Name = "Stop Attacking",
+    Callback = function()
+        stopAttacking()
+    end    
+})
+
+MainTab:AddSlider({
+    Name = "Set Speed",
+    Min = 16,
+    Max = 100,
+    Default = 16,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 1,
+    ValueName = "Speed",
+    Callback = function(value)
+        setSpeed(value)
+    end    
+})
+
+MainTab:AddSlider({
+    Name = "Set Gravity",
+    Min = 0,
+    Max = 196.2,
+    Default = 196.2,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 1,
+    ValueName = "Gravity",
+    Callback = function(value)
+        setGravity(value)
+    end    
+})
+
+MainTab:AddButton({
+    Name = "Reset Gravity",
+    Callback = function()
+        resetGravity()
+    end    
+})
+
+local TeleportTab = Window:MakeTab({
+    Name = "Teleport",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+TeleportTab:AddButton({
+    Name = "Teleport to Lobby",
+    Callback = function()
+        teleportToLobby()
+    end    
+})
+
+TeleportTab:AddButton({
+    Name = "Teleport to Map",
+    Callback = function()
+        teleportToMap()
+    end    
+})
+
+OrionLib:Init()

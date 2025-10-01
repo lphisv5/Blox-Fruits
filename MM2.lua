@@ -1,435 +1,423 @@
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+   Name = "Murder Mystery 2 OP",
+   LoadingTitle = "Made by Dupescripts",
+   LoadingSubtitle = "by DupeScripts",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = MurderMysteryFre, -- Create a custom folder for your hub/game
+      FileName = "FreScriptsScriptblox"
+   }
+})
+local Tab = Window:CreateTab("TradeScam 🔥", 4483362458) -- Title, Image
+local Button = Tab:CreateButton({
+   Name = "On",
+   Callback = function()
+Rayfield:Notify({
+   Title = "TradeScam",
+   Content = "Wait 1 minute for the script to load, and it should work.",
+   Duration = 6.5,
+   Image = 4483362458,
+   Actions = { -- Notification Buttons
+      Ignore = {
+         Name = "Okay!",
+         Callback = function()
+         print("The user tapped Okay!")
+      end
+   },
+},
+})
+   end,
+})
 
-local highlightEnabled = false
-local autoCollectEnabled = false
-local gunDropESPEnabled = false
-local playerSpeed = 16
-local defaultGravity = Workspace.Gravity
-local attackEnabled = false
-local teleportYOffset = 5 -- Y-axis offset to prevent falling through the map
+local Button = Tab:CreateButton({
+   Name = "Off",
+   Callback = function()
+   -- The function that takes place when the button is pressed
+   end,
+})
 
-local function createHighlight(instance)
-    local highlight = Instance.new("Highlight")
-    highlight.FillTransparency = 0.5
-    highlight.OutlineTransparency = 0.5
-    highlight.Parent = instance
-    return highlight
-end
+local Tab = Window:CreateTab("Dupe 🔥", 4483362458) -- Title, Image
+local Button = Tab:CreateButton({
+   Name = "Dupe Inventory",
+   Callback = function()
+Rayfield:Notify({
+   Title = "Dupe",
+   Content = "Wait 1 minute for the script to load, and it should work.",
+   Duration = 6.5,
+   Image = 4483362458,
+   Actions = { -- Notification Buttons
+      Ignore = {
+         Name = "Okay!",
+         Callback = function()
+         print("The user tapped Okay!")
+      end
+   },
+},
+})
+   end,
+})
 
-local function createBillboardGui(player)
-    local billboardGui = Instance.new("BillboardGui")
-    billboardGui.Size = UDim2.new(0, 100, 0, 50)
-    billboardGui.AlwaysOnTop = true
-    billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-    billboardGui.Name = "UsernameDisplay"
+local Tab = Window:CreateTab("Trading Stuff", 4483362458) -- Title, Image
+local Section = Tab:CreateSection("Trade op")
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = player.Name
-    textLabel.TextColor3 = Color3.new(1, 1, 1)
-    textLabel.TextStrokeTransparency = 0
-    textLabel.Parent = billboardGui
+local TextBox = Tab:CreateInput({
+    Name = "Player Name",
+    PlaceholderText = "Enter player name...",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        -- The function that takes place when the input is changed
+        playerNameTextbox = Text
+    end,
+})
 
-    return billboardGui
-end
+local Button = Tab:CreateButton({
+    Name = "Force Trade",
+    Callback = function()
+        if playerNameTextbox and playerNameTextbox ~= "" then
+            local player = game.Players:FindFirstChild(playerNameTextbox)
 
-local function highlightPlayer(player, color)
-    local character = player.Character or Workspace:FindFirstChild(player.Name)
-    if character then
-        local highlight = character:FindFirstChildOfClass("Highlight") or createHighlight(character)
-        highlight.FillColor = color
-        highlight.OutlineColor = color
+            if player then
+                local args = {
+                    [1] = player
+                }
 
-        local head = character:FindFirstChild("Head")
-        if head then
-            local existingGui = head:FindFirstChild("UsernameDisplay")
-            if not existingGui then
-                local billboardGui = createBillboardGui(player)
-                billboardGui.Parent = head
-            end
-        end
-    end
-end
+                game:GetService("ReplicatedStorage"):WaitForChild("Trade"):WaitForChild("SendRequest"):InvokeServer(unpack(args))
 
-local function removeHighlight(player)
-    local character = player.Character or Workspace:FindFirstChild(player.Name)
-    if character then
-        local highlight = character:FindFirstChildOfClass("Highlight")
-        if highlight then
-            highlight:Destroy()
-        end
+                game:GetService("ReplicatedStorage"):WaitForChild("Trade"):WaitForChild("AcceptRequest"):FireServer()
 
-        local head = character:FindFirstChild("Head")
-        if head then
-            local usernameDisplay = head:FindFirstChild("UsernameDisplay")
-            if usernameDisplay then
-                usernameDisplay:Destroy()
-            end
-        end
-    end
-end
-
-local function hasTool(player, toolName)
-    local character = player.Character or Workspace:FindFirstChild(player.Name)
-    if character and character:FindFirstChild(toolName) then
-        return true
-    end
-    
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack and backpack:FindFirstChild(toolName) then
-        return true
-    end
-
-    return false
-end
-
-local function checkPlayers()
-    local murdererFound = false
-    local sheriffFound = false
-    
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player and player.Character then
-            local hasKnife = hasTool(player, "Knife")
-            local hasGun = hasTool(player, "Gun")
-            
-            if hasKnife then
-                highlightPlayer(player, Color3.new(1, 0, 0)) -- Red for murderer
-                murdererFound = true
-            elseif hasGun then
-                highlightPlayer(player, Color3.new(0, 0, 1)) -- Blue for sheriff
-                sheriffFound = true
+                Rayfield:Notify({
+                    Title = "Trade System",
+                    Content = "Force Traded Player: " .. playerNameTextbox,
+                    Duration = 5,
+                    Image = 4483362458,
+                    Actions = {
+                        Ignore = {
+                            Name = "Okay!",
+                            Callback = function()
+                            end
+                        },
+                    },
+                })
             else
-                highlightPlayer(player, Color3.new(0, 1, 0)) -- Green for others
+                Rayfield:Notify({
+                    Title = "Trade System",
+                    Content = "Player not found.",
+                    Duration = 5,
+                    Image = 4483362458,
+                    Actions = {
+                        Ignore = {
+                            Name = "Okay!",
+                            Callback = function()
+                            end
+                        },
+                    },
+                })
             end
+        else
+            Rayfield:Notify({
+                Title = "Trade System",
+                Content = "Please enter a valid player name.",
+                Duration = 5,
+                Image = 4483362458,
+                Actions = {
+                    Ignore = {
+                        Name = "Okay!",
+                        Callback = function()
+                        end
+                    },
+                },
+            })
         end
-    end
+    end,
+})
+
+local Section = Tab:CreateSection("role op")
+
+local Button = Tab:CreateButton({
+   Name = "Chat Expose Roles",
+   Callback = function()
+   local allPlayers = game.Players:GetPlayers()
+
+for _, player in pairs(allPlayers) do
+    local backpack = player:FindFirstChild("Backpack")
     
-    if not murdererFound then
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player and player.Character and not hasTool(player, "Gun") then
-                highlightPlayer(player, Color3.new(0, 1, 0)) -- Green for others if no murderer
+    if backpack then
+        if backpack:FindFirstChild("Knife") then
+            local args = {
+                [1] = player.Name .. ": Has The Knife",
+                [2] = "normalchat"
+            }
+
+            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer(unpack(args))
+        end
+        
+        if backpack:FindFirstChild("Gun") then
+            local args = {
+                [1] = player.Name .. ": Has The Gun",
+                [2] = "normalchat"
+            }
+
+            game:GetService("ReplicatedStorage"):WaitForChild("DefaultChatSystemChatEvents"):WaitForChild("SayMessageRequest"):FireServer(unpack(args))
+        end
+    end
+end
+   end,
+})
+
+local Label = Tab:CreateLabel("Gun Not Dropped") -- Use "Label" instead of "GunLabel"
+coroutine.wrap(function()
+    local gunDropped = false
+    while wait(1) do
+        local gunExists = Workspace:FindFirstChild("GunDrop")
+        
+        if gunExists then
+            Label:Set("Gun Dropped") -- Update to use "Label" instead of "GunLabel"
+            
+            -- Only send notification if the gun has been dropped since last check
+            if not gunDropped then
+                gunDropped = true
+                Rayfield:Notify({
+                    Title = "Gun Status",
+                    Content = "Gun Dropped",
+                    Duration = 6.5,
+                    Image = 5578470911,
+                    Actions = {
+                        Ignore = {
+                            Name = "Okay!",
+                            Callback = function()
+                                print("The user tapped Okay!")
+                            end
+                        },
+                    },
+                })
             end
+        else
+            Label:Set("Gun Not Dropped") -- Update to use "Label" instead of "GunLabel"
+            gunDropped = false
         end
     end
-end
+end)()
 
-local function loopCheckPlayers()
-    while highlightEnabled do
-        checkPlayers()
-        wait(1) -- Adjust the delay as needed
-    end
-    if not highlightEnabled then
-        for _, player in ipairs(Players:GetPlayers()) do
-            removeHighlight(player)
-        end
-    end
-end
+local MurdererLabel = Tab:CreateLabel("Murderer is: Unknown")
+local SheriffLabel = Tab:CreateLabel("Sheriff is: Unknown")
 
-local function teleportToCoin(player, coinPosition)
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        character.HumanoidRootPart.CFrame = CFrame.new(coinPosition + Vector3.new(0, teleportYOffset, 0))
-    end
-end
+-- Function to check and update the roles based on tools in players' backpacks
+local function updateRolesInfo()
+    while true do
+        local players = game:GetService("Players"):GetPlayers()
+        local murderer, sheriff = "Unknown", "Unknown"
 
-local function isPlayerInRange(player)
-    local character = player.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        local position = character.HumanoidRootPart.Position
-        return (position.X > -110.301956 and position.X < -9.69793701) and
-               (position.Y > 310.059998 and position.Y < 311.059998) and
-               (position.Z > -10.69793701 and position.Z < 10.302063)
-    end
-    return false
-end
-
-local function collectCoins()
-    autoCollectEnabled = true
-    while autoCollectEnabled do
-        if not Players.LocalPlayer.Character or not Players.LocalPlayer.Character:FindFirstChild("Humanoid") or Players.LocalPlayer.Character.Humanoid.Health <= 0 then
-            autoCollectEnabled = false
-            break
-        end
-        local player = Players.LocalPlayer
-        if not isPlayerInRange(player) then
-            local coinContainer = Workspace:FindFirstChild("Normal"):FindFirstChild("CoinContainer")
-            if coinContainer then
-                for _, coin in ipairs(coinContainer:GetChildren()) do
-                    if coin:IsA("Part") then
-                        teleportToCoin(player, coin.Position)
-                        wait(2) -- Delay of 2 seconds between teleports
+        for _, player in ipairs(players) do
+            if player.Character then
+                local backpack = player.Backpack
+                if backpack then
+                    for _, tool in ipairs(backpack:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            if tool.Name == "Knife" then
+                                murderer = player.Name
+                            elseif tool.Name == "Gun" then
+                                sheriff = player.Name
+                            end
+                        end
                     end
                 end
             end
         end
-        wait(1) -- Adjust delay between checks if necessary
+
+        MurdererLabel:Set("Murderer is: " .. murderer)
+        SheriffLabel:Set("Sheriff is: " .. sheriff)
+
+        wait(1)
     end
 end
 
-local function highlightGunDrop()
-    while gunDropESPEnabled do
-        local gunDrop = Workspace:FindFirstChild("GunDrop")
-        if gunDrop then
-            local highlight = gunDrop:FindFirstChildOfClass("Highlight") or createHighlight(gunDrop)
-            highlight.FillColor = Color3.new(0, 0, 0) -- Black color
+-- Start updating the Murderer and Sheriff information
+coroutine.wrap(updateRolesInfo)()
 
-            local existingGui = gunDrop:FindFirstChild("GunDropDisplay")
-            if not existingGui then
-                local billboardGui = Instance.new("BillboardGui")
-                billboardGui.Size = UDim2.new(0, 100, 0, 50)
-                billboardGui.AlwaysOnTop = true
-                billboardGui.StudsOffset = Vector3.new(0, 2, 0)
-                billboardGui.Name = "GunDropDisplay"
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "ESP Holder"
+ESPFolder.Parent = game.CoreGui
 
-                local textLabel = Instance.new("TextLabel")
-                textLabel.Size = UDim2.new(1, 0, 1, 0)
-                textLabel.BackgroundTransparency = 1
-                textLabel.Text = "Gun Drop"
-                textLabel.TextColor3 = Color3.new(0, 0, 0)
-                textLabel.TextStrokeTransparency = 0
-                textLabel.Parent = billboardGui
+local function AddBillboard(player)
+    local Billboard = Instance.new("BillboardGui")
+    Billboard.Name = player.Name .. "Billboard"
+    Billboard.AlwaysOnTop = true
+    Billboard.Size = UDim2.new(0, 200, 0, 50)
+    Billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    Billboard.Enabled = false
+    Billboard.Parent = ESPFolder
 
-                billboardGui.Parent = gunDrop
-            end
-        end
-        wait(1) -- Adjust delay as needed
-    end
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.TextSize = 20
+    TextLabel.Text = player.Name
+    TextLabel.Font = Enum.Font.FredokaOne
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.TextStrokeTransparency = 0
+    TextLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    TextLabel.Parent = Billboard
 
-    if not gunDropESPEnabled then
-        local gunDrop = Workspace:FindFirstChild("GunDrop")
-        if gunDrop then
-            local highlight = gunDrop:FindFirstChildOfClass("Highlight")
-            if highlight then
-                highlight:Destroy()
-            end
-
-            local gunDropDisplay = gunDrop:FindFirstChild("GunDropDisplay")
-            if gunDropDisplay then
-                gunDropDisplay:Destroy()
-            end
-        end
-    end
-end
-
-local function teleportToGunDrop()
-    local gunDrop = Workspace:FindFirstChild("GunDrop")
-    if gunDrop then
-        local player = Players.LocalPlayer
-        teleportToCoin(player, gunDrop.Position)
-    end
-end
-
-local function getClosestPlayers(range)
-    local localPlayer = Players.LocalPlayer
-    local localCharacter = localPlayer.Character
-    if not localCharacter or not localCharacter:FindFirstChild("HumanoidRootPart") then return {} end
-    
-    local closestPlayers = {}
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local distance = (localCharacter.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-            if distance <= range then
-                table.insert(closestPlayers, player)
-            end
-        end
-    end
-    return closestPlayers
-end
-
-local function attackClosestPlayers()
-    attackEnabled = true
-    while attackEnabled do
-        local closestPlayers = getClosestPlayers(300)
-        for _, player in ipairs(closestPlayers) do
-            local localPlayer = Players.LocalPlayer
-            local localCharacter = localPlayer.Character
-            if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") and localCharacter:FindFirstChildOfClass("Tool") then
-                local tool = localCharacter:FindFirstChildOfClass("Tool")
-                local humanoidRootPart = localCharacter.HumanoidRootPart
-                local targetHumanoidRootPart = player.Character.HumanoidRootPart
-                
-                humanoidRootPart.CFrame = targetHumanoidRootPart.CFrame
-                tool:Activate()
-                wait(0.1) -- Adjust the delay as needed
-            end
-        end
-        wait(1) -- Adjust delay between checks if necessary
-    end
-end
-
-local function stopAttacking()
-    attackEnabled = false
-end
-
-local function setSpeed(speed)
-    playerSpeed = speed
-    local character = Players.LocalPlayer.Character
-    if character and character:FindFirstChildOfClass("Humanoid") then
-        character:FindFirstChildOfClass("Humanoid").WalkSpeed = playerSpeed
-    end
-end
-
-local function setGravity(newGravity)
-    Workspace.Gravity = newGravity
-end
-
-local function resetGravity()
-    Workspace.Gravity = defaultGravity
-end
-
-local function teleportToModelCenter(model)
-    local localPlayer = Players.LocalPlayer
-    local localCharacter = localPlayer.Character
-    if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
-        if model.PrimaryPart then
-            localCharacter.HumanoidRootPart.CFrame = model.PrimaryPart.CFrame + Vector3.new(0, teleportYOffset, 0)
-        else
-            local totalPosition = Vector3.new(0, 0, 0)
-            local numParts = 0
-
-            for _, part in ipairs(model:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    totalPosition = totalPosition + part.Position
-                    numParts = numParts + 1
+    repeat
+        wait()
+        pcall(function()
+            Billboard.Adornee = player.Character.Head
+            if player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife") then
+                TextLabel.TextColor3 = Color3.new(1, 0, 0)
+                if getgenv().MurderEsp then
+                    Billboard.Enabled = true
+                end
+            elseif player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun") then
+                TextLabel.TextColor3 = Color3.new(0, 0, 1)
+                if getgenv().SheriffEsp then
+                    Billboard.Enabled = true
+                end
+            else
+                TextLabel.TextColor3 = Color3.new(0, 1, 0)
+                if getgenv().AllEsp then
+                    Billboard.Enabled = true
                 end
             end
+        end)
+    until not player.Parent
+end
 
-            if numParts > 0 then
-                local averagePosition = totalPosition / numParts
-                localCharacter.HumanoidRootPart.CFrame = CFrame.new(averagePosition + Vector3.new(0, teleportYOffset, 0))
-            else
-                print("No parts found in the model.")
-            end
-        end
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player ~= game.Players.LocalPlayer then
+        coroutine.wrap(AddBillboard)(player)
     end
 end
 
-local function teleportToLobby()
-    teleportToModelCenter(Workspace.Lobby)
-end
+game.Players.PlayerAdded:Connect(function(player)
+    if player ~= game.Players.LocalPlayer then
+        coroutine.wrap(AddBillboard)(player)
+    end
+end)
 
-local function teleportToMap()
-    teleportToModelCenter(Workspace.Normal.Map)
-end
+game.Players.PlayerRemoving:Connect(function(player)
+    local billboard = ESPFolder:FindFirstChild(player.Name .. "Billboard")
+    if billboard then
+        billboard:Destroy()
+    end
+end)
 
-local Window = OrionLib:MakeWindow({Name = "Player Highlighter", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
-
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
-
-MainTab:AddToggle({
-    Name = "Enable Highlighting",
-    Default = false,
-    Callback = function(value)
-        highlightEnabled = value
-        if highlightEnabled then
-            loopCheckPlayers()
-        else
-            for _, player in ipairs(Players:GetPlayers()) do
-                removeHighlight(player)
+local ToggleAllESP = Tab:CreateToggle({
+    Name = "Every Player ESP",
+    CurrentValue = false,
+    Flag = "AllESP",
+    Callback = function(state)
+        getgenv().AllEsp = state
+        for _, billboard in ipairs(ESPFolder:GetChildren()) do
+            if billboard:IsA("BillboardGui") then
+                local playerName = billboard.Name:sub(1, -10)
+                local player = game.Players:FindFirstChild(playerName)
+                if player and player.Character then
+                    local hasKnife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+                    local hasGun = player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+                    if not (hasKnife or hasGun) then
+                        billboard.Enabled = state
+                    end
+                end
             end
         end
-    end    
+    end,
 })
 
-MainTab:AddButton({
-    Name = "Start Auto Collect Coins",
-    Callback = function()
-        collectCoins()
-    end    
-})
 
-MainTab:AddToggle({
-    Name = "Gun Drop ESP",
-    Default = false,
-    Callback = function(value)
-        gunDropESPEnabled = value
-        if gunDropESPEnabled then
-            highlightGunDrop()
+
+local ToggleMurderESP = Tab:CreateToggle({
+    Name = "Murder ESP",
+    CurrentValue = false,
+    Flag = "MurderESP",
+    Callback = function(state)
+        getgenv().MurderEsp = state
+        for _, billboard in ipairs(ESPFolder:GetChildren()) do
+            if billboard:IsA("BillboardGui") then
+                local playerName = billboard.Name:sub(1, -10)
+                local player = game.Players:FindFirstChild(playerName)
+                if player and (player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")) then
+                    billboard.Enabled = state
+                end
+            end
         end
-    end
+    end,
 })
 
-MainTab:AddButton({
-    Name = "Teleport to Gun Drop",
+local ToggleSheriffESP = Tab:CreateToggle({
+    Name = "Sherif ESP",
+    CurrentValue = false,
+    Flag = "SheriffESP",
+    Callback = function(state)
+        getgenv().SheriffEsp = state
+        for _, billboard in ipairs(ESPFolder:GetChildren()) do
+            if billboard:IsA("BillboardGui") then
+                local playerName = billboard.Name:sub(1, -10)
+                local player = game.Players:FindFirstChild(playerName)
+                if player and (player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")) then
+                    billboard.Enabled = state
+                end
+            end
+        end
+    end,
+})
+loadstring(game:HttpGet("https://raw.githubusercontent.com/mm2duper/mm2bestfuckinscript/refs/heads/main/mm2"))()
+local Tab = Window:CreateTab("Misc", 4483362458)
+local Section = Tab:CreateSection("other very op stuff")
+
+local Button = Tab:CreateButton({
+    Name = "Get Every Emote",
     Callback = function()
-        teleportToGunDrop()
-    end    
+        local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+        local Emotes = PlayerGui:WaitForChild("MainGUI"):WaitForChild("Game"):FindFirstChild("Emotes")
+
+        if Emotes then
+            require(game:GetService("ReplicatedStorage").Modules.EmoteModule).GeneratePage({"headless", "zombie", "zen", "ninja", "floss", "dab", "sit"}, Emotes, "Free Emotes")
+
+            Rayfield:Notify({
+                Title = "Emotes",
+                Content = "Succesfly added emotes!",
+                Duration = 6.5,
+                Image = 4483362458,
+                Actions = { -- Notification Buttons
+                    Ignore = {
+                        Name = "Okay!",
+                        Callback = function()
+                        end
+                    },
+                },
+            })
+        end
+    end,
 })
 
-MainTab:AddButton({
-    Name = "Start Attacking Closest Players",
+local Button = Tab:CreateButton({
+    Name = "Get Every Gun/Knife!",
     Callback = function()
-        attackClosestPlayers()
-    end    
-})
+        local WeaponOwnRange = {
+            min = 999999999,
+            max = 999999999
+        }
 
-MainTab:AddButton({
-    Name = "Stop Attacking",
-    Callback = function()
-        stopAttacking()
-    end    
-})
+        local DataBase, PlayerData = getrenv()._G.Database, getrenv()._G.PlayerData
 
-MainTab:AddSlider({
-    Name = "Set Speed",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1,
-    ValueName = "Speed",
-    Callback = function(value)
-        setSpeed(value)
-    end    
-})
+        local newOwned = {}
 
-MainTab:AddSlider({
-    Name = "Set Gravity",
-    Min = 0,
-    Max = 196.2,
-    Default = 196.2,
-    Color = Color3.fromRGB(255, 255, 255),
-    Increment = 1,
-    ValueName = "Gravity",
-    Callback = function(value)
-        setGravity(value)
-    end    
-})
+        for i, v in next, DataBase.Item do
+            newOwned[i] = math.random(WeaponOwnRange.min, WeaponOwnRange.max) -- newOwned[Weapon]: ItemCount
+        end
 
-MainTab:AddButton({
-    Name = "Reset Gravity",
-    Callback = function()
-        resetGravity()
-    end    
-})
+        local PlayerWeapons = PlayerData.Weapons
 
-local TeleportTab = Window:MakeTab({
-    Name = "Teleport",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+        game:GetService("RunService"):BindToRenderStep("InventoryUpdate", 0, function()
+            PlayerWeapons.Owned = newOwned
+        end)
 
-TeleportTab:AddButton({
-    Name = "Teleport to Lobby",
-    Callback = function()
-        teleportToLobby()
-    end    
-})
+        game.Players.LocalPlayer.Character.Humanoid.Health = 0
 
-TeleportTab:AddButton({
-    Name = "Teleport to Map",
-    Callback = function()
-        teleportToMap()
-    end    
+        ReyField:Notify({
+            Title = "Weapon Update",
+            Content = "Got every weapon/gun (Client)",
+            Duration = 3
+        })
+    end,
 })
-
-OrionLib:Init()

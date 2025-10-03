@@ -6,7 +6,7 @@ local Window = Fluent:CreateWindow({
     Title = "YANZ HUB",
     SubTitle = "Game : +1 Size Race",
     TabWidth = 160,
-    Size = UDim2.fromOffset(520, 400),
+    Size = UDim2.fromOffset(500, 400),
     Acrylic = true,
     Theme = "Dark",
 })
@@ -60,7 +60,7 @@ local speedValue = 5
 
 -- Auto Farm Toggle
 local FarmToggle = Tabs.Main:AddToggle("AutoFarm", {
-    Title = "Auto Farm Size",
+    Title = "Auto Farm",
     Default = false,
 })
 FarmToggle:OnChanged(function(state)
@@ -113,7 +113,7 @@ Tabs.Player:AddButton({
 
 -- Speed Hack Toggle
 local SpeedToggle = Tabs.Player:AddToggle("SpeedHack", {
-    Title = "CFrame Speed Hack",
+    Title = "Speed Hack",
     Default = false,
 })
 SpeedToggle:OnChanged(function(state)

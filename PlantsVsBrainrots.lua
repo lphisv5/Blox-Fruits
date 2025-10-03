@@ -1,7 +1,7 @@
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/refs/heads/main/source.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/Library.lua"))()
 
 -- สร้างหน้าต่างหลัก
-local main = library.new({
+local Window = Library:CreateWindow({
     Title = "YANZ HUB | V1.2.0",
     Description = "By lphisv5 | Game : Plants vs Brainrots",
     Keybind = Enum.KeyCode.RightShift,
@@ -18,10 +18,10 @@ local Remotes = ReplicatedStorage.Remotes
 local Tycoon = Workspace.Tycoon
 
 -- // Main Automation Tab //
-local automationTab = main:CreateTab("Automation")
+local automationTab = Window:AddTab({Title = "Automation"})
 
 -- Kill Aura
-automationTab:NewToggle({
+automationTab:AddToggle({
     Title = "Kill Aura",
     Default = false,
     Callback = function(bool)
@@ -30,7 +30,7 @@ automationTab:NewToggle({
 })
 
 -- Auto Collect Cash
-automationTab:NewToggle({
+automationTab:AddToggle({
     Title = "Auto Collect Cash",
     Default = false,
     Callback = function(bool)
@@ -39,7 +39,7 @@ automationTab:NewToggle({
 })
 
 -- Auto Equip Best Brainrots
-automationTab:NewToggle({
+automationTab:AddToggle({
     Title = "Auto Equip Best Brainrots",
     Default = false,
     Callback = function(bool)
@@ -48,7 +48,7 @@ automationTab:NewToggle({
 })
 
 -- Auto Buy Gears
-automationTab:NewToggle({
+automationTab:AddToggle({
     Title = "Auto Buy Gears",
     Default = false,
     Callback = function(bool)
@@ -57,15 +57,17 @@ automationTab:NewToggle({
 })
 
 -- // Player Modifications Tab //
-local playerTab = main:CreateTab("Player")
+local playerTab = Window:AddTab({Title = "Player"})
 
 -- WalkSpeed Slider
-playerTab:NewSlider({
+local WalkSpeedValue = 16
+playerTab:AddSlider({
     Title = "WalkSpeed",
     Min = 16,
     Max = 200,
     Default = 16,
     Callback = function(val)
+        WalkSpeedValue = val
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = val
         end
@@ -73,26 +75,42 @@ playerTab:NewSlider({
 })
 
 -- JumpPower Slider
-playerTab:NewSlider({
+local JumpPowerValue = 50
+playerTab:AddSlider({
     Title = "JumpPower",
     Min = 50,
     Max = 300,
     Default = 50,
     Callback = function(val)
+        JumpPowerValue = val
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.JumpPower = val
         end
     end
 })
 
+-- Function to apply properties
+local function applyProperties()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeedValue
+        LocalPlayer.Character.Humanoid.JumpPower = JumpPowerValue
+    end
+end
+
+-- Apply on character added
+LocalPlayer.CharacterAdded:Connect(applyProperties)
+if LocalPlayer.Character then
+    applyProperties()
+end
+
 -- // Core Logic Loops //
 
 -- Kill Aura
-spawn(function()
+task.spawn(function()
     while true do
         if _G.KillAura and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
             for _, brainrot in pairs(Workspace.Brainrots:GetChildren()) do
-                if brainrot:FindFirstChild("Humanoid") and brainrot.Humanoid.Health > 0 then
+                if brainrot:FindFirstChild("Humanoid") and brainrot.Humanoid.Health > 0 and brainrot:FindFirstChild("HumanoidRootPart") then
                     local distance = (LocalPlayer.Character.HumanoidRootPart.Position - brainrot.HumanoidRootPart.Position).Magnitude
                     if distance < 50 then -- Attack range
                         pcall(function()
@@ -102,12 +120,12 @@ spawn(function()
                 end
             end
         end
-        task.wait(0.1) -- ใช้ task.wait แทน wait สำหรับความเสถียร
+        task.wait(0.1)
     end
 end)
 
 -- Auto Collect Cash
-spawn(function()
+task.spawn(function()
     while true do
         if _G.AutoCollect then
             for _, cashPart in pairs(Tycoon.Cash:GetChildren()) do
@@ -123,7 +141,7 @@ spawn(function()
 end)
 
 -- Auto Equip Best Brainrots
-spawn(function()
+task.spawn(function()
     while true do
         if _G.AutoEquipBest then
             pcall(function()
@@ -135,13 +153,15 @@ spawn(function()
 end)
 
 -- Auto Buy Gears
-spawn(function()
+task.spawn(function()
     while true do
         if _G.AutoBuyGears then
             pcall(function()
+                -- Assuming Shop is in Workspace, adjust if needed (e.g., to PlayerGui)
                 for _, gear in pairs(Workspace.Shop.Gears:GetChildren()) do
                     if gear:IsA("TextButton") and gear:FindFirstChild("Price") then
-                        if gear.Price.Value <= LocalPlayer.leaderstats.Cash.Value then
+                        local playerCash = LocalPlayer.leaderstats.Cash.Value
+                        if gear.Price.Value <= playerCash then
                             Remotes.BuyGear:FireServer(gear.Name)
                         end
                     end
@@ -155,11 +175,11 @@ end)
 -- // Additional Safety Features //
 RunService.Heartbeat:Connect(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        if LocalPlayer.Character.Humanoid.WalkSpeed < 16 then
-            LocalPlayer.Character.Humanoid.WalkSpeed = 16
+        if LocalPlayer.Character.Humanoid.WalkSpeed < WalkSpeedValue then
+            LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeedValue
         end
-        if LocalPlayer.Character.Humanoid.JumpPower < 50 then
-            LocalPlayer.Character.Humanoid.JumpPower = 50
+        if LocalPlayer.Character.Humanoid.JumpPower < JumpPowerValue then
+            LocalPlayer.Character.Humanoid.JumpPower = JumpPowerValue
         end
     end
 end)

@@ -133,7 +133,7 @@ local function TweenToPosition(targetPos)
         Enum.EasingStyle.Linear,
         Enum.EasingDirection.InOut
     )
-    local tweenGoal = {CFrame = CFrame.new(targetPos + Vector3.new(0,5,0))} -- ลอยตัว +5
+    local tweenGoal = {CFrame = CFrame.new(targetPos + Vector3.new(0,15,0))} -- ลอยตัว +5
     local tween = TweenService:Create(HRP(), tweenInfo, tweenGoal)
     
     tween:Play()

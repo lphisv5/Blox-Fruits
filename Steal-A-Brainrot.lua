@@ -3,9 +3,9 @@ local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- Cria janela
 local Window = Rayfield:CreateWindow({
-    Name = "byby Hub",
-    LoadingTitle = "Steal A Brainrot Script",
-    LoadingSubtitle = "by edulucas2013",
+    Name = "YANZ HUB",
+    LoadingTitle = "Game : Steal A Brainrot",
+    LoadingSubtitle = "by lphisv5",
     ConfigurationSaving = {
         Enabled = false,
         FolderName = "SABConfigs",

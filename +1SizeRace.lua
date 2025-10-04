@@ -48,8 +48,8 @@ end
 -- Auto Farm
 local autoFarm = false
 local farmPoints = {
-    Vector3.new(-13.23, 55.95, 37.52),
-    Vector3.new(-25.43, 44.25, -9542.87),
+    Vector3.new(-214.79, 18.83, -928.51),
+    Vector3.new(-217.22, 18.39, -9525.09),
 }
 local farmIndex = 1
 local moving = false
@@ -181,9 +181,9 @@ task.spawn(function()
             -- Tween ตัวละครไปยังตำแหน่ง + ลอยตัว
             moving = true
             local distance = (HRP().Position - target).Magnitude
-            local duration = distance / 500 -- ความเร็ว Tween
+            local duration = distance / 1000 -- ความเร็ว Tween
             local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-            local tweenGoal = {CFrame = CFrame.new(target + Vector3.new(0, 25, 0))}
+            local tweenGoal = {CFrame = CFrame.new(target + Vector3.new(0, 10, 0))}
             local tween = TweenService:Create(HRP(), tweenInfo, tweenGoal)
             tween:Play()
             tween.Completed:Wait()
@@ -192,7 +192,7 @@ task.spawn(function()
             -- อัปเดต Box หลัง Tween เสร็จ
             local box = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("FarmBox")
             if box then
-                box.CFrame = HRP().CFrame * CFrame.new(0, -2, 0)
+                box.CFrame = HRP().CFrame * CFrame.new(0, -4, 0)
             end
 
             -- สลับพิกัด

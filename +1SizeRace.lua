@@ -62,7 +62,7 @@ local speedValue = 5
 local autoWin = false
 local winStart = Vector3.new(2.24, 21.02, -223.43)
 local winGoal  = Vector3.new(1.00, 17.59, -9402.92)
-local winSpeed = 500
+local winSpeed = 400
 local winActive = false
 
 -- ===========================
@@ -181,9 +181,9 @@ task.spawn(function()
             -- Tween ตัวละครไปยังตำแหน่ง + ลอยตัว
             moving = true
             local distance = (HRP().Position - target).Magnitude
-            local duration = distance / 1000 -- ความเร็ว Tween
+            local duration = distance / 1000
             local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-            local tweenGoal = {CFrame = CFrame.new(target + Vector3.new(0, 10, 0))}
+            local tweenGoal = {CFrame = CFrame.new(target + Vector3.new(0, 1, 0))}
             local tween = TweenService:Create(HRP(), tweenInfo, tweenGoal)
             tween:Play()
             tween.Completed:Wait()

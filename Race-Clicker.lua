@@ -86,6 +86,37 @@ StarterGui:SetCore("SendNotification", {
     Duration = 3
 })
 
+--===[ Anti Kick Toggle ]===--
+local antiKickState = true
+
+HomeSection:NewToggle({
+    Title = "Anti Kick",
+    Default = true,
+    Callback = function(v)
+        antiKickState = v
+    end
+})
+
+do
+    local plr = game:GetService("Players").LocalPlayer
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod():lower()
+        if self == plr and method == "kick" and antiKickState then
+            warn("[ANTI-KICK] Client tried to kick LocalPlayer — Blocked!")
+            return
+        end
+        return oldNamecall(self, ...)
+    end)
+end
+
+StarterGui:SetCore("SendNotification", {
+    Title = "Anti Kick Loaded!",
+    Text = "You are now protected from being kicked.",
+    Duration = 3
+})
+
+
 --===[ Main Tab ]===--
 local MainTab = Window:NewTab({Title="Main", Description="Auto System", Icon="rbxassetid://7733960981"})
 local AutoClickSection = MainTab:NewSection({Title="Auto Click", Icon="rbxassetid://7733916988", Position="Left"})

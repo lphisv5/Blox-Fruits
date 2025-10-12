@@ -293,8 +293,8 @@ AutoWinsSection:NewToggle({
         if v then
             SafeNotify({
                 Title = "Auto Farm Wins",
-                Content = "Started!",
-                Duration = 3
+                Content = "Continuous Ultra farming started!",
+                Duration = 2
             })
 
             task.spawn(function()
@@ -304,45 +304,47 @@ AutoWinsSection:NewToggle({
                 currentStage = 1
 
                 while state.autoWins do
-                    local txt = findTimer()
-
-                    if txt:find("Waiting") then
-                        task.wait(0.00001)
-
-                    elseif txt:find("Click to build") then
-                        for i = 1, 300 do
-                            task.spawn(doClick)
-                            task.wait(0.00001)
-                        end
-
-                    elseif txt:match("%d%d:%d%d") then
-                        while txt:match("%d%d:%d%d") and state.autoWins do
-                            if not tpToStage(currentStage) then break end
-
-                            if currentStage < #stages then
-                                currentStage += 1
-                            else
-                                SafeNotify({
-                                    Title = "Auto Farm Wins",
-                                    Content = "Reached Final Stage — Restarting!",
-                                    Duration = 2
-                                })
-                                currentStage = 1
-                            end
-
-                            task.wait(0.00001)
-                            txt = findTimer()
-                        end
-
-                    else
-                        task.wait(0.00001)
+                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Humanoid") or LocalPlayer.Character.Humanoid.Health <= 0 then
+                        task.wait(0.2)
+                        continue
                     end
+
+                    local txt = findTimer()
+                    
+                    if txt:match("00:00") then
+                        state.autoWins = false
+                        break
+                    end
+
+                    if txt:find("Click to build") then
+                        for i = 1, 600 do
+                            if not state.autoWins then break end
+                            doClick()
+                            task.wait(0.001)
+                        end
+                    end
+
+                    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local targetStage = stages[currentStage]
+                        if targetStage then
+                            hrp.CFrame = CFrame.new(targetStage.cframe.Position + Vector3.new(0, 1, 0))
+                        end
+
+                        if currentStage < #stages then
+                            currentStage += 1
+                        else
+                            currentStage = 1
+                        end
+                    end
+
+                    task.wait(0.0001)
                 end
 
-                if humanoid then humanoid.JumpPower = 16 end
+                if humanoid then humanoid.JumpPower = 50 end
                 SafeNotify({
                     Title = "Auto Farm Wins",
-                    Content = "Stopped or Completed Cycle",
+                    Content = "Stopped at 00:00 or manually.",
                     Duration = 3
                 })
             end)
@@ -356,6 +358,7 @@ AutoWinsSection:NewToggle({
         end
     end
 })
+
 
 RunService.Heartbeat:Connect(function()
     pcall(function()

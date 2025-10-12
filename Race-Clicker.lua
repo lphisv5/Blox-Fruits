@@ -97,129 +97,58 @@ local state = {
     autoWins = false
 }
 
---===[ Safe Notify ]===
-local function SafeNotify(notificationData)
-    pcall(function()
-        NothingLibrary:Notify(notificationData)
-    end)
-end
-
---===[ doClick ]===
-local function doClick()
-    doAIClick()
-end
 
 --===[ Auto Click ]===--
-local clickRemotes = {}
-local keywords = {"click", "tap", "build", "press", "button"}
+local autoClickConnection = nil
 
-local function isClickRemote(obj)
-    if obj:IsA("RemoteEvent") then
-        local name = obj.Name:lower()
-        for _, word in ipairs(keywords) do
-            if name:find(word) then
-                return true
-            end
-        end
+local function findRemoteEvent(eventName)
+    local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild(eventName)
+    if remote and remote:IsA("RemoteEvent") then
+        return remote
+    else
+        return nil
     end
-    return false
 end
 
-local function registerRemote(remote)
-    if not table.find(clickRemotes, remote) then
-        table.insert(clickRemotes, remote)
-        warn("[AutoClick] 🔍 Learned new remote:", remote:GetFullName())
-        SafeNotify({
-            Title = "Auto Click",
-            Content = "Learned new remote: " .. remote.Name,
-            Duration = 2
+local function doClick()
+    local remoteEventName = "Click!"
+    local remote = findRemoteEvent(remoteEventName)
+    
+    if remote then
+        remote:FireServer()
+    else
+        NothingLibrary:Notify({
+            Title = "Error",
+            Content = "RemoteEvent '" .. remoteEventName .. "' not found!",
+            Duration = 5
         })
     end
 end
 
-local function unregisterRemote(remote)
-    for i, r in ipairs(clickRemotes) do
-        if r == remote then
-            table.remove(clickRemotes, i)
-            warn("[AutoClick AI] ❌ Remote destroyed:", remote.Name)
-            break
-        end
-    end
-end
-
-local function initialScan()
-    table.clear(clickRemotes)
-    local function deepScan(parent)
-        for _, v in ipairs(parent:GetChildren()) do
-            if isClickRemote(v) then
-                registerRemote(v)
-            end
-            deepScan(v)
-        end
-    end
-    deepScan(game)
-    SafeNotify({
-        Title = "Auto Click",
-        Content = "Found " .. tostring(#clickRemotes) .. " click-type remotes",
-        Duration = 3
-    })
-end
-
-local function doAIClick()
-    if #clickRemotes == 0 then return end
-    for _, remote in ipairs(clickRemotes) do
-        if remote and remote.Parent then
-            task.spawn(function()
-                local ok, err = pcall(function()
-                    remote:FireServer()
-                end)
-                if not ok then
-                    warn("[AutoClick AI] Error firing:", remote.Name, err)
-                end
-            end)
-        end
-    end
-end
-
-game.DescendantAdded:Connect(function(obj)
-    task.wait(0.05)
-    if isClickRemote(obj) then
-        registerRemote(obj)
-    end
-end)
-
-game.DescendantRemoving:Connect(function(obj)
-    if isClickRemote(obj) then
-        unregisterRemote(obj)
-    end
-end)
-
-initialScan()
-
---===[ สวิตช์เปิด/ปิด Auto Click ]===--
 AutoClickSection:NewToggle({
-    Title = "Auto Click",
+    Title = "Auto Click [Not working]",
     Default = false,
     Callback = function(v)
         state.autoClick = v
         if v then
-            SafeNotify({
-                Title = "Auto Click",
-                Content = "Learning & Clicking Remotes...",
-                Duration = 3
-            })
-            task.spawn(function()
-                while state.autoClick do
-                    doAIClick()
-                    task.wait(0.001)
-                end
-            end)
+            if not autoClickConnection then
+                autoClickConnection = RunService.Heartbeat:Connect(doClick)
+                NothingLibrary:Notify({
+                    Title = "Auto Click",
+                    Content = "Auto Click is now active!",
+                    Duration = 3
+                })
+            end
         else
-            SafeNotify({
-                Title = "Auto Click",
-                Content = "Auto Click Stopped.",
-                Duration = 3
-            })
+            if autoClickConnection then
+                autoClickConnection:Disconnect()
+                autoClickConnection = nil
+                NothingLibrary:Notify({
+                    Title = "Auto Click",
+                    Content = "Auto Click is now inactive.",
+                    Duration = 3
+                })
+            end
         end
     end
 })
@@ -296,87 +225,63 @@ local function findTimer()
     return ""
 end
 
---===[ Auto Farm Wins Ultra Fast ]===--
 AutoWinsSection:NewToggle({
     Title = "Auto Farm Wins",
     Default = false,
     Callback = function(v)
         state.autoWins = v
         if v then
-            SafeNotify({
-                Title = "Auto Farm Wins",
-                Content = "Ultra Fast Auto Farming Started!",
-                Duration = 3
-            })
-
             task.spawn(function()
-                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if humanoid and hrp then humanoid.JumpPower = 0 end
-                currentStage = 1
-
-                local flyVel
-                if hrp then
-                    flyVel = Instance.new("BodyVelocity")
-                    flyVel.MaxForce = Vector3.new(1e5,1e5,1e5)
-                    flyVel.Velocity = Vector3.new(0,0,0)
-                    flyVel.Parent = hrp
+                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid and hrp then
+                    humanoid.JumpPower = 0
                 end
-
+                currentStage = 1
                 while state.autoWins do
-                    humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                    if not humanoid or not hrp or humanoid.Health <= 0 then
-                        task.wait(0.1)
-                        continue
-                    end
-
                     local txt = findTimer()
-                    if txt:match("00:00") then
+                    if txt:find("Waiting") then
+                        task.wait(0.03)
+                    elseif txt:find("Click to build") then
+                        for i = 1, 30 do
+                            doClick()
+                            task.wait(0.01)
+                        end
+                    elseif txt:match("%d%d:%d%d") then
+                        local lastTimerUpdate = tick()
+                        while txt:match("%d%d:%d%d") and state.autoWins do
+                            tpToStage(currentStage)
+                            if currentStage < #stages then
+                                currentStage = currentStage + 1
+                            else
+                                state.autoWins = false
+                                NothingLibrary:Notify({
+                                    Title = "Auto Farm Wins",
+                                    Content = "Reached final stage. Stopping auto farm.",
+                                    Duration = 5
+                                })
+                                break
+                            end
+                            if tick() - lastTimerUpdate > 0.03 then
+                                txt = findTimer()
+                                lastTimerUpdate = tick()
+                            end
+                            RunService.Heartbeat:Wait()
+                        end
+                    elseif txt:find("00:00") then
                         state.autoWins = false
                         break
+                    else
+                        task.wait(0.03)
                     end
-
-                    if txt:find("Click to build") then
-                        for i = 1, 500 do
-                            if not state.autoWins then break end
-                            doClick()
-                            task.wait(0.001)
-                        end
-                    end
-
-                    local targetStage = stages[currentStage]
-                    if targetStage and hrp and flyVel then
-                        local dir = (targetStage.cframe.Position - hrp.Position).Unit
-                        local dist = (targetStage.cframe.Position - hrp.Position).Magnitude
-                        flyVel.Velocity = dir * math.max(dist*50, 500) -- ultra fast
-                        hrp.CFrame = CFrame.new(targetStage.cframe.Position + Vector3.new(0,1,0))
-                    end
-
-                    currentStage += 1
-                    if currentStage > #stages then currentStage = 1 end
-
-                    task.wait(0.001)
                 end
-
-                if flyVel then flyVel:Destroy() end
-                if humanoid then humanoid.JumpPower = 50 end
-                SafeNotify({
-                    Title = "Auto Farm Wins",
-                    Content = "Stopped at 00:00 or manually.",
-                    Duration = 3
-                })
+                if humanoid then
+                    humanoid.JumpPower = 16
+                end
             end)
-        else
-            SafeNotify({
-                Title = "Auto Farm Wins",
-                Content = "Stopped manually.",
-                Duration = 3
-            })
         end
     end
 })
-
 
 RunService.Heartbeat:Connect(function()
     pcall(function()

@@ -126,7 +126,7 @@ local function doClick()
 end
 
 AutoClickSection:NewToggle({
-    Title = "Auto Click",
+    Title = "Auto Click [Not working]",
     Default = false,
     Callback = function(v)
         state.autoClick = v
@@ -185,10 +185,10 @@ local function moveToPosition(hrp, targetPos)
     if not flyVelocity then return end
     local direction = (targetPos - hrp.Position).Unit
     local distance = (targetPos - hrp.Position).Magnitude
-    local speed = math.min(distance * 50, 100000)
+    local speed = math.min(distance * 100, 1000000)
     flyVelocity.Velocity = direction * speed
     task.wait(0.01 * (distance / 1000))
-    flyVelocity.Velocity = Vector3.new(0, -9.80, 0)
+    flyVelocity.Velocity = Vector3.new(0, -9.81, 0)
     task.wait(0.01)
     flyVelocity.Velocity = Vector3.new(0, 1, 0)
     hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 1, 0))
@@ -238,10 +238,11 @@ AutoWinsSection:NewToggle({
                     setupUndetectedFly(hrp)
                     humanoid.JumpPower = 0
                 end
+                currentStage = 1
                 while state.autoWins do
                     local txt = findTimer()
                     if txt:find("Waiting") then
-                        task.wait(0.05)
+                        task.wait(0.06)
                     elseif txt:find("Click to build") then
                         for i = 1, 30 do
                             doClick()
@@ -250,8 +251,11 @@ AutoWinsSection:NewToggle({
                     elseif txt:match("%d%d:%d%d") then
                         local lastTimerUpdate = tick()
                         while txt:match("%d%d:%d%d") and state.autoWins do
-                            for i = 1, #stages do
-                                tpToStage(i)
+                            tpToStage(currentStage)
+                            if currentStage < #stages then
+                                currentStage = currentStage + 1
+                            else
+                                currentStage = 1
                             end
                             if tick() - lastTimerUpdate > 0.05 then
                                 txt = findTimer()

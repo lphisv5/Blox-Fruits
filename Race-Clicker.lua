@@ -97,13 +97,31 @@ local state = {
     autoWins = false
 }
 
+
 --===[ Auto Click ]===--
 local autoClickConnection = nil
 
+local function findRemoteEvent(eventName)
+    local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild(eventName)
+    if remote and remote:IsA("RemoteEvent") then
+        return remote
+    else
+        return nil
+    end
+end
+
 local function doClick()
-    local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild("Click3")
-    if remote and remote.FireServer then
+    local remoteEventName = "Click3"
+    local remote = findRemoteEvent(remoteEventName)
+    
+    if remote then
         remote:FireServer()
+    else
+        NothingLibrary:Notify({
+            Title = "Error",
+            Content = "RemoteEvent '" .. remoteEventName .. "' not found!",
+            Duration = 5
+        })
     end
 end
 
@@ -113,14 +131,28 @@ AutoClickSection:NewToggle({
     Callback = function(v)
         state.autoClick = v
         if v then
-            if autoClickConnection then autoClickConnection:Disconnect() end
-            autoClickConnection = RunService.Heartbeat:Connect(doClick)
+            if not autoClickConnection then
+                autoClickConnection = RunService.Heartbeat:Connect(doClick)
+                NothingLibrary:Notify({
+                    Title = "Auto Click",
+                    Content = "Auto Click is now active!",
+                    Duration = 3
+                })
+            end
         else
-            if autoClickConnection then autoClickConnection:Disconnect() end
-            autoClickConnection = nil
+            if autoClickConnection then
+                autoClickConnection:Disconnect()
+                autoClickConnection = nil
+                NothingLibrary:Notify({
+                    Title = "Auto Click",
+                    Content = "Auto Click is now inactive.",
+                    Duration = 3
+                })
+            end
         end
     end
 })
+
 
 --===[ Auto Wins ]===--
 local stages = {
@@ -269,4 +301,5 @@ local function disableSpectate()
         end
     end
 end
+
 disableSpectate()

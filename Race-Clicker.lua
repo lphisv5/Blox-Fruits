@@ -97,27 +97,46 @@ local state = {
     autoWins = false
 }
 
-
---===[ Auto Click ]===--
-local autoClickConnection = nil
-
-local function findRemoteEvent(eventName)
-    local remote = ReplicatedStorage:FindFirstChild("Events") and ReplicatedStorage.Events:FindFirstChild(eventName)
-    if remote and remote:IsA("RemoteEvent") then
-        return remote
-    else
-        return nil
+--===[ Safe Notify Wrapper ]===--
+local function SafeNotify(info)
+    local success, err = pcall(function()
+        if NothingLibrary.Notify then
+            NothingLibrary:Notify(info)
+        elseif NothingLibrary.Notification then
+            NothingLibrary:Notification(info)
+        else
+            StarterGui:SetCore("SendNotification", {
+                Title = info.Title or "YANZ HUB",
+                Text = info.Content or "Notification",
+                Duration = info.Duration or 3
+            })
+        end
+    end)
+    if not success then
+        warn("Notify Error:", err)
     end
 end
 
+--===[ Safe Remote Finder ]===--
+local function findRemoteEvent(eventName)
+    local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+    if not eventsFolder then return nil end
+    for _, v in ipairs(eventsFolder:GetChildren()) do
+        if v.Name == eventName and v:IsA("RemoteEvent") then
+            return v
+        end
+    end
+    return nil
+end
+
+--===[ Auto Click ]===--
 local function doClick()
     local remoteEventName = "Click!"
     local remote = findRemoteEvent(remoteEventName)
-    
     if remote then
-        remote:FireServer()
+        pcall(function() remote:FireServer() end)
     else
-        NothingLibrary:Notify({
+        SafeNotify({
             Title = "Error",
             Content = "RemoteEvent '" .. remoteEventName .. "' not found!",
             Duration = 5
@@ -126,7 +145,7 @@ local function doClick()
 end
 
 AutoClickSection:NewToggle({
-    Title = "Auto Click [Not working]",
+    Title = "Auto Click",
     Default = false,
     Callback = function(v)
         state.autoClick = v
@@ -225,60 +244,68 @@ local function findTimer()
     return ""
 end
 
+--===[ Auto Farm Wins ]===--
 AutoWinsSection:NewToggle({
     Title = "Auto Farm Wins",
     Default = false,
     Callback = function(v)
         state.autoWins = v
         if v then
+            SafeNotify({
+                Title = "Auto Farm Wins",
+                Content = "Auto Farm Started!",
+                Duration = 3
+            })
             task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-                if humanoid and hrp then
-                    humanoid.JumpPower = 0
-                end
+                if humanoid and hrp then humanoid.JumpPower = 0 end
                 currentStage = 1
+
                 while state.autoWins do
                     local txt = findTimer()
+
                     if txt:find("Waiting") then
-                        task.wait(0.03)
+                        task.wait(0.1)
                     elseif txt:find("Click to build") then
                         for i = 1, 30 do
                             doClick()
                             task.wait(0.01)
                         end
                     elseif txt:match("%d%d:%d%d") then
-                        local lastTimerUpdate = tick()
                         while txt:match("%d%d:%d%d") and state.autoWins do
-                            tpToStage(currentStage)
+                            if not tpToStage(currentStage) then break end
                             if currentStage < #stages then
-                                currentStage = currentStage + 1
+                                currentStage += 1
                             else
-                                state.autoWins = false
-                                NothingLibrary:Notify({
+                                SafeNotify({
                                     Title = "Auto Farm Wins",
-                                    Content = "Reached final stage. Stopping auto farm.",
-                                    Duration = 5
+                                    Content = "Reached final stage! Restarting...",
+                                    Duration = 3
                                 })
-                                break
+                                currentStage = 1
                             end
-                            if tick() - lastTimerUpdate > 0.03 then
-                                txt = findTimer()
-                                lastTimerUpdate = tick()
-                            end
-                            RunService.Heartbeat:Wait()
+                            task.wait(0.05)
+                            txt = findTimer()
                         end
-                    elseif txt:find("00:00") then
-                        state.autoWins = false
-                        break
                     else
-                        task.wait(0.03)
+                        task.wait(0.05)
                     end
                 end
-                if humanoid then
-                    humanoid.JumpPower = 16
-                end
+
+                if humanoid then humanoid.JumpPower = 16 end
+                SafeNotify({
+                    Title = "Auto Farm Wins",
+                    Content = "Stopped or completed loop.",
+                    Duration = 3
+                })
             end)
+        else
+            SafeNotify({
+                Title = "Auto Farm Wins",
+                Content = "Auto Farm Stopped!",
+                Duration = 3
+            })
         end
     end
 })

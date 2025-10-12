@@ -142,7 +142,7 @@ local function findRemoteEvent(eventName)
 end
 
 local function doClick()
-    local remoteEventName = "Click!"
+    local remoteEventName = "CLICK1"
     local remote = findRemoteEvent(remoteEventName)
     
     if remote then

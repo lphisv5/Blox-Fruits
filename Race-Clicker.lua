@@ -235,14 +235,13 @@ AutoWinsSection:NewToggle({
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 if humanoid and hrp then
-                    setupUndetectedFly(hrp)
                     humanoid.JumpPower = 0
                 end
                 currentStage = 1
                 while state.autoWins do
                     local txt = findTimer()
                     if txt:find("Waiting") then
-                        task.wait(0.06)
+                        task.wait(0.05)
                     elseif txt:find("Click to build") then
                         for i = 1, 30 do
                             doClick()
@@ -255,7 +254,13 @@ AutoWinsSection:NewToggle({
                             if currentStage < #stages then
                                 currentStage = currentStage + 1
                             else
-                                currentStage = 1
+                                state.autoWins = false
+                                NothingLibrary:Notify({
+                                    Title = "Auto Farm Wins",
+                                    Content = "Reached final stage. Stopping auto farm.",
+                                    Duration = 5
+                                })
+                                break
                             end
                             if tick() - lastTimerUpdate > 0.05 then
                                 txt = findTimer()
@@ -270,7 +275,6 @@ AutoWinsSection:NewToggle({
                         task.wait(0.06)
                     end
                 end
-                if flyVelocity then flyVelocity:Destroy() end
                 if humanoid then
                     humanoid.JumpPower = 50
                 end

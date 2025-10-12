@@ -111,7 +111,7 @@ local function findRemoteEvent(eventName)
 end
 
 local function doClick()
-    local remoteEventName = "Click3"
+    local remoteEventName = "Click!"
     local remote = findRemoteEvent(remoteEventName)
     
     if remote then
@@ -185,11 +185,11 @@ local function moveToPosition(hrp, targetPos)
     if not flyVelocity then return end
     local direction = (targetPos - hrp.Position).Unit
     local distance = (targetPos - hrp.Position).Magnitude
-    local speed = math.min(distance * 50, 9999999)
+    local speed = math.min(distance * 50, 100000)
     flyVelocity.Velocity = direction * speed
-    task.wait(0.0001 * (distance / 1000))
-    flyVelocity.Velocity = Vector3.new(0, -9.81, 0)
-    task.wait(0.0001)
+    task.wait(0.01 * (distance / 1000))
+    flyVelocity.Velocity = Vector3.new(0, -9.80, 0)
+    task.wait(0.01)
     flyVelocity.Velocity = Vector3.new(0, 1, 0)
     hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 1, 0))
 end
@@ -263,7 +263,7 @@ AutoWinsSection:NewToggle({
                         state.autoWins = false
                         break
                     else
-                        task.wait(0.05)
+                        task.wait(0.06)
                     end
                 end
                 if flyVelocity then flyVelocity:Destroy() end

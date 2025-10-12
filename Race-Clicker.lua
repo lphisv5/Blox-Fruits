@@ -253,9 +253,10 @@ AutoWinsSection:NewToggle({
         if v then
             SafeNotify({
                 Title = "Auto Farm Wins",
-                Content = "Auto Farm Started!",
+                Content = "Started!",
                 Duration = 3
             })
+
             task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
@@ -266,44 +267,50 @@ AutoWinsSection:NewToggle({
                     local txt = findTimer()
 
                     if txt:find("Waiting") then
-                        task.wait(0.1)
+                        task.wait(0.00001)
+
                     elseif txt:find("Click to build") then
-                        for i = 1, 30 do
-                            doClick()
-                            task.wait(0.01)
+                        for i = 1, 300 do
+                            task.spawn(doClick)
+                            task.wait(0.00001)
                         end
+
                     elseif txt:match("%d%d:%d%d") then
                         while txt:match("%d%d:%d%d") and state.autoWins do
                             if not tpToStage(currentStage) then break end
+
                             if currentStage < #stages then
                                 currentStage += 1
                             else
                                 SafeNotify({
                                     Title = "Auto Farm Wins",
-                                    Content = "Reached final stage! Restarting...",
-                                    Duration = 3
+                                    Content = "Reached Final Stage — Restarting!",
+                                    Duration = 2
                                 })
                                 currentStage = 1
                             end
-                            task.wait(0.05)
+
+                            task.wait(0.00001)
                             txt = findTimer()
                         end
+
                     else
-                        task.wait(0.05)
+                        task.wait(0.00001)
                     end
                 end
 
                 if humanoid then humanoid.JumpPower = 16 end
                 SafeNotify({
                     Title = "Auto Farm Wins",
-                    Content = "Stopped or completed loop.",
+                    Content = "Stopped or Completed Cycle",
                     Duration = 3
                 })
             end)
+
         else
             SafeNotify({
                 Title = "Auto Farm Wins",
-                Content = "Auto Farm Stopped!",
+                Content = "Stopped!",
                 Duration = 3
             })
         end

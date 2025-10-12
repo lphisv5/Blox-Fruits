@@ -185,11 +185,11 @@ local function moveToPosition(hrp, targetPos)
     if not flyVelocity then return end
     local direction = (targetPos - hrp.Position).Unit
     local distance = (targetPos - hrp.Position).Magnitude
-    local speed = math.min(distance * 100, 1000000)
+    local speed = math.min(distance * 10, 999999999999999)
     flyVelocity.Velocity = direction * speed
-    task.wait(0.01 * (distance / 1000))
+    task.wait(0.001 * (distance / 1000))
     flyVelocity.Velocity = Vector3.new(0, -9.81, 0)
-    task.wait(0.01)
+    task.wait(0.001)
     flyVelocity.Velocity = Vector3.new(0, 1, 0)
     hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 1, 0))
 end
@@ -241,11 +241,11 @@ AutoWinsSection:NewToggle({
                 while state.autoWins do
                     local txt = findTimer()
                     if txt:find("Waiting") then
-                        task.wait(0.05)
+                        task.wait(0.03)
                     elseif txt:find("Click to build") then
                         for i = 1, 30 do
                             doClick()
-                            task.wait(0.03)
+                            task.wait(0.01)
                         end
                     elseif txt:match("%d%d:%d%d") then
                         local lastTimerUpdate = tick()
@@ -262,7 +262,7 @@ AutoWinsSection:NewToggle({
                                 })
                                 break
                             end
-                            if tick() - lastTimerUpdate > 0.05 then
+                            if tick() - lastTimerUpdate > 0.03 then
                                 txt = findTimer()
                                 lastTimerUpdate = tick()
                             end
@@ -272,11 +272,11 @@ AutoWinsSection:NewToggle({
                         state.autoWins = false
                         break
                     else
-                        task.wait(0.06)
+                        task.wait(0.03)
                     end
                 end
                 if humanoid then
-                    humanoid.JumpPower = 50
+                    humanoid.JumpPower = 16
                 end
             end)
         end

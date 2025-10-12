@@ -97,77 +97,117 @@ local state = {
     autoWins = false
 }
 
---===[ Safe Notify Wrapper ]===--
-local function SafeNotify(info)
-    local success, err = pcall(function()
-        if NothingLibrary.Notify then
-            NothingLibrary:Notify(info)
-        elseif NothingLibrary.Notification then
-            NothingLibrary:Notification(info)
-        else
-            StarterGui:SetCore("SendNotification", {
-                Title = info.Title or "YANZ HUB",
-                Text = info.Content or "Notification",
-                Duration = info.Duration or 3
-            })
-        end
-    end)
-    if not success then
-        warn("Notify Error:", err)
-    end
-end
-
---===[ Safe Remote Finder ]===--
-local function findRemoteEvent(eventName)
-    local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
-    if not eventsFolder then return nil end
-    for _, v in ipairs(eventsFolder:GetChildren()) do
-        if v.Name == eventName and v:IsA("RemoteEvent") then
-            return v
-        end
-    end
-    return nil
-end
-
 --===[ Auto Click ]===--
-local function doClick()
-    local remoteEventName = "Click!"
-    local remote = findRemoteEvent(remoteEventName)
-    if remote then
-        pcall(function() remote:FireServer() end)
-    else
+local clickRemotes = {}
+local keywords = {"click", "tap", "build", "press", "button"}
+
+local function isClickRemote(obj)
+    if obj:IsA("RemoteEvent") then
+        local name = obj.Name:lower()
+        for _, word in ipairs(keywords) do
+            if name:find(word) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+local function registerRemote(remote)
+    if not table.find(clickRemotes, remote) then
+        table.insert(clickRemotes, remote)
+        warn("[AutoClick] 🔍 Learned new remote:", remote:GetFullName())
         SafeNotify({
-            Title = "Error",
-            Content = "RemoteEvent '" .. remoteEventName .. "' not found!",
-            Duration = 5
+            Title = "Auto Click",
+            Content = "Learned new remote: " .. remote.Name,
+            Duration = 2
         })
     end
 end
 
+local function unregisterRemote(remote)
+    for i, r in ipairs(clickRemotes) do
+        if r == remote then
+            table.remove(clickRemotes, i)
+            warn("[AutoClick AI] ❌ Remote destroyed:", remote.Name)
+            break
+        end
+    end
+end
+
+local function initialScan()
+    table.clear(clickRemotes)
+    local function deepScan(parent)
+        for _, v in ipairs(parent:GetChildren()) do
+            if isClickRemote(v) then
+                registerRemote(v)
+            end
+            deepScan(v)
+        end
+    end
+    deepScan(game)
+    SafeNotify({
+        Title = "Auto Click",
+        Content = "Found " .. tostring(#clickRemotes) .. " click-type remotes",
+        Duration = 3
+    })
+end
+
+local function doAIClick()
+    if #clickRemotes == 0 then return end
+    for _, remote in ipairs(clickRemotes) do
+        if remote and remote.Parent then
+            task.spawn(function()
+                local ok, err = pcall(function()
+                    remote:FireServer()
+                end)
+                if not ok then
+                    warn("[AutoClick AI] Error firing:", remote.Name, err)
+                end
+            end)
+        end
+    end
+end
+
+game.DescendantAdded:Connect(function(obj)
+    task.wait(0.05)
+    if isClickRemote(obj) then
+        registerRemote(obj)
+    end
+end)
+
+game.DescendantRemoving:Connect(function(obj)
+    if isClickRemote(obj) then
+        unregisterRemote(obj)
+    end
+end)
+
+initialScan()
+
+--===[ สวิตช์เปิด/ปิด Auto Click ]===--
 AutoClickSection:NewToggle({
     Title = "Auto Click",
     Default = false,
     Callback = function(v)
         state.autoClick = v
         if v then
-            if not autoClickConnection then
-                autoClickConnection = RunService.Heartbeat:Connect(doClick)
-                NothingLibrary:Notify({
-                    Title = "Auto Click",
-                    Content = "Auto Click is now active!",
-                    Duration = 3
-                })
-            end
+            SafeNotify({
+                Title = "Auto Click",
+                Content = "Learning & Clicking Remotes...",
+                Duration = 3
+            })
+            task.spawn(function()
+                while state.autoClick do
+                    doAIClick()
+                    task.wait(0.001)
+                end
+            end)
         else
-            if autoClickConnection then
-                autoClickConnection:Disconnect()
-                autoClickConnection = nil
-                NothingLibrary:Notify({
-                    Title = "Auto Click",
-                    Content = "Auto Click is now inactive.",
-                    Duration = 3
-                })
-            end
+            SafeNotify({
+                Title = "Auto Click",
+                Content = "Auto Click Stopped.",
+                Duration = 3
+            })
         end
     end
 })

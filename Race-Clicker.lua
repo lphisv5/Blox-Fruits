@@ -97,6 +97,18 @@ local state = {
     autoWins = false
 }
 
+--===[ Safe Notify ]===
+local function SafeNotify(notificationData)
+    pcall(function()
+        NothingLibrary:Notify(notificationData)
+    end)
+end
+
+--===[ doClick ]===
+local function doClick()
+    doAIClick()
+end
+
 --===[ Auto Click ]===--
 local clickRemotes = {}
 local keywords = {"click", "tap", "build", "press", "button"}

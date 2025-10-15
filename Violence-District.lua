@@ -165,7 +165,7 @@ PlayersSection:NewToggle({
 
         local function updateDistances()
             for player, distanceLabel in pairs(DistanceLabels) do
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                     local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
                     distanceLabel.Text = string.format("Distance: %.1f", distance)
                 else
@@ -181,12 +181,15 @@ PlayersSection:NewToggle({
 
         local function onPlayerAdded(player)
             if player ~= LocalPlayer then
-                local conn
-                conn = player.CharacterAdded:Connect(function()
+                local charConn = player.CharacterAdded:Connect(function()
+                    task.wait(0.1)
                     updateHighlightForPlayer(player)
                 end)
-                table.insert(Connections, conn)
-                updateHighlightForPlayer(player)
+                table.insert(Connections, charConn)
+
+                if player.Character then
+                    updateHighlightForPlayer(player)
+                end
             end
         end
 
@@ -208,9 +211,7 @@ PlayersSection:NewToggle({
             end
 
             table.insert(Connections, RunService.RenderStepped:Connect(updateDistances))
-
-            print("Player ESP Enabled")
-            else
+        else
             for _, conn in pairs(Connections) do
                 conn:Disconnect()
             end
@@ -228,19 +229,41 @@ PlayersSection:NewToggle({
     end,
 })
 
+-- Speed Toggle
+local speedConnection
 PlayersSection:NewToggle({
     Title = "Speed",
     Default = false,
     Callback = function(state)
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local Humanoid = Character:WaitForChild("Humanoid")
-        
+
+        local desiredSpeed = 100
+        local defaultSpeed = 16
+
         if state then
-            Humanoid.WalkSpeed = 110
+            local function applySpeed()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = desiredSpeed
+                end
+            end
+
+            speedConnection = game:GetService("RunService").RenderStepped:Connect(applySpeed)
+
+            LocalPlayer.CharacterAdded:Connect(function(char)
+                task.wait(0.1)
+                applySpeed()
+            end)
+
         else
-            Humanoid.WalkSpeed = 16
+            if speedConnection then
+                speedConnection:Disconnect()
+                speedConnection = nil
+            end
+
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid.WalkSpeed = defaultSpeed
+            end
         end
     end,
 })

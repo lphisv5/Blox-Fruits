@@ -1,12 +1,10 @@
 -- โหลด NothingLibrary
 local NothingLibrary = loadstring(game:HttpGetAsync('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))();
-
--- สร้าง Notification
 local Notification = NothingLibrary.Notification();
 Notification.new({
-    Title = "YANZ HUB | TESTING",
+    Title = "YANZ HUB | Beta Version",
     Description = "Loaded successfully!",
-    Duration = 5,
+    Duration = 5.5,
     Icon = "rbxassetid://8997385628"
 })
 
@@ -15,7 +13,7 @@ local Windows = NothingLibrary.new({
     Title = "YANZ HUB | Beta Version",
     Description = "Game: Violence District | By lphisv5",
     Keybind = Enum.KeyCode.LeftControl,
-    Logo = 'http://www.roblox.com/asset/?id=18898582662' -- แทนที่ด้วย asset ID ของโลโก้ Y ตัวใหญ่
+    Logo = 'http://www.roblox.com/asset/?id=18898582662'
 })
 
 -- แท็บ HOME
@@ -702,7 +700,6 @@ PlayersSectionRight:NewToggle({
         local UserInputService = game:GetService("UserInputService")
         local LocalPlayer = Players.LocalPlayer
 
-        -- ฟังก์ชัน DamageUtils (ฝังใน client เพื่อจำลองการทำงาน เนื่องจากเป็น client-side script)
         local DamageUtils = {}
         DamageUtils.__index = DamageUtils
 

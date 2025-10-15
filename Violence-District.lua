@@ -100,6 +100,7 @@ local PlayersSection = PlayersTab:NewSection({
     Position = "Left"
 })
 
+-- Player ESP Toggle
 PlayersSection:NewToggle({
     Title = "Player ESP",
     Default = false,
@@ -107,10 +108,11 @@ PlayersSection:NewToggle({
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
         local RunService = game:GetService("RunService")
-        local UserInputService = game:GetService("UserInputService")
-        
+
         local Highlights = {}
         local DistanceLabels = {}
+        local Connections = {}
+
         local HighlightSettings = {
             FillColor = Color3.fromRGB(0, 255, 0),
             FillTransparency = 0.4,
@@ -146,6 +148,7 @@ PlayersSection:NewToggle({
             distanceLabel.TextStrokeTransparency = HighlightSettings.TextStrokeTransparency
             distanceLabel.Parent = billboardGui
             billboardGui.Parent = highlight
+
             return highlight, distanceLabel
         end
 
@@ -166,19 +169,23 @@ PlayersSection:NewToggle({
                     local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
                     distanceLabel.Text = string.format("Distance: %.1f", distance)
                 else
-                    Highlights[player]:Destroy()
-                    distanceLabel:Destroy()
-                    Highlights[player] = nil
-                    DistanceLabels[player] = nil
+                    if Highlights[player] then
+                        Highlights[player]:Destroy()
+                        DistanceLabels[player]:Destroy()
+                        Highlights[player] = nil
+                        DistanceLabels[player] = nil
+                    end
                 end
             end
         end
 
         local function onPlayerAdded(player)
             if player ~= LocalPlayer then
-                player.CharacterAdded:Connect(function(character)
+                local conn
+                conn = player.CharacterAdded:Connect(function()
                     updateHighlightForPlayer(player)
                 end)
+                table.insert(Connections, conn)
                 updateHighlightForPlayer(player)
             end
         end
@@ -193,20 +200,22 @@ PlayersSection:NewToggle({
         end
 
         if state then
-            Players.PlayerAdded:Connect(onPlayerAdded)
-            Players.PlayerRemoving:Connect(onPlayerRemoving)
+            table.insert(Connections, Players.PlayerAdded:Connect(onPlayerAdded))
+            table.insert(Connections, Players.PlayerRemoving:Connect(onPlayerRemoving))
+
             for _, player in ipairs(Players:GetPlayers()) do
                 onPlayerAdded(player)
             end
-            RunService.RenderStepped:Connect(updateDistances)
-            UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                if input.KeyCode == Enum.KeyCode.E and not gameProcessed then
-                    for _, highlight in pairs(Highlights) do
-                        highlight.Enabled = not highlight.Enabled
-                    end
-                end
-            end)
-        else
+
+            table.insert(Connections, RunService.RenderStepped:Connect(updateDistances))
+
+            print("Player ESP Enabled")
+            else
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
+            end
+            Connections = {}
+
             for _, highlight in pairs(Highlights) do
                 highlight:Destroy()
             end

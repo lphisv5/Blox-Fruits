@@ -1,4 +1,3 @@
--- โหลด NothingLibrary
 local NothingLibrary = loadstring(game:HttpGetAsync('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))();
 local Notification = NothingLibrary.Notification();
 Notification.new({
@@ -8,7 +7,6 @@ Notification.new({
     Icon = "rbxassetid://8997385628"
 })
 
--- สร้าง Window
 local Windows = NothingLibrary.new({
     Title = "YANZ HUB | Beta Version",
     Description = "Game: Violence District | By lphisv5",
@@ -16,28 +14,24 @@ local Windows = NothingLibrary.new({
     Logo = 'http://www.roblox.com/asset/?id=18898582662'
 })
 
--- แท็บ HOME
 local HomeTab = Windows:NewTab({
     Title = "HOME",
     Description = "Main Features",
     Icon = "rbxassetid://7733960981"
 })
 
--- Section ด้านซ้ายใน HOME
 local LeftSection = HomeTab:NewSection({
     Title = "Main",
     Icon = "rbxassetid://7743869054",
     Position = "Left"
 })
 
--- Section ด้านขวาใน HOME
 local RightSection = HomeTab:NewSection({
     Title = "Utilities",
     Icon = "rbxassetid://7733964719",
     Position = "Right"
 })
 
--- Discord Button (Left)
 LeftSection:NewButton({
     Title = "Discord",
     Callback = function()
@@ -51,7 +45,6 @@ LeftSection:NewButton({
     end,
 })
 
--- Anti AFK Toggle (Right)
 RightSection:NewToggle({
     Title = "Anti AFK",
     Default = true,
@@ -72,7 +65,6 @@ RightSection:NewToggle({
     end,
 })
 
--- Anti Kick Toggle (Right)
 RightSection:NewToggle({
     Title = "Anti Kick",
     Default = true,
@@ -95,7 +87,6 @@ RightSection:NewToggle({
     end,
 })
 
--- Anti Ban Bypasser Toggle (Right)
 local antiBanConnection
 RightSection:NewToggle({
     Title = "Anti Ban Bypasser",
@@ -819,5 +810,145 @@ PlayersSectionRight:NewToggle({
                 Icon = "rbxassetid://8997385628"
             })
         end
+    end,
+})
+
+-- แท็บ Server
+local ServerTab = Windows:NewTab({
+    Title = "Server",
+    Description = "Server Management",
+    Icon = "rbxassetid://7733960981"
+})
+
+-- Section ด้านขวาใน Server
+local ServerSectionRight = ServerTab:NewSection({
+    Title = "Server Options",
+    Icon = "rbxassetid://7733964719",
+    Position = "Right"
+})
+
+-- ServerTeleportUtils (ฝังใน client เพื่อจำลองการทำงาน)
+local ServerTeleportUtils = {}
+ServerTeleportUtils.__index = ServerTeleportUtils
+
+function ServerTeleportUtils.Rejoin(player)
+    if not player or not player.UserId then return end
+
+    local TeleportService = game:GetService("TeleportService")
+    local success, result = pcall(function()
+        TeleportService:Teleport(game.PlaceId, player)
+    end)
+
+    if success then
+        Notification.new({
+            Title = "Rejoin",
+            Description = string.format("%s is rejoining the server", player.Name),
+            Duration = 3,
+            Icon = "rbxassetid://8997385628"
+        })
+        print(("[Rejoin] %s ถูกส่งกลับเข้าเซิร์ฟเวอร์เดิม"):format(player.Name))
+    else
+        Notification.new({
+            Title = "Rejoin",
+            Description = "Failed: " .. tostring(result),
+            Duration = 3,
+            Icon = "rbxassetid://8997385628"
+        })
+        warn(("[Rejoin] ล้มเหลว: %s"):format(result))
+    end
+end
+
+function ServerTeleportUtils.ServerHop(player)
+    if not player or not player.UserId then return end
+
+    local TeleportService = game:GetService("TeleportService")
+    local HttpService = game:GetService("HttpService")
+    local placeId = game.PlaceId
+    local currentJobId = game.JobId
+    local servers = {}
+
+    local function GetServers(cursor)
+        local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?sortOrder=Asc&limit=100"
+        if cursor then
+            url = url .. "&cursor=" .. cursor
+        end
+
+        local response = game:HttpGet(url)
+        local data = HttpService:JSONDecode(response)
+        return data
+    end
+
+    local success, data = pcall(function()
+        return GetServers()
+    end)
+
+    if success and data and data.data then
+        for _, server in ipairs(data.data) do
+            if type(server) == "table" and server.id ~= currentJobId and server.playing < server.maxPlayers then
+                table.insert(servers, server.id)
+            end
+        end
+    else
+        Notification.new({
+            Title = "Server Hop",
+            Description = "Failed to retrieve server list: " .. tostring(data),
+            Duration = 3,
+            Icon = "rbxassetid://8997385628"
+        })
+        warn("[ServerHop] Unable to retrieve server information:", data)
+        return
+    end
+
+    if #servers > 0 then
+        local newServerId = servers[math.random(1, #servers)]
+        local ok, err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(placeId, newServerId, player)
+        end)
+
+        if ok then
+            Notification.new({
+                Title = "Server Hop",
+                Description = string.format("%s is hopping to a new server", player.Name),
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
+            print(("[ServerHop] %s has been successfully moved to a new server."):format(player.Name))
+        else
+            Notification.new({
+                Title = "Server Hop",
+                Description = "Failed: " .. tostring(err),
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
+            warn(("[ServerHop] Failed: %s"):format(err))
+        end
+    else
+        Notification.new({
+            Title = "Server Hop",
+            Description = "No other servers available",
+            Duration = 3,
+            Icon = "rbxassetid://8997385628"
+        })
+        warn("[ServerHop] There are no other servers to move to.")
+    end
+end
+
+-- Rejoin Button (Right)
+ServerSectionRight:NewButton({
+    Title = "Rejoin",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        ServerTeleportUtils.Rejoin(LocalPlayer)
+    end,
+})
+
+-- Server Hop Button (Right)
+ServerSectionRight:NewButton({
+    Title = "Server Hop",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        ServerTeleportUtils.ServerHop(LocalPlayer)
     end,
 })

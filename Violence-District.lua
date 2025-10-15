@@ -1,5 +1,5 @@
-local NothingLibrary = loadstring(game:HttpGetAsync('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))();
-local Notification = NothingLibrary.Notification();
+local NothingLibrary = loadstring(game:HttpGetAsync('https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'))()
+local Notification = NothingLibrary.Notification()
 Notification.new({
     Title = "YANZ HUB | Beta Version",
     Description = "Loaded successfully!",
@@ -47,42 +47,72 @@ LeftSection:NewButton({
 
 RightSection:NewToggle({
     Title = "Anti AFK",
-    Default = true,
+    Default = false,
     Callback = function(state)
+        local VirtualUser = game:GetService('VirtualUser')
+        local Connections = {}
         if state then
-            local VirtualUser = game:GetService('VirtualUser')
-            game:GetService('Players').LocalPlayer.Idled:Connect(function()
+            table.insert(Connections, game:GetService('Players').LocalPlayer.Idled:Connect(function()
                 VirtualUser:CaptureController()
                 VirtualUser:ClickButton2(Vector2.new())
-            end)
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "AntiAFK loaded!",
+            end))
+            Notification.new({
+                Title = "Anti AFK",
+                Description = "Enabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
             })
-            print("Anti AFK Enabled")
         else
-            print("Anti AFK Disabled")
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
+            end
+            Connections = {}
+            Notification.new({
+                Title = "Anti AFK",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         end
     end,
 })
 
 RightSection:NewToggle({
     Title = "Anti Kick",
-    Default = true,
+    Default = false,
     Callback = function(state)
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local Connections = {}
         if state then
-            local plr = game:GetService("Players").LocalPlayer
-            getgenv().Anti = true
-            local Anti
-            Anti = hookmetamethod(game, "__namecall", function(self, ...)
-                if self == plr and getnamecallmethod():lower() == "kick" and getgenv().Anti then
-                    return warn("[ANTI-KICK] Client Tried To Call Kick Function On LocalPlayer")
+            table.insert(Connections, Players.PlayerRemoving:Connect(function(player)
+                if player == LocalPlayer then
+                    warn("[ANTI-KICK] Attempt to kick detected!")
+                    Notification.new({
+                        Title = "Anti Kick",
+                        Description = "Kick attempt detected!",
+                        Duration = 3,
+                        Icon = "rbxassetid://8997385628"
+                    })
                 end
-                return Anti(self, ...)
-            end)
-            print("Anti Kick Enabled")
+            end))
+            Notification.new({
+                Title = "Anti Kick",
+                Description = "Enabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         else
-            getgenv().Anti = false
-            print("Anti Kick Disabled")
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
+            end
+            Connections = {}
+            Notification.new({
+                Title = "Anti Kick",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         end
     end,
 })
@@ -90,95 +120,62 @@ RightSection:NewToggle({
 local antiBanConnection
 RightSection:NewToggle({
     Title = "Anti Ban Bypasser",
-    Default = true,
+    Default = false,
     Callback = function(state)
+        local Players = game:GetService("Players")
+        local TextChatService = game:GetService("TextChatService")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local COREGUI = cloneref and cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui")
+        local LocalPlayer = Players.LocalPlayer
+        local Connections = {}
+
+        local function Notify(titletxt, text, time)
+            task.spawn(function()
+                local GUI = Instance.new("ScreenGui")
+                GUI.Name = "BackgroundNotif"
+                GUI.Parent = COREGUI
+                local sw = workspace.CurrentCamera.ViewportSize.X
+                local sh = workspace.CurrentCamera.ViewportSize.Y
+                local nh = sh / 7
+                local nw = sw / 5
+
+                local Main = Instance.new("Frame", GUI)
+                Main.BackgroundColor3 = Color3.new(0.156863, 0.156863, 0.156863)
+                Main.BackgroundTransparency = 0.2
+                Main.BorderSizePixel = 0
+                Main.Size = UDim2.new(0, nw, 0, nh)
+
+                local title = Instance.new("TextLabel", Main)
+                title.BackgroundColor3 = Color3.new(0, 0, 0)
+                title.BackgroundTransparency = 0.9
+                title.Size = UDim2.new(1, 0, 0, nh / 2)
+                title.Font = Enum.Font.GothamBold
+                title.Text = titletxt
+                title.TextColor3 = Color3.new(1, 1, 1)
+                title.TextScaled = true
+
+                local message = Instance.new("TextLabel", Main)
+                message.BackgroundColor3 = Color3.new(0, 0, 0)
+                message.BackgroundTransparency = 1
+                message.Position = UDim2.new(0, 0, 0, nh / 2)
+                message.Size = UDim2.new(1, 0, 1, -nh / 2)
+                message.Font = Enum.Font.Gotham
+                message.Text = text
+                message.TextColor3 = Color3.new(1, 1, 1)
+                message.TextScaled = true
+
+                Main.Position = UDim2.new(1, 5, 0, 50)
+                task.wait(0.1)
+                Main:TweenPosition(UDim2.new(1, -nw, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
+                task.wait(time)
+                Main:TweenPosition(UDim2.new(1, 5, 0, 50), Enum.EasingDirection.In, Enum.EasingStyle.Bounce, 0.5, true)
+                task.wait(0.5)
+                GUI:Destroy()
+            end)
+        end
+
         if state then
-            local Players = game:GetService("Players")
-            local TextChatService = game:GetService("TextChatService")
-            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            cloneref = cloneref or function(o) return o end
-            local COREGUI = cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
-            local LocalPlayer = Players.LocalPlayer
-
-            local Notifbro = {}
-
-            local function Notify(titletxt, text, time)
-                coroutine.wrap(function()
-                    local GUI = Instance.new("ScreenGui")
-                    local Main = Instance.new("Frame", GUI)
-                    local title = Instance.new("TextLabel", Main)
-                    local message = Instance.new("TextLabel", Main)
-
-                    GUI.Name = "BackgroundNotif"
-                    GUI.Parent = COREGUI
-
-                    local sw = workspace.CurrentCamera.ViewportSize.X
-                    local sh = workspace.CurrentCamera.ViewportSize.Y
-                    local nh = sh / 7
-                    local nw = sw / 5
-
-                    Main.Name = "MainFrame"
-                    Main.BackgroundColor3 = Color3.new(0.156863, 0.156863, 0.156863)
-                    Main.BackgroundTransparency = 0.2
-                    Main.BorderSizePixel = 0
-                    Main.Size = UDim2.new(0, nw, 0, nh)
-
-                    title.BackgroundColor3 = Color3.new(0, 0, 0)
-                    title.BackgroundTransparency = 0.9
-                    title.Size = UDim2.new(1, 0, 0, nh / 2)
-                    title.Font = Enum.Font.GothamBold
-                    title.Text = titletxt
-                    title.TextColor3 = Color3.new(1, 1, 1)
-                    title.TextScaled = true
-
-                    message.BackgroundColor3 = Color3.new(0, 0, 0)
-                    message.BackgroundTransparency = 1
-                    message.Position = UDim2.new(0, 0, 0, nh / 2)
-                    message.Size = UDim2.new(1, 0, 1, -nh / 2)
-                    message.Font = Enum.Font.Gotham
-                    message.Text = text
-                    message.TextColor3 = Color3.new(1, 1, 1)
-                    message.TextScaled = true
-
-                    local offset = 50
-                    for _, notif in ipairs(Notifbro) do
-                        offset = offset + notif.Size.Y.Offset + 10
-                    end
-
-                    Main.Position = UDim2.new(1, 5, 0, offset)
-                    table.insert(Notifbro, Main)
-
-                    task.wait(0.1)
-                    Main:TweenPosition(UDim2.new(1, -nw, 0, offset), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
-                    Main:TweenSize(UDim2.new(0, nw * 1.06, 0, nh * 1.06), Enum.EasingDirection.Out, Enum.EasingStyle.Elastic, 0.5, true)
-                    task.wait(0.5)
-                    Main:TweenSize(UDim2.new(0, nw, 0, nh), Enum.EasingDirection.Out, Enum.EasingStyle.Elastic, 0.2, true)
-
-                    task.wait(time)
-
-                    Main:TweenSize(UDim2.new(0, nw * 1.06, 0, nh * 1.06), Enum.EasingDirection.In, Enum.EasingStyle.Elastic, 0.2, true)
-                    task.wait(0.2)
-                    Main:TweenSize(UDim2.new(0, nw, 0, nh), Enum.EasingDirection.In, Enum.EasingStyle.Elastic, 0.2, true)
-                    task.wait(0.2)
-                    Main:TweenPosition(UDim2.new(1, 5, 0, offset), Enum.EasingDirection.In, Enum.EasingStyle.Bounce, 0.5, true)
-                    task.wait(0.5)
-
-                    GUI:Destroy()
-                    for i, notif in ipairs(Notifbro) do
-                        if notif == Main then
-                            table.remove(Notifbro, i)
-                            break
-                        end
-                    end
-
-                    for i, notif in ipairs(Notifbro) do
-                        local newOffset = 50 + (nh + 10) * (i - 1)
-                        notif:TweenPosition(UDim2.new(1, -nw, 0, newOffset), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
-                    end
-                end)()
-            end
-
-            local guiName = "NOT BETTER"
+            local guiName = "NOT_BETTER"
             if COREGUI:FindFirstChild(guiName) then
                 Notify("Error", "Script Already Executed", 1)
                 return
@@ -224,11 +221,9 @@ RightSection:NewToggle({
             end
 
             local CachedChannels = {}
-
             local function sendBypassedMessage(message, recipient)
                 local firstChar = message:sub(1, 1)
                 local skipEncoding = firstChar == "/" or firstChar == "-" or firstChar == ";" or firstChar == ":" or firstChar == "!"
-
                 local finalMessages = {}
 
                 if skipEncoding then
@@ -244,12 +239,9 @@ RightSection:NewToggle({
 
                 for _, final in ipairs(finalMessages) do
                     local channel = nil
-
                     if recipient and recipient ~= "All" then
                         channel = CachedChannels[recipient]
-                        if not channel or not channel:IsDescendantOf(TextChatService)
-                            or not channel:FindFirstChild(recipient)
-                            or not channel:FindFirstChild(LocalPlayer.Name) then
+                        if not channel or not channel:IsDescendantOf(TextChatService) or not channel:FindFirstChild(recipient) or not channel:FindFirstChild(LocalPlayer.Name) then
                             CachedChannels[recipient] = nil
                             channel = nil
                         end
@@ -265,8 +257,7 @@ RightSection:NewToggle({
                     end
 
                     if not channel then
-                        channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-                            or TextChatService.TextChannels:FindFirstChild("General")
+                        channel = TextChatService.TextChannels:FindFirstChild("RBXGeneral") or TextChatService.TextChannels:FindFirstChild("General")
                     end
 
                     if channel then
@@ -278,7 +269,6 @@ RightSection:NewToggle({
                             if say then say:FireServer(final, "All") end
                         end
                     end
-
                     task.wait(0.3)
                 end
             end
@@ -328,12 +318,12 @@ RightSection:NewToggle({
                             local msg = chatBox.Text
                             local recipient = getTargetName(targetChip)
                             chatBox.Text = ""
-                            local lowered = msg:lower()
                             task.defer(function()
-                                sendBypassedMessage(lowered, recipient)
+                                sendBypassedMessage(msg:lower(), recipient)
                             end)
                         end
                     end)
+                    table.insert(Connections, antiBanConnection)
                 end
 
                 if sendButton then
@@ -341,16 +331,24 @@ RightSection:NewToggle({
                 end
             end)
 
-            Notify("Better? Bypass", "Bypass active", 5)
-            Notify("watch tutorial", "youtube.com/shorts/z1yCdkbXTi4", 60)
-            print("Anti Ban Bypasser Enabled")
+            Notify("Anti Ban Bypasser", "Enabled", 5)
+            Notify("Tutorial", "youtube.com/shorts/z1yCdkbXTi4", 60)
         else
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
+            end
+            Connections = {}
             if antiBanConnection then
                 antiBanConnection:Disconnect()
                 antiBanConnection = nil
             end
-            if COREGUI:FindFirstChild("NOT BETTER") then
-                COREGUI:FindFirstChild("NOT BETTER"):Destroy()
+            if COREGUI:FindFirstChild("NOT_BETTER") then
+                COREGUI:FindFirstChild("NOT_BETTER"):Destroy()
+            end
+            for _, gui in pairs(COREGUI:GetChildren()) do
+                if gui.Name == "BackgroundNotif" then
+                    gui:Destroy()
+                end
             end
             Notification.new({
                 Title = "Anti Ban Bypasser",
@@ -358,44 +356,38 @@ RightSection:NewToggle({
                 Duration = 3,
                 Icon = "rbxassetid://8997385628"
             })
-            print("Anti Ban Bypasser Disabled")
         end
     end,
 })
 
--- แท็บ Players
+-- Players Tab
 local PlayersTab = Windows:NewTab({
     Title = "Players",
     Description = "Player Features",
     Icon = "rbxassetid://7733960981"
 })
 
--- Section ด้านซ้ายใน Players
 local PlayersSectionLeft = PlayersTab:NewSection({
     Title = "Player Options",
     Icon = "rbxassetid://7743869054",
     Position = "Left"
 })
 
--- Section ด้านขวาใน Players
 local PlayersSectionRight = PlayersTab:NewSection({
     Title = "Combat Options",
     Icon = "rbxassetid://7733964719",
     Position = "Right"
 })
 
--- Player ESP Toggle (Left)
 PlayersSectionLeft:NewToggle({
     Title = "Player ESP",
     Default = false,
     Callback = function(state)
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
-        local RunService = game:GetService("RunService")
-
+        local Connections = {}
         local Highlights = {}
         local DistanceLabels = {}
-        local Connections = {}
 
         local HighlightSettings = {
             FillColor = Color3.fromRGB(0, 255, 0),
@@ -411,6 +403,7 @@ PlayersSectionLeft:NewToggle({
         }
 
         local function createHighlight(player)
+            if not player.Character then return end
             local highlight = Instance.new("Highlight")
             highlight.FillColor = HighlightSettings.FillColor
             highlight.FillTransparency = HighlightSettings.FillTransparency
@@ -437,7 +430,7 @@ PlayersSectionLeft:NewToggle({
         end
 
         local function updateHighlightForPlayer(player)
-            if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 if not Highlights[player] then
                     local highlight, distanceLabel = createHighlight(player)
                     Highlights[player] = highlight
@@ -448,19 +441,24 @@ PlayersSectionLeft:NewToggle({
         end
 
         local function updateDistances()
-            for player, distanceLabel in pairs(DistanceLabels) do
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                    local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                    distanceLabel.Text = string.format("Distance: %.1f", distance)
-                else
-                    if Highlights[player] then
-                        Highlights[player]:Destroy()
-                        DistanceLabels[player]:Destroy()
-                        Highlights[player] = nil
-                        DistanceLabels[player] = nil
+            task.spawn(function()
+                while state do
+                    for player, distanceLabel in pairs(DistanceLabels) do
+                        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                            distanceLabel.Text = string.format("Distance: %.1f", distance)
+                        else
+                            if Highlights[player] then
+                                Highlights[player]:Destroy()
+                                DistanceLabels[player]:Destroy()
+                                Highlights[player] = nil
+                                DistanceLabels[player] = nil
+                            end
+                        end
                     end
+                    task.wait(0.2)
                 end
-            end
+            end)
         end
 
         local function onPlayerAdded(player)
@@ -470,7 +468,6 @@ PlayersSectionLeft:NewToggle({
                     updateHighlightForPlayer(player)
                 end)
                 table.insert(Connections, charConn)
-
                 if player.Character then
                     updateHighlightForPlayer(player)
                 end
@@ -489,18 +486,21 @@ PlayersSectionLeft:NewToggle({
         if state then
             table.insert(Connections, Players.PlayerAdded:Connect(onPlayerAdded))
             table.insert(Connections, Players.PlayerRemoving:Connect(onPlayerRemoving))
-
+            updateDistances()
             for _, player in ipairs(Players:GetPlayers()) do
                 onPlayerAdded(player)
             end
-
-            table.insert(Connections, RunService.RenderStepped:Connect(updateDistances))
+            Notification.new({
+                Title = "Player ESP",
+                Description = "Enabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         else
             for _, conn in pairs(Connections) do
                 conn:Disconnect()
             end
             Connections = {}
-
             for _, highlight in pairs(Highlights) do
                 highlight:Destroy()
             end
@@ -509,49 +509,65 @@ PlayersSectionLeft:NewToggle({
             end
             Highlights = {}
             DistanceLabels = {}
+            Notification.new({
+                Title = "Player ESP",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         end
     end,
 })
 
--- Speed Toggle (Left)
-local speedConnection
 PlayersSectionLeft:NewToggle({
     Title = "Speed",
     Default = false,
     Callback = function(state)
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
-
-        local desiredSpeed = 100
+        local Connections = {}
         local defaultSpeed = 16
+        local desiredSpeed = 100
+
+        local function applySpeed(character)
+            local humanoid = character:WaitForChild("Humanoid", 5)
+            if humanoid then
+                humanoid.WalkSpeed = state and desiredSpeed or defaultSpeed
+            end
+        end
 
         if state then
-            local function applySpeed()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = desiredSpeed
-                end
+            if LocalPlayer.Character then
+                applySpeed(LocalPlayer.Character)
             end
-
-            speedConnection = game:GetService("RunService").RenderStepped:Connect(applySpeed)
-
-            LocalPlayer.CharacterAdded:Connect(function(char)
+            table.insert(Connections, LocalPlayer.CharacterAdded:Connect(function(char)
                 task.wait(0.1)
-                applySpeed()
-            end)
+                applySpeed(char)
+            end))
+            Notification.new({
+                Title = "Speed",
+                Description = "Enabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         else
-            if speedConnection then
-                speedConnection:Disconnect()
-                speedConnection = nil
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
             end
-
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                LocalPlayer.Character.Humanoid.WalkSpeed = defaultSpeed
+            Connections = {}
+            if LocalPlayer.Character then
+                applySpeed(LocalPlayer.Character)
             end
+            Notification.new({
+                Title = "Speed",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         end
     end,
 })
 
--- No Clip Toggle (Left)
 PlayersSectionLeft:NewToggle({
     Title = "No Clip",
     Default = false,
@@ -559,34 +575,55 @@ PlayersSectionLeft:NewToggle({
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
         local RunService = game:GetService("RunService")
+        local Connections = {}
         local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-        if state then
-            local function enableNoClip()
-                for _, part in pairs(Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-            RunService.Stepped:Connect(function()
-                if state then
-                    enableNoClip()
-                end
-            end)
-            print("No Clip Enabled")
-        else
-            for _, part in pairs(Character:GetDescendants()) do
+        local function applyNoClip(character)
+            for _, part in pairs(character:GetDescendants()) do
                 if part:IsA("BasePart") then
-                    part.CanCollide = true
+                    part.CanCollide = not state
                 end
             end
-            print("No Clip Disabled")
+        end
+
+        if state then
+            if Character then
+                applyNoClip(Character)
+            end
+            table.insert(Connections, RunService.Stepped:Connect(function()
+                if Character then
+                    applyNoClip(Character)
+                end
+            end))
+            table.insert(Connections, LocalPlayer.CharacterAdded:Connect(function(char)
+                Character = char
+                task.wait(0.1)
+                applyNoClip(char)
+            end))
+            Notification.new({
+                Title = "No Clip",
+                Description = "Enabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
+        else
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
+            end
+            Connections = {}
+            if Character then
+                applyNoClip(Character)
+            end
+            Notification.new({
+                Title = "No Clip",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         end
     end,
 })
 
--- God Mode Toggle (Left)
 PlayersSectionLeft:NewToggle({
     Title = "God Mode",
     Default = false,
@@ -594,106 +631,79 @@ PlayersSectionLeft:NewToggle({
         local Players = game:GetService("Players")
         local RunService = game:GetService("RunService")
         local LocalPlayer = Players.LocalPlayer
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local Humanoid = Character:WaitForChild("Humanoid")
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Connections = {}
 
-        local function protectHealth()
-            Humanoid.Health = math.huge
-            Humanoid.MaxHealth = math.huge
-            Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                if Humanoid.Health < Humanoid.MaxHealth then
-                    Humanoid.Health = Humanoid.MaxHealth
+        local function protectHealth(character)
+            local humanoid = character:WaitForChild("Humanoid", 5)
+            if humanoid then
+                humanoid.MaxHealth = state and math.huge or 100
+                humanoid.Health = state and math.huge or 100
+                if state then
+                    table.insert(Connections, humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                        if humanoid.Health < math.huge then
+                            humanoid.Health = math.huge
+                        end
+                    end))
                 end
-            end)
-        end
-
-        local function antiKill()
-            for _, obj in pairs(getconnections(Humanoid.Died)) do
-                obj:Disable()
             end
-            Humanoid.BreakJointsOnDeath = false
         end
 
-        local function antiKnockback()
-            RunService.Heartbeat:Connect(function()
-                for _, v in pairs(Character:GetDescendants()) do
-                    if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyThrust") then
-                        v:Destroy()
+        local function antiVoid(character)
+            if state then
+                table.insert(Connections, RunService.Heartbeat:Connect(function()
+                    local root = character:FindFirstChild("HumanoidRootPart")
+                    if root and root.Position.Y < -20 then
+                        root.CFrame = CFrame.new(0, 50, 0)
                     end
-                end
-            end)
-        end
-
-        local function antiVoid()
-            RunService.Heartbeat:Connect(function()
-                if Character:FindFirstChild("HumanoidRootPart") then
-                    if Character.HumanoidRootPart.Position.Y < -20 then
-                        Character:MoveTo(Vector3.new(0, 50, 0))
-                    end
-                end
-            end)
-        end
-
-        local function fakeHealth()
-            local fake = Instance.new("NumberValue")
-            fake.Name = "FakeHealth"
-            fake.Value = Humanoid.Health
-            fake.Parent = Character
-            RunService.RenderStepped:Connect(function()
-                fake.Value = Humanoid.Health
-            end)
-        end
-
-        local function lockHumanoidState()
-            RunService.Stepped:Connect(function()
-                pcall(function()
-                    Humanoid:ChangeState(11)
-                    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-                    Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                    Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                end)
-            end)
+                end))
+            end
         end
 
         if state then
-            protectHealth()
-            antiKill()
-            antiKnockback()
-            antiVoid()
-            fakeHealth()
-            lockHumanoidState()
-            LocalPlayer.CharacterAdded:Connect(function(char)
-                task.wait(1)
-                Character = char
-                Humanoid = char:WaitForChild("Humanoid")
-                protectHealth()
-                antiKill()
-                antiKnockback()
-                antiVoid()
-                lockHumanoidState()
-            end)
+            if LocalPlayer.Character then
+                protectHealth(LocalPlayer.Character)
+                antiVoid(LocalPlayer.Character)
+            end
+            table.insert(Connections, LocalPlayer.CharacterAdded:Connect(function(char)
+                task.wait(0.1)
+                protectHealth(char)
+                antiVoid(char)
+            end))
+            Notification.new({
+                Title = "God Mode",
+                Description = "Enabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         else
-            Humanoid.Health = 100
-            Humanoid.MaxHealth = 100
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
+            end
+            Connections = {}
+            if LocalPlayer.Character then
+                protectHealth(LocalPlayer.Character)
+            end
+            Notification.new({
+                Title = "God Mode",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
         end
     end,
 })
 
--- Damage ×2 Toggle (Right)
-local damageConnection
 PlayersSectionRight:NewToggle({
     Title = "Damage ×2",
     Default = false,
     Callback = function(state)
         local Players = game:GetService("Players")
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local UserInputService = game:GetService("UserInputService")
         local LocalPlayer = Players.LocalPlayer
+        local Connections = {}
 
         local DamageUtils = {}
         DamageUtils.__index = DamageUtils
-
         local _lastAttackTick = {}
 
         local function isFriendly(attacker, target)
@@ -706,7 +716,7 @@ PlayersSectionRight:NewToggle({
         function DamageUtils.DealDamageAdvanced(attackerPlayer, baseDamage, radius, cooldown, options)
             options = options or {}
             cooldown = cooldown or 0.5
-            if not attackerPlayer or not attackerPlayer.Character then return end
+            if not attackerPlayer or not attackerPlayer.Character then return false, "no_character" end
 
             local now = tick()
             local last = _lastAttackTick[attackerPlayer] or 0
@@ -717,7 +727,6 @@ PlayersSectionRight:NewToggle({
 
             local multiplier = options.multiplier or 2
             local finalDamage = baseDamage * multiplier
-
             local attackerChar = attackerPlayer.Character
             local hrp = attackerChar:FindFirstChild("HumanoidRootPart") or attackerChar:FindFirstChild("Torso")
             if not hrp then return false, "no_hrp" end
@@ -732,20 +741,16 @@ PlayersSectionRight:NewToggle({
                     local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
                     if targetHum and targetHRP then
                         if options.ignoreDead and targetHum.Health <= 0 then
-                            -- ข้ามถ้าตายแล้ว
+                            -- Skip dead players
                         else
                             local distance = (hrp.Position - targetHRP.Position).Magnitude
                             if distance <= radius then
                                 if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
-                                    -- ข้าม
+                                    -- Skip friendly players
                                 else
                                     if targetHum.Health > 0 then
                                         local ok, err = pcall(function()
-                                            if options.useTakeDamage == false then
-                                                targetHum.Health = math.max(0, targetHum.Health - finalDamage)
-                                            else
-                                                targetHum:TakeDamage(finalDamage)
-                                            end
+                                            targetHum:TakeDamage(finalDamage)
                                         end)
                                         if ok then
                                             hitCount = hitCount + 1
@@ -759,39 +764,28 @@ PlayersSectionRight:NewToggle({
                     end
                 end
             end
-
             return true, hitCount
         end
 
         if state then
-            damageConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+            table.insert(Connections, UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
                     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
                         local ok, info = DamageUtils.DealDamageAdvanced(LocalPlayer, 20, 5, 0.9, {
                             multiplier = 2,
                             ignoreDead = true,
                             respectTeam = true,
-                            useTakeDamage = true,
                             maxTargets = 5
                         })
-                        if not ok then
-                            Notification.new({
-                                Title = "Damage ×2",
-                                Description = "Failed: " .. tostring(info),
-                                Duration = 3,
-                                Icon = "rbxassetid://8997385628"
-                            })
-                        else
-                            Notification.new({
-                                Title = "Damage ×2",
-                                Description = string.format("Dealt damage to %d targets", info),
-                                Duration = 3,
-                                Icon = "rbxassetid://8997385628"
-                            })
-                        end
+                        Notification.new({
+                            Title = "Damage ×2",
+                            Description = ok and string.format("Dealt damage to %d targets", info) or "Failed: " .. tostring(info),
+                            Duration = 3,
+                            Icon = "rbxassetid://8997385628"
+                        })
                     end
                 end
-            end)
+            end))
             Notification.new({
                 Title = "Damage ×2",
                 Description = "Enabled: Click to deal double damage!",
@@ -799,10 +793,10 @@ PlayersSectionRight:NewToggle({
                 Icon = "rbxassetid://8997385628"
             })
         else
-            if damageConnection then
-                damageConnection:Disconnect()
-                damageConnection = nil
+            for _, conn in pairs(Connections) do
+                conn:Disconnect()
             end
+            Connections = {}
             Notification.new({
                 Title = "Damage ×2",
                 Description = "Disabled",
@@ -813,54 +807,38 @@ PlayersSectionRight:NewToggle({
     end,
 })
 
--- แท็บ Server
+-- Server Tab
 local ServerTab = Windows:NewTab({
     Title = "Server",
     Description = "Server Management",
     Icon = "rbxassetid://7733960981"
 })
 
--- Section ด้านขวาใน Server
 local ServerSectionRight = ServerTab:NewSection({
     Title = "Server Options",
     Icon = "rbxassetid://7733964719",
     Position = "Right"
 })
 
--- ServerTeleportUtils (ฝังใน client เพื่อจำลองการทำงาน)
 local ServerTeleportUtils = {}
 ServerTeleportUtils.__index = ServerTeleportUtils
 
 function ServerTeleportUtils.Rejoin(player)
     if not player or not player.UserId then return end
-
     local TeleportService = game:GetService("TeleportService")
     local success, result = pcall(function()
         TeleportService:Teleport(game.PlaceId, player)
     end)
-
-    if success then
-        Notification.new({
-            Title = "Rejoin",
-            Description = string.format("%s is rejoining the server", player.Name),
-            Duration = 3,
-            Icon = "rbxassetid://8997385628"
-        })
-        print(("[Rejoin] %s ถูกส่งกลับเข้าเซิร์ฟเวอร์เดิม"):format(player.Name))
-    else
-        Notification.new({
-            Title = "Rejoin",
-            Description = "Failed: " .. tostring(result),
-            Duration = 3,
-            Icon = "rbxassetid://8997385628"
-        })
-        warn(("[Rejoin] ล้มเหลว: %s"):format(result))
-    end
+    Notification.new({
+        Title = "Rejoin",
+        Description = success and string.format("%s is rejoining the server", player.Name) or "Failed: " .. tostring(result),
+        Duration = 3,
+        Icon = "rbxassetid://8997385628"
+    })
 end
 
 function ServerTeleportUtils.ServerHop(player)
     if not player or not player.UserId then return end
-
     local TeleportService = game:GetService("TeleportService")
     local HttpService = game:GetService("HttpService")
     local placeId = game.PlaceId
@@ -872,10 +850,8 @@ function ServerTeleportUtils.ServerHop(player)
         if cursor then
             url = url .. "&cursor=" .. cursor
         end
-
         local response = game:HttpGet(url)
-        local data = HttpService:JSONDecode(response)
-        return data
+        return HttpService:JSONDecode(response)
     end
 
     local success, data = pcall(function()
@@ -895,7 +871,6 @@ function ServerTeleportUtils.ServerHop(player)
             Duration = 3,
             Icon = "rbxassetid://8997385628"
         })
-        warn("[ServerHop] Unable to retrieve server information:", data)
         return
     end
 
@@ -904,24 +879,12 @@ function ServerTeleportUtils.ServerHop(player)
         local ok, err = pcall(function()
             TeleportService:TeleportToPlaceInstance(placeId, newServerId, player)
         end)
-
-        if ok then
-            Notification.new({
-                Title = "Server Hop",
-                Description = string.format("%s is hopping to a new server", player.Name),
-                Duration = 3,
-                Icon = "rbxassetid://8997385628"
-            })
-            print(("[ServerHop] %s has been successfully moved to a new server."):format(player.Name))
-        else
-            Notification.new({
-                Title = "Server Hop",
-                Description = "Failed: " .. tostring(err),
-                Duration = 3,
-                Icon = "rbxassetid://8997385628"
-            })
-            warn(("[ServerHop] Failed: %s"):format(err))
-        end
+        Notification.new({
+            Title = "Server Hop",
+            Description = ok and string.format("%s is hopping to a new server", player.Name) or "Failed: " .. tostring(err),
+            Duration = 3,
+            Icon = "rbxassetid://8997385628"
+        })
     else
         Notification.new({
             Title = "Server Hop",
@@ -929,11 +892,9 @@ function ServerTeleportUtils.ServerHop(player)
             Duration = 3,
             Icon = "rbxassetid://8997385628"
         })
-        warn("[ServerHop] There are no other servers to move to.")
     end
 end
 
--- Rejoin Button (Right)
 ServerSectionRight:NewButton({
     Title = "Rejoin",
     Callback = function()
@@ -943,7 +904,6 @@ ServerSectionRight:NewButton({
     end,
 })
 
--- Server Hop Button (Right)
 ServerSectionRight:NewButton({
     Title = "Server Hop",
     Callback = function()

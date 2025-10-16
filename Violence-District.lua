@@ -631,42 +631,138 @@ local function loadUI()
     })
 
     -- No Clip Toggle (Left)
-    PlayersSectionLeft:NewToggle({
-        Title = "No Clip",
-        Default = false,
-        Callback = function(state)
-            TogglesState[PlayersSectionLeft] = state
-            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+PlayersSectionLeft:NewToggle({
+    Title = "No Clip",
+    Default = false,
+    Callback = function(state)
+        TogglesState[PlayersSectionLeft] = state
+        local Player = game.Players.LocalPlayer
+        local Character = Player.Character or Player.CharacterAdded:Wait()
+        local Humanoid = Character:WaitForChild("Humanoid")
+        local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
 
-            if state then
-                local function enableNoClip()
-                    for _, part in pairs(Character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = false
-                        end
-                    end
+        local Connections = {}
+        local IsNoClipActive = false
+
+        local function enableNoClip()
+            if not Character or not HumanoidRootPart then return end
+
+            for _, part in pairs(Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                    part.Anchored = false
                 end
-                local conn = RunService.Stepped:Connect(function()
-                    if state then
-                        enableNoClip()
-                    end
-                end)
-                table.insert(Connections, conn)
-                print("No Clip Enabled")
-            else
-                for _, part in pairs(Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = true
-                    end
-                end
-                print("No Clip Disabled")
             end
-        end,
-    })
+
+            local function forceFloat()
+                if HumanoidRootPart then
+                    local bp = Instance.new("BodyPosition")
+                    bp.MaxForce = Vector3.new(0, 0, 0)
+                    bp.P = 0
+                    bp.D = 0
+                    bp.Position = HumanoidRootPart.CFrame.Position
+                    bp.Parent = HumanoidRootPart
+                    table.insert(Connections, bp)
+
+                end
+            end
+
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+
+            local conn = RunService.Stepped:Connect(function()
+                if not IsNoClipActive then return end
+                if not HumanoidRootPart then return end
+
+                for _, v in pairs(HumanoidRootPart:GetChildren()) do
+                    if v:IsA("BodyPosition") then
+                        v.Position = HumanoidRootPart.CFrame.Position
+                    end
+                end
+
+                local rayOrigin = HumanoidRootPart.CFrame.Position
+                local rayDirection = Vector3.new(0, -1, 0)
+                local rayParams = RaycastParams.new()
+                rayParams.FilterDescendantsInstances = {Character}
+                rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+                local rayResult = workspace:Raycast(rayOrigin, rayDirection * 10, rayParams)
+                if rayResult then
+                    HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.fromOffset(0, 1, 0)
+                end
+            end)
+            table.insert(Connections, conn)
+
+            for _, part in pairs(Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = false
+                end
+            end
+
+            print("No Clip Enabled")
+        end
+
+        local function disableNoClip()
+            for _, part in pairs(Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                    part.Anchored = false
+                end
+            end
+
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+
+            for _, v in pairs(HumanoidRootPart:GetChildren()) do
+                if v:IsA("BodyPosition") then
+                    v:Destroy()
+                end
+            end
+
+            for _, conn in ipairs(Connections) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                elseif typeof(conn) == "Instance" then
+                    conn:Destroy()
+                end
+            end
+            Connections = {}
+
+            print("❌ No Clip Disabled")
+        end
+
+        if state then
+            IsNoClipActive = true
+            enableNoClip()
+
+            local charConn = Player.CharacterAdded:Connect(function(char)
+                task.wait(1)
+                Character = char
+                Humanoid = char:WaitForChild("Humanoid")
+                HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+                if state then
+                    enableNoClip()
+                end
+            end)
+            table.insert(Connections, charConn)
+        else
+            IsNoClipActive = false
+            disableNoClip()
+        end
+    end,
+})
 
     -- God Mode Toggle (Left)
 PlayersSectionLeft:NewToggle({
-    Title = "God Mode (Ultimate)",
+    Title = "God Mode",
     Default = false,
     Callback = function(state)
         TogglesState[PlayersSectionLeft] = state
@@ -813,24 +909,7 @@ PlayersSectionLeft:NewToggle({
             table.insert(Connections, conn)
         end
 
-        -- ฟังก์ชันเพื่อป้องกันการถูกโจมตี (ถ้าสามารถเข้าถึงได้)
         local function antiDamage()
-            -- ถ้ามี API หรือการใช้งานที่สามารถ "บล็อก" หรือ "ตัด" ความเสียหายได้
-            -- เช่น ตั้งค่า DamageMultiplier หรือใช้การจัดการ Event แบบลึกซึ้ง
-            -- ตัวอย่าง: ถ้ามีการใช้ DamageMultiplier หรือ DamageEvent ที่สามารถ "บล็อก" ได้
-            -- คุณต้องปรับแต่งตามระบบของเกม
-
-            -- กรณีทั่วไป: ป้องกันการเปลี่ยนแปลง Health ด้วยการใช้ BindPropertyChanged ที่ดีที่สุด
-            -- ซึ่งเราได้ทำไว้แล้วใน protectHealth()
-
-            -- ถ้าต้องการ "บล็อก" หรือ "ป้องกัน" ความเสียหายโดยตรง (เช่น ใช้ Hook หรือ Override)
-            -- ตัวอย่าง (ถ้ามี API ที่สามารถใช้ Hook ได้ เช่น hookfunction):
-            -- แต่ใน Roblox Lua ไม่มี hookfunction ทั่วไป (ยกเว้นบางกรณีที่ใช้ luau)
-            -- ดังนั้นการป้องกันด้วย BindPropertyChanged คือทางเลือกที่ดีที่สุดในกรณีทั่วไป
-
-            -- ลองใช้การป้องกันการเปลี่ยนแปลง Health แบบลึกซึ้ง
-            -- ถ้ามีการใช้ property ที่ซ้อนกัน เช่น FakeHealth หรือ HealthValue ที่เปลี่ยนแปลง
-            -- คุณต้องตรวจสอบและจัดการทุก property ที่เกี่ยวข้อง
         end
 
         -- ฟังก์ชันเพื่อสร้าง FakeHealth (ถ้าจำเป็น)
@@ -933,20 +1012,16 @@ PlayersSectionLeft:NewToggle({
                 Character = char
                 Humanoid = char:WaitForChild("Humanoid")
                 HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-
-                -- ตั้งค่าใหม่สำหรับ Character ใหม่
                 protectHealth()
                 antiKill()
                 antiKnockback()
                 antiVoid()
                 antiHug()
-                -- antiDamage()
                 fakeHealth()
                 lockHumanoidState()
             end)
             table.insert(Connections, charConn)
         else
-            -- ปิด God Mode
             resetCharacter()
         end
     end,

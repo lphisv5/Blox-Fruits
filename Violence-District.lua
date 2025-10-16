@@ -592,37 +592,43 @@ local function loadUI()
     })
 
 -- Speed Toggle (Left)
+local speedConnections = {}
 local speedConnection
+
 PlayersSectionLeft:NewToggle({
     Title = "Speed",
     Default = false,
     Callback = function(state)
         TogglesState["Speed"] = state
 
-        local defaultSpeed = 16 
-        local desiredSpeed = 50 
-        local Connections = {}
+        local defaultSpeed = 16       -- ความเร็วเริ่มต้นของ Roblox
+        local desiredSpeed = 50       -- ความเร็วที่ต้องการ
 
         local function applySpeed()
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                 local Humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-                if Humanoid then
-                    if Humanoid.WalkSpeed ~= desiredSpeed then
-                        Humanoid.WalkSpeed = desiredSpeed
-                    end
+                if Humanoid and Humanoid.WalkSpeed ~= desiredSpeed then
+                    Humanoid.WalkSpeed = desiredSpeed
                 end
             end
         end
 
         if state then
+            for _, conn in ipairs(speedConnections) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
+            end
+            speedConnections = {}
+
             speedConnection = RunService.RenderStepped:Connect(applySpeed)
-            table.insert(Connections, speedConnection)
+            table.insert(speedConnections, speedConnection)
 
             local charConn = LocalPlayer.CharacterAdded:Connect(function(char)
-                task.wait(1)
+                task.wait(0.1)
                 applySpeed()
             end)
-            table.insert(Connections, charConn)
+            table.insert(speedConnections, charConn)
 
             Notification.new({
                 Title = "Speed",
@@ -631,13 +637,12 @@ PlayersSectionLeft:NewToggle({
                 Icon = "rbxassetid://8997385628"
             })
         else
-            for _, conn in ipairs(Connections) do
+            for _, conn in ipairs(speedConnections) do
                 if typeof(conn) == "RBXScriptConnection" then
                     conn:Disconnect()
                 end
             end
-            Connections = {}
-            speedConnection = nil
+            speedConnections = {}
 
             if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
                 LocalPlayer.Character.Humanoid.WalkSpeed = defaultSpeed

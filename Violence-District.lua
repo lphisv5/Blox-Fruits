@@ -53,11 +53,9 @@ local function resetScript()
     end
 end
 
--- ฟังก์ชันตรวจจับการเปลี่ยนแมพ
 local function setupMapChangeDetection()
-    -- ตรวจจับการเปลี่ยนแปลงใน Workspace (เช่น แมปใหม่ถูกเพิ่ม)
     table.insert(Connections, workspace.ChildAdded:Connect(function(child)
-        if child:IsA("Model") and child.Name == "CurrentMap" then -- สมมติว่าเกมใช้ชื่อนี้
+        if child:IsA("Model") and child.Name == "CurrentMap" then
             resetScript()
             Notification.new({
                 Title = "Map Changed",
@@ -69,7 +67,7 @@ local function setupMapChangeDetection()
     end))
 
     -- ตรวจจับ RemoteEvent ที่อาจใช้ใน Violence District
-    local mapChangedEvent = ReplicatedStorage:FindFirstChild("MapChanged") -- ปรับชื่อตามที่เกมใช้
+    local mapChangedEvent = ReplicatedStorage:FindFirstChild("MapChanged")
     if mapChangedEvent then
         table.insert(Connections, mapChangedEvent.OnClientEvent:Connect(function()
             resetScript()
@@ -593,169 +591,135 @@ local function loadUI()
         end,
     })
 
-    -- Speed Toggle (Left)
-    local speedConnection
-    PlayersSectionLeft:NewToggle({
-        Title = "Speed",
-        Default = false,
-        Callback = function(state)
-            TogglesState[PlayersSectionLeft] = state
-            local desiredSpeed = 100
-            local defaultSpeed = 16
+-- Speed Toggle (Left)
+local speedConnection
+PlayersSectionLeft:NewToggle({
+    Title = "Speed",
+    Default = false,
+    Callback = function(state)
+        TogglesState["Speed"] = state
 
-            if state then
-                local function applySpeed()
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                        LocalPlayer.Character.Humanoid.WalkSpeed = desiredSpeed
+        local defaultSpeed = 16 
+        local desiredSpeed = 50 
+        local Connections = {}
+
+        local function applySpeed()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                local Humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                if Humanoid then
+                    if Humanoid.WalkSpeed ~= desiredSpeed then
+                        Humanoid.WalkSpeed = desiredSpeed
                     end
                 end
+            end
+        end
 
-                speedConnection = RunService.RenderStepped:Connect(applySpeed)
-                table.insert(Connections, speedConnection)
+        if state then
+            speedConnection = RunService.RenderStepped:Connect(applySpeed)
+            table.insert(Connections, speedConnection)
 
-                LocalPlayer.CharacterAdded:Connect(function(char)
-                    task.wait(0.1)
-                    applySpeed()
-                end)
-            else
-                if speedConnection then
-                    speedConnection:Disconnect()
-                    speedConnection = nil
-                end
+            local charConn = LocalPlayer.CharacterAdded:Connect(function(char)
+                task.wait(1)
+                applySpeed()
+            end)
+            table.insert(Connections, charConn)
 
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = defaultSpeed
+            Notification.new({
+                Title = "Speed",
+                Description = "Speed Enabled: " .. tostring(desiredSpeed),
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
+        else
+            for _, conn in ipairs(Connections) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
                 end
             end
-        end,
-    })
+            Connections = {}
+            speedConnection = nil
 
-    -- No Clip Toggle (Left)
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid.WalkSpeed = defaultSpeed
+            end
+
+            Notification.new({
+                Title = "Speed",
+                Description = "Speed Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
+        end
+    end,
+})
+
+-- No Clip Toggle (Left)
 PlayersSectionLeft:NewToggle({
     Title = "No Clip",
     Default = false,
     Callback = function(state)
-        TogglesState[PlayersSectionLeft] = state
+        TogglesState["NoClip"] = state
         local Player = game.Players.LocalPlayer
         local Character = Player.Character or Player.CharacterAdded:Wait()
-        local Humanoid = Character:WaitForChild("Humanoid")
-        local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+        local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+        local RunService = game:GetService("RunService")
 
-        local Connections = {}
-        local IsNoClipActive = false
+        local IsActive = false
+        local LoopConnection
 
-        local function enableNoClip()
-            if not Character or not HumanoidRootPart then return end
+        local function EnableNoclip()
+            IsActive = true
 
-            for _, part in pairs(Character:GetDescendants()) do
+            for _, part in ipairs(Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
-                    part.Anchored = false
                 end
             end
 
-            local function forceFloat()
-                if HumanoidRootPart then
-                    local bp = Instance.new("BodyPosition")
-                    bp.MaxForce = Vector3.new(0, 0, 0)
-                    bp.P = 0
-                    bp.D = 0
-                    bp.Position = HumanoidRootPart.CFrame.Position
-                    bp.Parent = HumanoidRootPart
-                    table.insert(Connections, bp)
-
-                end
-            end
-
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-
-            local conn = RunService.Stepped:Connect(function()
-                if not IsNoClipActive then return end
-                if not HumanoidRootPart then return end
-
-                for _, v in pairs(HumanoidRootPart:GetChildren()) do
-                    if v:IsA("BodyPosition") then
-                        v.Position = HumanoidRootPart.CFrame.Position
+            LoopConnection = RunService.Stepped:Connect(function()
+                if not IsActive then return end
+                local char = Player.Character
+                if not char then return end
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
                     end
                 end
-
-                local rayOrigin = HumanoidRootPart.CFrame.Position
-                local rayDirection = Vector3.new(0, -1, 0)
-                local rayParams = RaycastParams.new()
-                rayParams.FilterDescendantsInstances = {Character}
-                rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-                local rayResult = workspace:Raycast(rayOrigin, rayDirection * 10, rayParams)
-                if rayResult then
-                    HumanoidRootPart.CFrame = HumanoidRootPart.CFrame * CFrame.fromOffset(0, 1, 0)
-                end
             end)
-            table.insert(Connections, conn)
 
-            for _, part in pairs(Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.Anchored = false
-                end
-            end
-
-            print("No Clip Enabled")
+            print("Noclip Enabled")
         end
 
-        local function disableNoClip()
-            for _, part in pairs(Character:GetDescendants()) do
+        local function DisableNoclip()
+            IsActive = false
+
+            if LoopConnection then
+                LoopConnection:Disconnect()
+                LoopConnection = nil
+            end
+
+            for _, part in ipairs(Character:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = true
-                    part.Anchored = false
                 end
             end
 
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-
-            for _, v in pairs(HumanoidRootPart:GetChildren()) do
-                if v:IsA("BodyPosition") then
-                    v:Destroy()
-                end
-            end
-
-            for _, conn in ipairs(Connections) do
-                if typeof(conn) == "RBXScriptConnection" then
-                    conn:Disconnect()
-                elseif typeof(conn) == "Instance" then
-                    conn:Destroy()
-                end
-            end
-            Connections = {}
-
-            print("❌ No Clip Disabled")
+            print("Noclip Disabled")
         end
 
-        if state then
-            IsNoClipActive = true
-            enableNoClip()
-
-            local charConn = Player.CharacterAdded:Connect(function(char)
+        Player.CharacterAdded:Connect(function(char)
+            Character = char
+            HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+            if state then
                 task.wait(1)
-                Character = char
-                Humanoid = char:WaitForChild("Humanoid")
-                HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-                if state then
-                    enableNoClip()
-                end
-            end)
-            table.insert(Connections, charConn)
+                EnableNoclip()
+            end
+        end)
+
+        if state then
+            EnableNoclip()
         else
-            IsNoClipActive = false
-            disableNoClip()
+            DisableNoclip()
         end
     end,
 })
@@ -765,336 +729,213 @@ PlayersSectionLeft:NewToggle({
     Title = "God Mode",
     Default = false,
     Callback = function(state)
-        TogglesState[PlayersSectionLeft] = state
+        TogglesState["GodMode"] = state
+
         local Player = game.Players.LocalPlayer
+        local RunService = game:GetService("RunService")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
         local Character = Player.Character or Player.CharacterAdded:Wait()
         local Humanoid = Character:WaitForChild("Humanoid")
-        local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+        local Root = Character:WaitForChild("HumanoidRootPart")
 
-        -- ตัวแปรสำหรับเก็บ connection ที่ต้องยกเลิกเมื่อปิด God Mode
         local Connections = {}
-        local Hooks = {} -- สำหรับเก็บ hook ที่สร้างไว้
+        local GodModeEnabled = false
 
-        -- ฟังก์ชันเพื่อป้องกันการเปลี่ยนแปลง Health ทั้งจากภายนอกและภายใน
-        local function protectHealth()
-            -- ตั้ง Health และ MaxHealth เป็นค่าไม่จำกัด
+        local function enableGodMode()
+            GodModeEnabled = true
+
             Humanoid.Health = math.huge
             Humanoid.MaxHealth = math.huge
+            Humanoid.BreakJointsOnDeath = false
 
-            -- ใช้ BindPropertyChanged เพื่อป้องกันการเปลี่ยน Health จากภายนอก
-            local healthConn = Humanoid.BindPropertyChanged("Health", function()
+            if getconnections then
+                for _, conn in ipairs(getconnections(Humanoid.Died)) do
+                    conn:Disable()
+                end
+            end
+
+            for _, s in ipairs(Enum.HumanoidStateType:GetEnumItems()) do
+                Humanoid:SetStateEnabled(s, true)
+            end
+
+            local protectConn = RunService.Heartbeat:Connect(function()
+                if not GodModeEnabled or not Humanoid or not Humanoid.Parent then return end
+
                 if Humanoid.Health < Humanoid.MaxHealth then
                     Humanoid.Health = Humanoid.MaxHealth
                 end
-            end)
-            table.insert(Connections, healthConn)
+                if Humanoid.Health <= 0 then
+                    Humanoid.Health = math.huge
+                end
 
-            -- ป้องกันการเปลี่ยน MaxHealth
-            local maxHealthConn = Humanoid.BindPropertyChanged("MaxHealth", function()
-                Humanoid.MaxHealth = math.huge
-            end)
-            table.insert(Connections, maxHealthConn)
+                if Root and Root.Position.Y < -200 then
+                    Root.CFrame = CFrame.new(0, 50, 0)
+                end
 
-            -- ใช้ BindProperty หรือการเปลี่ยนแปลงแบบลึกซึ้ง (ถ้าจำเป็น)
-            -- บางเกมอาจใช้ property แบบซ้อนกันหรือการเปลี่ยนแปลงแบบ "fake" ที่ไม่ใช่ Health
-            -- ลองใช้การ bind ทุก property ที่เกี่ยวข้องกับ health
-            -- แต่สิ่งที่ดีที่สุดคือการป้องกันทุกการเปลี่ยนแปลงที่เกี่ยวข้อง
-        end
-
-        -- ฟังก์ชันเพื่อป้องกันการตาย (Died event)
-        local function antiKill()
-            -- ป้องกันการตายจาก Died event
-            for _, connection in ipairs(getconnections(Humanoid.Died)) do
-                connection:Disable() -- ใช้ Disable() แทนการลบ connection ตรงๆ
-            end
-
-            -- ป้องกันการ BreakJoints
-            Humanoid.BreakJointsOnDeath = false
-
-            -- ป้องกันสถานะ Dead, FallingDown, Ragdoll
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Sitting, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.None, false)
-            -- ฯลฯ ตามความจำเป็น
-        end
-
-        -- ฟังก์ชันเพื่อป้องกัน knockback และแรงกระแทกอื่นๆ
-        local function antiKnockback()
-            local function removeForceObjects()
-                if not Character then return end
-                for _, v in pairs(Character:GetDescendants()) do
-                    -- ลบแรงกระแทก
-                    if v:IsA("BodyGyro") or v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyThrust") or v:IsA("BodyPosition") then
+                for _, v in ipairs(Character:GetDescendants()) do
+                    if v:IsA("BodyVelocity") or v:IsA("BodyGyro") or v:IsA("BodyThrust") or v:IsA("VectorForce") then
                         v:Destroy()
-                    elseif v:IsA("Attachment") then
-                        -- ตรวจสอบว่า Attachment นี้มีความสัมพันธ์กับแรงกระแทกหรือไม่
-                        -- หรือลบทั้งหมดที่ไม่จำเป็น
-                        if v.Name:lower():find("force") or v.Name:lower():find("knock") or v.Name:lower():find("hit") or v.Name:lower():find("impact") then
-                            v:Destroy()
+                    end
+                end
+            end)
+            table.insert(Connections, protectConn)
+
+            local antiFallConn = RunService.RenderStepped:Connect(function()
+                if Humanoid.PlatformStand then
+                    Humanoid.PlatformStand = false
+                end
+            end)
+            table.insert(Connections, antiFallConn)
+
+            local function autoRecoverHealth(remote)
+                if not remote:IsA("RemoteEvent") and not remote:IsA("RemoteFunction") then return end
+                local conn
+                if remote:IsA("RemoteEvent") then
+                    conn = remote.OnClientEvent:Connect(function(...)
+                        if GodModeEnabled and Humanoid and Humanoid.Parent then
+                            Humanoid.Health = Humanoid.MaxHealth
+                        end
+                    end)
+                elseif remote:IsA("RemoteFunction") then
+                    local oldCall = remote.OnClientInvoke
+                    remote.OnClientInvoke = function(...)
+                        if GodModeEnabled and Humanoid and Humanoid.Parent then
+                            Humanoid.Health = Humanoid.MaxHealth
+                        end
+                        if oldCall then
+                            return oldCall(...)
                         end
                     end
+                    conn = remote
                 end
+                table.insert(Connections, conn)
             end
 
-            -- ลบแรงทุกๆ frame
-            local conn = RunService.Heartbeat:Connect(removeForceObjects)
-            table.insert(Connections, conn)
-
-            -- ตรวจสอบและล้าง BodyGyro ที่มีอยู่แล้วที่ใช้สำหรับ knockback
-            -- อาจต้องใช้การ BindProperty หรือการตั้งค่าใหม่ทุกๆ frame
-            local function clearExistingForces()
-                if not Character or not HumanoidRootPart then return end
-                -- ใช้ PivotTo หรือ SetPrimaryPartCFrame เพื่อหยุดการเคลื่อนไหวที่ไม่ต้องการ
-                -- หรือใช้ BodyGyro ใหม่ที่ไม่มีแรง
-                for _, v in pairs(Character:GetDescendants()) do
-                    if v:IsA("BodyGyro") then
-                        -- ลองตั้งค่าใหม่
-                        v.CFrame = CFrame.new(v.CFrame.Position) -- ตั้งให้ไม่มี rotation
-                        v.P = 0 -- ปิดแรง
-                        v.D = 0 -- ปิดแรง
-                        v.MaxTorque = Vector3.new(0, 0, 0) -- ปิดแรง
-                    end
-                end
+            for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+                autoRecoverHealth(obj)
+            end
+            for _, obj in ipairs(Character:GetDescendants()) do
+                autoRecoverHealth(obj)
             end
 
-            local clearConn = RunService.Heartbeat:Connect(clearExistingForces)
-            table.insert(Connections, clearConn)
+            print("God Mode Enabled")
         end
 
-        -- ฟังก์ชันเพื่อป้องกันการหล่นลงใน void
-        local function antiVoid()
-            local function checkAndTeleport()
-                if not Character or not HumanoidRootPart then return end
-                if HumanoidRootPart.Position.Y < -1000 then -- ใช้ค่าที่ต่ำกว่านี้เพื่อป้องกันการหล่นลง
-                    -- เคลื่อนย้ายกลับไปที่ตำแหน่งปลอดภัย
-                    Character:PivotTo(CFrame.new(0, 500, 0)) -- ใช้ค่าที่ปลอดภัยกว่า
-                end
-            end
+        local function disableGodMode()
+            GodModeEnabled = false
 
-            local conn = RunService.Heartbeat:Connect(checkAndTeleport)
-            table.insert(Connections, conn)
-        end
-
-        -- ฟังก์ชันเพื่อป้องกันการถูกอุ้ม/จับ (ถ้ามี API ที่ให้ควบคุม)
-        local function antiHug()
-            -- ถ้าเกมมีการใช้ BodyGyro หรือ BodyVelocity สำหรับการจับ
-            -- คุณสามารถทำแบบเดียวกับ antiKnockback
-            local function removeGrabForces()
-                if not Character then return end
-                for _, v in pairs(Character:GetDescendants()) do
-                    if v:IsA("BodyGyro") or v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyThrust") or v:IsA("BodyPosition") then
-                        -- ตรวจสอบว่าเป็นแรงที่เกี่ยวข้องกับการจับหรือไม่
-                        -- ถ้าไม่แน่ใจ ให้ลบทั้งหมดที่เกี่ยวข้องกับแรง
-                        v:Destroy()
-                    end
-                end
-            end
-
-            local conn = RunService.Heartbeat:Connect(removeGrabForces)
-            table.insert(Connections, conn)
-        end
-
-        local function antiDamage()
-        end
-
-        -- ฟังก์ชันเพื่อสร้าง FakeHealth (ถ้าจำเป็น)
-        local function fakeHealth()
-            -- ถ้าจำเป็น อาจต้องใช้การ bind property หรือ instance ที่ซ่อนอยู่
-            -- หรือหากคุณต้องการให้ผู้เล่นเห็น Health ที่ไม่เปลี่ยนแปลง
-            -- ใช้ instance ใหม่เพื่อแสดง Health ที่คงที่
-            local fake = Instance.new("NumberValue")
-            fake.Name = "FakeHealth"
-            fake.Value = Humanoid.Health
-            fake.Parent = Character
-
-            -- ใช้ RenderStepped หรือ Heartbeat เพื่ออัปเดตค่า FakeHealth
-            local conn = RunService.RenderStepped:Connect(function()
-                fake.Value = Humanoid.Health
-            end)
-            table.insert(Connections, conn)
-        end
-
-        -- ฟังก์ชันเพื่อล็อกสถานะ Humanoid
-        local function lockHumanoidState()
-            local function lockStates()
-                -- ป้องกันการเปลี่ยนสถานะที่ไม่ต้องการ
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Sitting, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
-                Humanoid:SetStateEnabled(Enum.HumanoidStateType.None, false)
-                -- ฯลฯ ตามความจำเป็น
-            end
-
-            -- ใช้ Stepped เพื่อควบคุมสถานะทุก frame
-            local conn = RunService.Stepped:Connect(lockStates)
-            table.insert(Connections, conn)
-        end
-
-        -- ฟังก์ชันสำหรับการตั้งค่าเริ่มต้นเมื่อปิด God Mode
-        local function resetCharacter()
-            -- รีเซ็ต Health และ MaxHealth
-            Humanoid.Health = 100
-            Humanoid.MaxHealth = 100
-            -- รีเซ็ตสถานะการตาย
-            Humanoid.BreakJointsOnDeath = true -- คืนค่าเดิม
-            -- รีเซ็ตสถานะ Humanoid
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Sitting, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
-            Humanoid:SetStateEnabled(Enum.HumanoidStateType.None, true)
-            -- ลบ connection ที่เกี่ยวข้อง
             for _, conn in ipairs(Connections) do
                 if typeof(conn) == "RBXScriptConnection" then
                     conn:Disconnect()
+                elseif typeof(conn) == "Instance" then
+                    if conn:IsA("RemoteFunction") then
+                        conn.OnClientInvoke = nil
+                    end
                 end
             end
-            Connections = {} -- ล้างตาราง
+            Connections = {}
+
+            if Humanoid then
+                Humanoid.MaxHealth = 100
+                Humanoid.Health = 100
+                Humanoid.BreakJointsOnDeath = true
+            end
+
+            print("God Mode Disabled")
         end
 
         if state then
-            -- เปิด God Mode
-            protectHealth()
-            antiKill()
-            antiKnockback()
-            antiVoid()
-            antiHug()
-            -- antiDamage() -- ถ้าจำเป็น
-            fakeHealth()
-            lockHumanoidState()
+            enableGodMode()
 
-            -- ติดตามการเปลี่ยนแปลงของ Character
-            local charConn = Player.CharacterAdded:Connect(function(char)
-                -- รอให้ Character เต็ม
-                task.wait(1)
+            local respawnConn = Player.CharacterAdded:Connect(function(char)
                 Character = char
                 Humanoid = char:WaitForChild("Humanoid")
-                HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-                protectHealth()
-                antiKill()
-                antiKnockback()
-                antiVoid()
-                antiHug()
-                fakeHealth()
-                lockHumanoidState()
+                Root = char:WaitForChild("HumanoidRootPart")
+                task.wait(0.5)
+                if GodModeEnabled then
+                    enableGodMode()
+                end
             end)
-            table.insert(Connections, charConn)
+            table.insert(Connections, respawnConn)
         else
-            resetCharacter()
+            disableGodMode()
         end
     end,
 })
+    
+-- Damage ×2 Toggle (Right)
+local damageConnection
+PlayersSectionRight:NewToggle({
+    Title = "Damage ×2",
+    Default = false,
+    Callback = function(state)
+        TogglesState["Damagex2"] = state
 
-    -- Damage ×2 Toggle (Right)
-    local damageConnection
-    PlayersSectionRight:NewToggle({
-        Title = "Damage ×2",
-        Default = false,
-        Callback = function(state)
-            TogglesState[PlayersSectionRight] = state
-            local DamageUtils = {}
-            DamageUtils.__index = DamageUtils
+        local RunService = game:GetService("RunService")
+        local Players = game:GetService("Players")
+        local UserInputService = game:GetService("UserInputService")
+        local LocalPlayer = Players.LocalPlayer
 
-            local _lastAttackTick = {}
+        local Connections = {}
 
-            local function isFriendly(attacker, target)
-                if attacker.Team and target.Team then
-                    return attacker.Team == target.Team
-                end
-                return false
+        -- ฟังก์ชันตรวจสอบ team
+        local function isFriendly(attacker, target)
+            if attacker.Team and target.Team then
+                return attacker.Team == target.Team
             end
+            return false
+        end
 
-            function DamageUtils.DealDamageAdvanced(attackerPlayer, baseDamage, radius, cooldown, options)
-                options = options or {}
-                cooldown = cooldown or 0.5
-                if not attackerPlayer or not attackerPlayer.Character then return end
+        -- ฟังก์ชัน Damage ขั้นสูง
+        local function DealDamage(attackerPlayer, baseDamage, radius, cooldown, options)
+            options = options or {}
+            cooldown = cooldown or 0.5
 
-                local now = tick()
-                local last = _lastAttackTick[attackerPlayer] or 0
-                if now - last < cooldown then
-                    return false, "cooldown"
-                end
-                _lastAttackTick[attackerPlayer] = now
+            if not attackerPlayer or not attackerPlayer.Character then return false, "no_character" end
 
-                local multiplier = options.multiplier or 2
-                local finalDamage = baseDamage * multiplier
+            local now = tick()
+            attackerPlayer._lastAttackTick = attackerPlayer._lastAttackTick or 0
+            if now - attackerPlayer._lastAttackTick < cooldown then
+                return false, "cooldown"
+            end
+            attackerPlayer._lastAttackTick = now
 
-                local attackerChar = attackerPlayer.Character
-                local hrp = attackerChar:FindFirstChild("HumanoidRootPart") or attackerChar:FindFirstChild("Torso")
-                if not hrp then return false, "no_hrp" end
+            local multiplier = options.multiplier or 2
+            local finalDamage = baseDamage * multiplier
 
-                local hitCount = 0
-                local maxTargets = options.maxTargets or math.huge
+            local hrp = attackerPlayer.Character:FindFirstChild("HumanoidRootPart") or attackerPlayer.Character:FindFirstChild("Torso")
+            if not hrp then return false, "no_hrp" end
 
-                for _, targetPlayer in pairs(Players:GetPlayers()) do
-                    if hitCount >= maxTargets then break end
-                    if targetPlayer ~= attackerPlayer and targetPlayer.Character then
-                        local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-                        local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
-                        if targetHum and targetHRP then
-                            if options.ignoreDead and targetHum.Health <= 0 then
-                                -- ข้ามถ้าตายแล้ว
-                            else
-                                local distance = (hrp.Position - targetHRP.Position).Magnitude
-                                if distance <= radius then
-                                    if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
-                                        -- ข้าม
-                                    else
-                                        if targetHum.Health > 0 then
-                                            local ok, err = pcall(function()
-                                                if options.useTakeDamage == false then
-                                                    targetHum.Health = math.max(0, targetHum.Health - finalDamage)
-                                                else
-                                                    targetHum:TakeDamage(finalDamage)
-                                                end
-                                            end)
-                                            if ok then
-                                                hitCount = hitCount + 1
+            local hitCount = 0
+            local maxTargets = options.maxTargets or math.huge
+
+            for _, targetPlayer in pairs(Players:GetPlayers()) do
+                if hitCount >= maxTargets then break end
+                if targetPlayer ~= attackerPlayer and targetPlayer.Character then
+                    local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
+                    if targetHum and targetHRP then
+                        if options.ignoreDead and targetHum.Health <= 0 then
+                            -- ข้าม
+                        else
+                            local distance = (hrp.Position - targetHRP.Position).Magnitude
+                            if distance <= radius then
+                                if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
+                                    -- ข้าม
+                                else
+                                    if targetHum.Health > 0 then
+                                        local ok, err = pcall(function()
+                                            if options.useTakeDamage == false then
+                                                targetHum.Health = math.max(0, targetHum.Health - finalDamage)
                                             else
-                                                warn("[DamageUtils] Failed to apply damage:", err)
+                                                targetHum:TakeDamage(finalDamage)
                                             end
+                                        end)
+                                        if ok then
+                                            hitCount = hitCount + 1
+                                        else
+                                            warn("[Damage ×2] Failed to apply damage:", err)
                                         end
                                     end
                                 end
@@ -1102,61 +943,67 @@ PlayersSectionLeft:NewToggle({
                         end
                     end
                 end
-
-                return true, hitCount
             end
+            return true, hitCount
+        end
 
-            if state then
-                damageConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-                    if not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                            local ok, info = DamageUtils.DealDamageAdvanced(LocalPlayer, 20, 5, 0.9, {
-                                multiplier = 2,
-                                ignoreDead = true,
-                                respectTeam = true,
-                                useTakeDamage = true,
-                                maxTargets = 5
+        -- เปิด toggle
+        if state then
+            damageConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+                if gameProcessed then return end
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local ok, info = DealDamage(LocalPlayer, 20, 5, 0.9, {
+                            multiplier = 2,
+                            ignoreDead = true,
+                            respectTeam = true,
+                            useTakeDamage = true,
+                            maxTargets = 5
+                        })
+                        if ok then
+                            Notification.new({
+                                Title = "Damage ×2",
+                                Description = string.format("Dealt damage to %d targets", info),
+                                Duration = 3,
+                                Icon = "rbxassetid://8997385628"
                             })
-                            if not ok then
-                                Notification.new({
-                                    Title = "Damage ×2",
-                                    Description = "Failed: " .. tostring(info),
-                                    Duration = 3,
-                                    Icon = "rbxassetid://8997385628"
-                                })
-                            else
-                                Notification.new({
-                                    Title = "Damage ×2",
-                                    Description = string.format("Dealt damage to %d targets", info),
-                                    Duration = 3,
-                                    Icon = "rbxassetid://8997385628"
-                                })
-                            end
+                        else
+                            Notification.new({
+                                Title = "Damage ×2",
+                                Description = "Failed: " .. tostring(info),
+                                Duration = 3,
+                                Icon = "rbxassetid://8997385628"
+                            })
                         end
                     end
-                end)
-                table.insert(Connections, damageConnection)
-                Notification.new({
-                    Title = "Damage ×2",
-                    Description = "Enabled: Click to deal double damage!",
-                    Duration = 5,
-                    Icon = "rbxassetid://8997385628"
-                })
-            else
-                if damageConnection then
-                    damageConnection:Disconnect()
-                    damageConnection = nil
                 end
-                Notification.new({
-                    Title = "Damage ×2",
-                    Description = "Disabled",
-                    Duration = 3,
-                    Icon = "rbxassetid://8997385628"
-                })
+            end)
+            table.insert(Connections, damageConnection)
+            Notification.new({
+                Title = "Damage ×2",
+                Description = "Enabled: Click to deal double damage!",
+                Duration = 5,
+                Icon = "rbxassetid://8997385628"
+            })
+        else
+            -- ปิด toggle
+            for _, conn in ipairs(Connections) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
             end
-        end,
-    })
+            Connections = {}
+            Notification.new({
+                Title = "Damage ×2",
+                Description = "Disabled",
+                Duration = 3,
+                Icon = "rbxassetid://8997385628"
+            })
+        end
+    end,
+})
 
+    
     -- แท็บ Server
     local ServerTab = Windows:NewTab({
         Title = "Server",

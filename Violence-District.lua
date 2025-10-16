@@ -665,101 +665,292 @@ local function loadUI()
     })
 
     -- God Mode Toggle (Left)
-    PlayersSectionLeft:NewToggle({
-        Title = "God Mode",
-        Default = false,
-        Callback = function(state)
-            TogglesState[PlayersSectionLeft] = state
-            local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-            local Humanoid = Character:WaitForChild("Humanoid")
+PlayersSectionLeft:NewToggle({
+    Title = "God Mode (Ultimate)",
+    Default = false,
+    Callback = function(state)
+        TogglesState[PlayersSectionLeft] = state
+        local Player = game.Players.LocalPlayer
+        local Character = Player.Character or Player.CharacterAdded:Wait()
+        local Humanoid = Character:WaitForChild("Humanoid")
+        local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
 
-            local function protectHealth()
-                Humanoid.Health = math.huge
-                Humanoid.MaxHealth = math.huge
-                local conn = Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                    if Humanoid.Health < Humanoid.MaxHealth then
-                        Humanoid.Health = Humanoid.MaxHealth
-                    end
-                end)
-                table.insert(Connections, conn)
-            end
+        -- ตัวแปรสำหรับเก็บ connection ที่ต้องยกเลิกเมื่อปิด God Mode
+        local Connections = {}
+        local Hooks = {} -- สำหรับเก็บ hook ที่สร้างไว้
 
-            local function antiKill()
-                for _, obj in pairs(getconnections(Humanoid.Died)) do
-                    obj:Disable()
+        -- ฟังก์ชันเพื่อป้องกันการเปลี่ยนแปลง Health ทั้งจากภายนอกและภายใน
+        local function protectHealth()
+            -- ตั้ง Health และ MaxHealth เป็นค่าไม่จำกัด
+            Humanoid.Health = math.huge
+            Humanoid.MaxHealth = math.huge
+
+            -- ใช้ BindPropertyChanged เพื่อป้องกันการเปลี่ยน Health จากภายนอก
+            local healthConn = Humanoid.BindPropertyChanged("Health", function()
+                if Humanoid.Health < Humanoid.MaxHealth then
+                    Humanoid.Health = Humanoid.MaxHealth
                 end
-                Humanoid.BreakJointsOnDeath = false
+            end)
+            table.insert(Connections, healthConn)
+
+            -- ป้องกันการเปลี่ยน MaxHealth
+            local maxHealthConn = Humanoid.BindPropertyChanged("MaxHealth", function()
+                Humanoid.MaxHealth = math.huge
+            end)
+            table.insert(Connections, maxHealthConn)
+
+            -- ใช้ BindProperty หรือการเปลี่ยนแปลงแบบลึกซึ้ง (ถ้าจำเป็น)
+            -- บางเกมอาจใช้ property แบบซ้อนกันหรือการเปลี่ยนแปลงแบบ "fake" ที่ไม่ใช่ Health
+            -- ลองใช้การ bind ทุก property ที่เกี่ยวข้องกับ health
+            -- แต่สิ่งที่ดีที่สุดคือการป้องกันทุกการเปลี่ยนแปลงที่เกี่ยวข้อง
+        end
+
+        -- ฟังก์ชันเพื่อป้องกันการตาย (Died event)
+        local function antiKill()
+            -- ป้องกันการตายจาก Died event
+            for _, connection in ipairs(getconnections(Humanoid.Died)) do
+                connection:Disable() -- ใช้ Disable() แทนการลบ connection ตรงๆ
             end
 
-            local function antiKnockback()
-                local conn = RunService.Heartbeat:Connect(function()
-                    for _, v in pairs(Character:GetDescendants()) do
-                        if v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyThrust") then
+            -- ป้องกันการ BreakJoints
+            Humanoid.BreakJointsOnDeath = false
+
+            -- ป้องกันสถานะ Dead, FallingDown, Ragdoll
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Sitting, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.None, false)
+            -- ฯลฯ ตามความจำเป็น
+        end
+
+        -- ฟังก์ชันเพื่อป้องกัน knockback และแรงกระแทกอื่นๆ
+        local function antiKnockback()
+            local function removeForceObjects()
+                if not Character then return end
+                for _, v in pairs(Character:GetDescendants()) do
+                    -- ลบแรงกระแทก
+                    if v:IsA("BodyGyro") or v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyThrust") or v:IsA("BodyPosition") then
+                        v:Destroy()
+                    elseif v:IsA("Attachment") then
+                        -- ตรวจสอบว่า Attachment นี้มีความสัมพันธ์กับแรงกระแทกหรือไม่
+                        -- หรือลบทั้งหมดที่ไม่จำเป็น
+                        if v.Name:lower():find("force") or v.Name:lower():find("knock") or v.Name:lower():find("hit") or v.Name:lower():find("impact") then
                             v:Destroy()
                         end
                     end
-                end)
-                table.insert(Connections, conn)
+                end
             end
 
-            local function antiVoid()
-                local conn = RunService.Heartbeat:Connect(function()
-                    if Character:FindFirstChild("HumanoidRootPart") then
-                        if Character.HumanoidRootPart.Position.Y < -20 then
-                            Character:MoveTo(Vector3.new(0, 50, 0))
-                        end
+            -- ลบแรงทุกๆ frame
+            local conn = RunService.Heartbeat:Connect(removeForceObjects)
+            table.insert(Connections, conn)
+
+            -- ตรวจสอบและล้าง BodyGyro ที่มีอยู่แล้วที่ใช้สำหรับ knockback
+            -- อาจต้องใช้การ BindProperty หรือการตั้งค่าใหม่ทุกๆ frame
+            local function clearExistingForces()
+                if not Character or not HumanoidRootPart then return end
+                -- ใช้ PivotTo หรือ SetPrimaryPartCFrame เพื่อหยุดการเคลื่อนไหวที่ไม่ต้องการ
+                -- หรือใช้ BodyGyro ใหม่ที่ไม่มีแรง
+                for _, v in pairs(Character:GetDescendants()) do
+                    if v:IsA("BodyGyro") then
+                        -- ลองตั้งค่าใหม่
+                        v.CFrame = CFrame.new(v.CFrame.Position) -- ตั้งให้ไม่มี rotation
+                        v.P = 0 -- ปิดแรง
+                        v.D = 0 -- ปิดแรง
+                        v.MaxTorque = Vector3.new(0, 0, 0) -- ปิดแรง
                     end
-                end)
-                table.insert(Connections, conn)
+                end
             end
 
-            local function fakeHealth()
-                local fake = Instance.new("NumberValue")
-                fake.Name = "FakeHealth"
+            local clearConn = RunService.Heartbeat:Connect(clearExistingForces)
+            table.insert(Connections, clearConn)
+        end
+
+        -- ฟังก์ชันเพื่อป้องกันการหล่นลงใน void
+        local function antiVoid()
+            local function checkAndTeleport()
+                if not Character or not HumanoidRootPart then return end
+                if HumanoidRootPart.Position.Y < -1000 then -- ใช้ค่าที่ต่ำกว่านี้เพื่อป้องกันการหล่นลง
+                    -- เคลื่อนย้ายกลับไปที่ตำแหน่งปลอดภัย
+                    Character:PivotTo(CFrame.new(0, 500, 0)) -- ใช้ค่าที่ปลอดภัยกว่า
+                end
+            end
+
+            local conn = RunService.Heartbeat:Connect(checkAndTeleport)
+            table.insert(Connections, conn)
+        end
+
+        -- ฟังก์ชันเพื่อป้องกันการถูกอุ้ม/จับ (ถ้ามี API ที่ให้ควบคุม)
+        local function antiHug()
+            -- ถ้าเกมมีการใช้ BodyGyro หรือ BodyVelocity สำหรับการจับ
+            -- คุณสามารถทำแบบเดียวกับ antiKnockback
+            local function removeGrabForces()
+                if not Character then return end
+                for _, v in pairs(Character:GetDescendants()) do
+                    if v:IsA("BodyGyro") or v:IsA("BodyVelocity") or v:IsA("BodyAngularVelocity") or v:IsA("BodyThrust") or v:IsA("BodyPosition") then
+                        -- ตรวจสอบว่าเป็นแรงที่เกี่ยวข้องกับการจับหรือไม่
+                        -- ถ้าไม่แน่ใจ ให้ลบทั้งหมดที่เกี่ยวข้องกับแรง
+                        v:Destroy()
+                    end
+                end
+            end
+
+            local conn = RunService.Heartbeat:Connect(removeGrabForces)
+            table.insert(Connections, conn)
+        end
+
+        -- ฟังก์ชันเพื่อป้องกันการถูกโจมตี (ถ้าสามารถเข้าถึงได้)
+        local function antiDamage()
+            -- ถ้ามี API หรือการใช้งานที่สามารถ "บล็อก" หรือ "ตัด" ความเสียหายได้
+            -- เช่น ตั้งค่า DamageMultiplier หรือใช้การจัดการ Event แบบลึกซึ้ง
+            -- ตัวอย่าง: ถ้ามีการใช้ DamageMultiplier หรือ DamageEvent ที่สามารถ "บล็อก" ได้
+            -- คุณต้องปรับแต่งตามระบบของเกม
+
+            -- กรณีทั่วไป: ป้องกันการเปลี่ยนแปลง Health ด้วยการใช้ BindPropertyChanged ที่ดีที่สุด
+            -- ซึ่งเราได้ทำไว้แล้วใน protectHealth()
+
+            -- ถ้าต้องการ "บล็อก" หรือ "ป้องกัน" ความเสียหายโดยตรง (เช่น ใช้ Hook หรือ Override)
+            -- ตัวอย่าง (ถ้ามี API ที่สามารถใช้ Hook ได้ เช่น hookfunction):
+            -- แต่ใน Roblox Lua ไม่มี hookfunction ทั่วไป (ยกเว้นบางกรณีที่ใช้ luau)
+            -- ดังนั้นการป้องกันด้วย BindPropertyChanged คือทางเลือกที่ดีที่สุดในกรณีทั่วไป
+
+            -- ลองใช้การป้องกันการเปลี่ยนแปลง Health แบบลึกซึ้ง
+            -- ถ้ามีการใช้ property ที่ซ้อนกัน เช่น FakeHealth หรือ HealthValue ที่เปลี่ยนแปลง
+            -- คุณต้องตรวจสอบและจัดการทุก property ที่เกี่ยวข้อง
+        end
+
+        -- ฟังก์ชันเพื่อสร้าง FakeHealth (ถ้าจำเป็น)
+        local function fakeHealth()
+            -- ถ้าจำเป็น อาจต้องใช้การ bind property หรือ instance ที่ซ่อนอยู่
+            -- หรือหากคุณต้องการให้ผู้เล่นเห็น Health ที่ไม่เปลี่ยนแปลง
+            -- ใช้ instance ใหม่เพื่อแสดง Health ที่คงที่
+            local fake = Instance.new("NumberValue")
+            fake.Name = "FakeHealth"
+            fake.Value = Humanoid.Health
+            fake.Parent = Character
+
+            -- ใช้ RenderStepped หรือ Heartbeat เพื่ออัปเดตค่า FakeHealth
+            local conn = RunService.RenderStepped:Connect(function()
                 fake.Value = Humanoid.Health
-                fake.Parent = Character
-                local conn = RunService.RenderStepped:Connect(function()
-                    fake.Value = Humanoid.Health
-                end)
-                table.insert(Connections, conn)
+            end)
+            table.insert(Connections, conn)
+        end
+
+        -- ฟังก์ชันเพื่อล็อกสถานะ Humanoid
+        local function lockHumanoidState()
+            local function lockStates()
+                -- ป้องกันการเปลี่ยนสถานะที่ไม่ต้องการ
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Sitting, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, false)
+                Humanoid:SetStateEnabled(Enum.HumanoidStateType.None, false)
+                -- ฯลฯ ตามความจำเป็น
             end
 
-            local function lockHumanoidState()
-                local conn = RunService.Stepped:Connect(function()
-                    pcall(function()
-                        Humanoid:ChangeState(11)
-                        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-                        Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
-                        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
-                    end)
-                end)
-                table.insert(Connections, conn)
-            end
+            -- ใช้ Stepped เพื่อควบคุมสถานะทุก frame
+            local conn = RunService.Stepped:Connect(lockStates)
+            table.insert(Connections, conn)
+        end
 
-            if state then
+        -- ฟังก์ชันสำหรับการตั้งค่าเริ่มต้นเมื่อปิด God Mode
+        local function resetCharacter()
+            -- รีเซ็ต Health และ MaxHealth
+            Humanoid.Health = 100
+            Humanoid.MaxHealth = 100
+            -- รีเซ็ตสถานะการตาย
+            Humanoid.BreakJointsOnDeath = true -- คืนค่าเดิม
+            -- รีเซ็ตสถานะ Humanoid
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Walking, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Strafing, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Sitting, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics, true)
+            Humanoid:SetStateEnabled(Enum.HumanoidStateType.None, true)
+            -- ลบ connection ที่เกี่ยวข้อง
+            for _, conn in ipairs(Connections) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
+            end
+            Connections = {} -- ล้างตาราง
+        end
+
+        if state then
+            -- เปิด God Mode
+            protectHealth()
+            antiKill()
+            antiKnockback()
+            antiVoid()
+            antiHug()
+            -- antiDamage() -- ถ้าจำเป็น
+            fakeHealth()
+            lockHumanoidState()
+
+            -- ติดตามการเปลี่ยนแปลงของ Character
+            local charConn = Player.CharacterAdded:Connect(function(char)
+                -- รอให้ Character เต็ม
+                task.wait(1)
+                Character = char
+                Humanoid = char:WaitForChild("Humanoid")
+                HumanoidRootPart = char:FindFirstChild("HumanoidRootPart")
+
+                -- ตั้งค่าใหม่สำหรับ Character ใหม่
                 protectHealth()
                 antiKill()
                 antiKnockback()
                 antiVoid()
+                antiHug()
+                -- antiDamage()
                 fakeHealth()
                 lockHumanoidState()
-                local conn = LocalPlayer.CharacterAdded:Connect(function(char)
-                    task.wait(1)
-                    Character = char
-                    Humanoid = char:WaitForChild("Humanoid")
-                    protectHealth()
-                    antiKill()
-                    antiKnockback()
-                    antiVoid()
-                    lockHumanoidState()
-                end)
-                table.insert(Connections, conn)
-            else
-                Humanoid.Health = 100
-                Humanoid.MaxHealth = 100
-            end
-        end,
-    })
+            end)
+            table.insert(Connections, charConn)
+        else
+            -- ปิด God Mode
+            resetCharacter()
+        end
+    end,
+})
 
     -- Damage ×2 Toggle (Right)
     local damageConnection

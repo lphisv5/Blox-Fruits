@@ -30,7 +30,6 @@ local function resetScript()
         end
     end
 
-    -- ทำลายวัตถุที่สร้างโดยสคริปต์ (เช่น Highlights)
     for _, player in pairs(Players:GetPlayers()) do
         if player.Character then
             local highlight = player.Character:FindFirstChildOfClass("Highlight")
@@ -40,7 +39,6 @@ local function resetScript()
         end
     end
 
-    -- ตรวจสอบและสร้าง UI ใหม่ถ้าถูกลบ
     if ScreenGui and not ScreenGui.Parent then
         Notification.new({
             Title = "YANZ HUB",
@@ -48,7 +46,6 @@ local function resetScript()
             Duration = 3,
             Icon = "rbxassetid://8997385628"
         })
-        -- รีโหลดสคริปต์ (เรียกฟังก์ชันสร้าง UI อีกครั้ง)
         loadUI()
     end
 end
@@ -659,18 +656,21 @@ PlayersSectionLeft:NewToggle({
 })
 
 -- No Clip Toggle (Left)
+local noclipConnections = {}
+local loopConnection
+
 PlayersSectionLeft:NewToggle({
     Title = "No Clip",
     Default = false,
     Callback = function(state)
         TogglesState["NoClip"] = state
         local Player = game.Players.LocalPlayer
-        local Character = Player.Character or Player.CharacterAdded:Wait()
-        local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
         local RunService = game:GetService("RunService")
 
+        local Character = Player.Character or Player.CharacterAdded:Wait()
+        local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
         local IsActive = false
-        local LoopConnection
 
         local function EnableNoclip()
             IsActive = true
@@ -681,7 +681,7 @@ PlayersSectionLeft:NewToggle({
                 end
             end
 
-            LoopConnection = RunService.Stepped:Connect(function()
+            loopConnection = RunService.Stepped:Connect(function()
                 if not IsActive then return end
                 local char = Player.Character
                 if not char then return end
@@ -691,6 +691,7 @@ PlayersSectionLeft:NewToggle({
                     end
                 end
             end)
+            table.insert(noclipConnections, loopConnection)
 
             print("Noclip Enabled")
         end
@@ -698,28 +699,35 @@ PlayersSectionLeft:NewToggle({
         local function DisableNoclip()
             IsActive = false
 
-            if LoopConnection then
-                LoopConnection:Disconnect()
-                LoopConnection = nil
+            for _, conn in ipairs(noclipConnections) do
+                if typeof(conn) == "RBXScriptConnection" then
+                    conn:Disconnect()
+                end
             end
+            noclipConnections = {}
+            loopConnection = nil
 
-            for _, part in ipairs(Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
+            local char = Player.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
+                    end
                 end
             end
 
             print("Noclip Disabled")
         end
 
-        Player.CharacterAdded:Connect(function(char)
+        local charConn = Player.CharacterAdded:Connect(function(char)
             Character = char
             HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
             if state then
-                task.wait(1)
+                task.wait(0.5)
                 EnableNoclip()
             end
         end)
+        table.insert(noclipConnections, charConn)
 
         if state then
             EnableNoclip()

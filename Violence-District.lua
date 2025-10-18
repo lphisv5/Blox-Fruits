@@ -888,11 +888,11 @@ PlayersSectionRight:NewToggle({
         local RunService = game:GetService("RunService")
         local Players = game:GetService("Players")
         local UserInputService = game:GetService("UserInputService")
+        local Debris = game:GetService("Debris")
         local LocalPlayer = Players.LocalPlayer
 
         local Connections = {}
 
-        -- ฟังก์ชันตรวจสอบ team
         local function isFriendly(attacker, target)
             if attacker.Team and target.Team then
                 return attacker.Team == target.Team
@@ -900,11 +900,62 @@ PlayersSectionRight:NewToggle({
             return false
         end
 
-        -- ฟังก์ชัน Damage ขั้นสูง
+        local function GetEquippedTool(player)
+            if not player.Character then return nil end
+            for _, child in ipairs(player.Character:GetChildren()) do
+                if child:IsA("Tool") then
+                    return child
+                end
+            end
+            return nil
+        end
+
+        local function SpawnFloatingDamage(targetCharacter, damageAmount)
+            local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local billboard = Instance.new("BillboardGui")
+            billboard.Adornee = hrp
+            billboard.Size = UDim2.new(0,100,0,40)
+            billboard.StudsOffset = Vector3.new(0,3,0)
+            billboard.AlwaysOnTop = true
+
+            local text = Instance.new("TextLabel")
+            text.Size = UDim2.new(1,0,1,0)
+            text.BackgroundTransparency = 1
+            text.TextScaled = true
+            text.Font = Enum.Font.SourceSansBold
+            text.TextStrokeTransparency = 0.5
+            text.TextColor3 = Color3.new(1,0,0)
+            text.Text = tostring(math.floor(damageAmount))
+            text.Parent = billboard
+
+            billboard.Parent = workspace
+            Debris:AddItem(billboard, 1)
+            spawn(function()
+                local t0 = tick()
+                local duration = 0.8
+                while tick() - t0 < duration do
+                    local alpha = (tick()-t0)/duration
+                    billboard.StudsOffset = Vector3.new(0, 3 + 2*alpha, 0)
+                    RunService.Heartbeat:Wait()
+                end
+            end)
+        end
+
+        local function PlayAttackSound(character)
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local s = Instance.new("Sound")
+            s.SoundId = "rbxassetid://12222005"
+            s.Volume = 1.5
+            s.PlayOnRemove = true
+            s.Parent = hrp
+            s:Destroy()
+        end
+
         local function DealDamage(attackerPlayer, baseDamage, radius, cooldown, options)
             options = options or {}
             cooldown = cooldown or 0.5
-
             if not attackerPlayer or not attackerPlayer.Character then return false, "no_character" end
 
             local now = tick()
@@ -920,6 +971,9 @@ PlayersSectionRight:NewToggle({
             local hrp = attackerPlayer.Character:FindFirstChild("HumanoidRootPart") or attackerPlayer.Character:FindFirstChild("Torso")
             if not hrp then return false, "no_hrp" end
 
+            local equippedTool = GetEquippedTool(attackerPlayer)
+            if not equippedTool then return false, "no_tool" end
+
             local hitCount = 0
             local maxTargets = options.maxTargets or math.huge
 
@@ -928,30 +982,32 @@ PlayersSectionRight:NewToggle({
                 if targetPlayer ~= attackerPlayer and targetPlayer.Character then
                     local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
                     local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
-                    if targetHum and targetHRP then
+                    if targetHum and targetHRP and targetHum.Health > 0 then
                         if options.ignoreDead and targetHum.Health <= 0 then
-                            -- ข้าม
-                        else
-                            local distance = (hrp.Position - targetHRP.Position).Magnitude
-                            if distance <= radius then
-                                if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
-                                    -- ข้าม
+                            continue
+                        end
+                        local distance = (hrp.Position - targetHRP.Position).Magnitude
+                        if distance <= radius then
+                            if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
+                                continue
+                             end
+                            local ok, err = pcall(function()
+                                if options.useTakeDamage == false then
+                                    targetHum.Health = math.max(0, targetHum.Health - finalDamage)
                                 else
-                                    if targetHum.Health > 0 then
-                                        local ok, err = pcall(function()
-                                            if options.useTakeDamage == false then
-                                                targetHum.Health = math.max(0, targetHum.Health - finalDamage)
-                                            else
-                                                targetHum:TakeDamage(finalDamage)
-                                            end
-                                        end)
-                                        if ok then
-                                            hitCount = hitCount + 1
-                                        else
-                                            warn("[Damage ×2] Failed to apply damage:", err)
-                                        end
-                                    end
+                                    targetHum:TakeDamage(finalDamage)
                                 end
+                                if options.playSound then
+                                    PlayAttackSound(targetPlayer.Character)
+                                end
+                                if options.floatingDamage then
+                                    SpawnFloatingDamage(targetPlayer.Character, finalDamage)
+                                end
+                            end)
+                            if ok then
+                                hitCount = hitCount + 1
+                            else
+                                warn("[Damage ×2] Failed to apply damage:", err)
                             end
                         end
                     end
@@ -971,7 +1027,9 @@ PlayersSectionRight:NewToggle({
                             ignoreDead = true,
                             respectTeam = true,
                             useTakeDamage = true,
-                            maxTargets = 5
+                            maxTargets = 5,
+                            playSound = true,
+                            floatingDamage = true
                         })
                         if ok then
                             Notification.new({
@@ -1016,7 +1074,6 @@ PlayersSectionRight:NewToggle({
     end,
 })
 
-    
     -- แท็บ Server
     local ServerTab = Windows:NewTab({
         Title = "Server",

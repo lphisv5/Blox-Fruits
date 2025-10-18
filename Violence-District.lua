@@ -877,136 +877,8 @@ PlayersSectionLeft:NewToggle({
     end,
 })
     
+
 -- Damage ×2 Toggle (Right)
-local damageConnection
-PlayersSectionRight:NewToggle({
-    Title = "Damage ×2",
-    Default = false,
-    Callback = function(state)
-        TogglesState["Damagex2"] = state
-
-        local RunService = game:GetService("RunService")
-        local Players = game:GetService("Players")
-        local UserInputService = game:GetService("UserInputService")
-        local Debris = game:GetService("Debris")
-        local LocalPlayer = Players.LocalPlayer
-
-        local Connections = {}
-
-        local function isFriendly(attacker, target)
-            if attacker.Team and target.Team then
-                return attacker.Team == target.Team
-            end
-            return false
-        end
-
-        local function GetEquippedTool(player)
-            if not player.Character then return nil end
-            for _, child in ipairs(player.Character:GetChildren()) do
-                if child:IsA("Tool") then
-                    return child
-                end
-            end
-            return nil
-        end
-
-        local function SpawnFloatingDamage(targetCharacter, damageAmount)
-            local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            local billboard = Instance.new("BillboardGui")
-            billboard.Adornee = hrp
-            billboard.Size = UDim2.new(0,100,0,40)
-            billboard.StudsOffset = Vector3.new(0,3,0)
-            billboard.AlwaysOnTop = true
-
-            local text = Instance.new("TextLabel")
-            text.Size = UDim2.new(1,0,1,0)
-            text.BackgroundTransparency = 1
-            text.TextScaled = true
-            text.Font = Enum.Font.SourceSansBold
-            text.TextStrokeTransparency = 0.5
-            text.TextColor3 = Color3.new(1,0,0)
-            text.Text = tostring(math.floor(damageAmount))
-            text.Parent = billboard
-
-            billboard.Parent = workspace
-            Debris:AddItem(billboard, 1)
-            spawn(function()
-                local t0 = tick()
-                local duration = 0.8
-                while tick() - t0 < duration do
-                    local alpha = (tick()-t0)/duration
-                    billboard.StudsOffset = Vector3.new(0, 3 + 2*alpha, 0)
-                    RunService.Heartbeat:Wait()
-                end
-            end)
-        end
-
-        local function PlayAttackSound(character)
-            local hrp = character:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            local s = Instance.new("Sound")
-            s.SoundId = "rbxassetid://12222005"
-            s.Volume = 1.5
-            s.PlayOnRemove = true
-            s.Parent = hrp
-            s:Destroy()
-        end
-
-        local function DealDamage(attackerPlayer, baseDamage, radius, cooldown, options)
-            options = options or {}
-            cooldown = cooldown or 0.5
-            if not attackerPlayer or not attackerPlayer.Character then return false, "no_character" end
-
-            local now = tick()
-            attackerPlayer._lastAttackTick = attackerPlayer._lastAttackTick or 0
-            if now - attackerPlayer._lastAttackTick < cooldown then
-                return false, "cooldown"
-            end
-            attackerPlayer._lastAttackTick = now
-
-            local multiplier = options.multiplier or 2
-            local finalDamage = baseDamage * multiplier
-
-            local hrp = attackerPlayer.Character:FindFirstChild("HumanoidRootPart") or attackerPlayer.Character:FindFirstChild("Torso")
-            if not hrp then return false, "no_hrp" end
-
-            local equippedTool = GetEquippedTool(attackerPlayer)
-            if not equippedTool then return false, "no_tool" end
-
-            local hitCount = 0
-            local maxTargets = options.maxTargets or math.huge
-
-            for _, targetPlayer in pairs(Players:GetPlayers()) do
-                if hitCount >= maxTargets then break end
-                if targetPlayer ~= attackerPlayer and targetPlayer.Character then
-                    local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
-                    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
-                    if targetHum and targetHRP and targetHum.Health > 0 then
-                        if options.ignoreDead and targetHum.Health <= 0 then
-                            continue
-                        end
-                        local distance = (hrp.Position - targetHRP.Position).Magnitude
-                        if distance <= radius then
-                            if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
-                                continue
-                             end
-                            local ok, err = pcall(function()
-                                if options.useTakeDamage == false then
-                                    targetHum.Health = math.max(0, targetHum.Health - finalDamage)
-                                else
-                                    targetHum:TakeDamage(finalDamage)
-                                end
-                                if options.playSound then
-                                    PlayAttackSound(targetPlayer.Character)
-                                end
-                                if options.floatingDamage then
-                                    SpawnFloatingDamage(targetPlayer.Character, finalDamage)
-                                end
-                            end)
-                            if ok then
-                                hitCount = hitCount + 1
--- Damage ×2 Toggle (Right) [Killer-only edition]
 local damageConnection
 PlayersSectionRight:NewToggle({
     Title = "Damage ×2",
@@ -1023,7 +895,6 @@ PlayersSectionRight:NewToggle({
 
         local Connections = {}
 
-        -- ฟังก์ชันตรวจสอบ team
         local function isFriendly(attacker, target)
             if attacker.Team and target.Team then
                 return attacker.Team == target.Team
@@ -1192,7 +1063,6 @@ PlayersSectionRight:NewToggle({
             return true, hitCount
         end
 
-        -- เปิด toggle
         if state then
             damageConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 if gameProcessed then return end
@@ -1201,11 +1071,10 @@ PlayersSectionRight:NewToggle({
                         return
                     end
 
-                    -- ถ้าไม่ได้เป็น Killer แจ้งเตือนและไม่ให้โจมตี
                     if not IsPlayerKiller(LocalPlayer) then
                         Notification.new({
                             Title = "Damage ×2",
-                            Description = "คุณไม่ได้เป็นฆาตกร — ไม่สามารถใช้ทักษะนี้ได้",
+                            Description = "You are not a murderer — you cannot use this skill.",
                             Duration = 2,
                             Icon = "rbxassetid://8997385628"
                         })
@@ -1246,7 +1115,6 @@ PlayersSectionRight:NewToggle({
                 Icon = "rbxassetid://8997385628"
             })
         else
-            -- ปิด toggle
             for _, conn in ipairs(Connections) do
                 if typeof(conn) == "RBXScriptConnection" then
                     conn:Disconnect()

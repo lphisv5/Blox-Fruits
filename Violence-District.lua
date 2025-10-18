@@ -982,7 +982,7 @@ PlayersSectionRight:NewToggle({
             local hrp = character and character:FindFirstChild("HumanoidRootPart")
             if not hrp then return end
             local s = Instance.new("Sound")
-            s.SoundId = "rbxassetid://12222005" -- เปลี่ยนได้ตามต้องการ
+            s.SoundId = "rbxassetid://12222005"
             s.Volume = 1.5
             s.PlayOnRemove = true
             s.Parent = hrp

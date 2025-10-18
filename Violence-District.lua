@@ -1006,13 +1006,189 @@ PlayersSectionRight:NewToggle({
                             end)
                             if ok then
                                 hitCount = hitCount + 1
-                            else
-                                warn("[Damage ×2] Failed to apply damage:", err)
+-- Damage ×2 Toggle (Right) [Killer-only edition]
+local damageConnection
+PlayersSectionRight:NewToggle({
+    Title = "Damage ×2",
+    Default = false,
+    Callback = function(state)
+        TogglesState["Damagex2"] = state
+
+        local RunService = game:GetService("RunService")
+        local Players = game:GetService("Players")
+        local UserInputService = game:GetService("UserInputService")
+        local Debris = game:GetService("Debris")
+        local LocalPlayer = Players.LocalPlayer
+        local Workspace = game:GetService("Workspace")
+
+        local Connections = {}
+
+        -- ฟังก์ชันตรวจสอบ team
+        local function isFriendly(attacker, target)
+            if attacker.Team and target.Team then
+                return attacker.Team == target.Team
+            end
+            return false
+        end
+
+        -- ฟังก์ชันตรวจสอบว่า player เป็น Killer หรือไม่ (ลองหลายวิธี)
+        local function IsPlayerKiller(player)
+            if not player then return false end
+            -- 1) Team name == "Killer"
+            if player.Team and tostring(player.Team.Name):lower():find("killer") then
+                return true
+            end
+            -- 2) Attribute "Role" หรือ "role"
+            local attr = player:GetAttribute("Role") or player:GetAttribute("role")
+            if attr and tostring(attr):lower():find("killer") then
+                return true
+            end
+            -- 3) StringValue child แบบ leaderstats/role
+            local sv = player:FindFirstChild("Role") or player:FindFirstChild("TeamRole") or player:FindFirstChild("role")
+            if sv and sv:IsA("StringValue") and tostring(sv.Value):lower():find("killer") then
+                return true
+            end
+            -- 4) ตรวจหาใน PlayerGui ข้อความ "Killer" (กรณีเกมแสดงข้อความว่า You are on the 'Killer' team)
+            local pg = player:FindFirstChild("PlayerGui")
+            if pg then
+                for _, gui in ipairs(pg:GetDescendants()) do
+                    if (gui:IsA("TextLabel") or gui:IsA("TextBox") or gui:IsA("TextButton")) and type(gui.Text) == "string" then
+                        if tostring(gui.Text):lower():find("killer") then
+                            return true
+                        end
+                    end
+                end
+            end
+            return false
+        end
+
+        -- ฟังก์ชันตรวจสอบ Tool ที่ถือ
+        local function GetEquippedTool(player)
+            if not player or not player.Character then return nil end
+            for _, child in ipairs(player.Character:GetChildren()) do
+                if child:IsA("Tool") then
+                    return child
+                end
+            end
+            return nil
+        end
+
+        -- สร้าง floating damage number
+        local function SpawnFloatingDamage(targetCharacter, damageAmount)
+            local hrp = targetCharacter:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local billboard = Instance.new("BillboardGui")
+            billboard.Adornee = hrp
+            billboard.Size = UDim2.new(0,100,0,40)
+            billboard.StudsOffset = Vector3.new(0,3 + math.random()*0.4,0)
+            billboard.AlwaysOnTop = true
+
+            local text = Instance.new("TextLabel")
+            text.Size = UDim2.new(1,0,1,0)
+            text.BackgroundTransparency = 1
+            text.TextScaled = true
+            text.Font = Enum.Font.SourceSansBold
+            text.TextStrokeTransparency = 0.5
+            text.TextColor3 = Color3.new(1,0.2,0.2)
+            text.Text = tostring(math.floor(damageAmount))
+            text.Parent = billboard
+
+            billboard.Parent = Workspace
+            Debris:AddItem(billboard, 1)
+            spawn(function()
+                local t0 = tick()
+                local duration = 0.9
+                while tick() - t0 < duration do
+                    local alpha = (tick()-t0)/duration
+                    billboard.StudsOffset = Vector3.new(0, 3 + 2*alpha, 0)
+                    RunService.Heartbeat:Wait()
+                end
+            end)
+        end
+
+        -- สร้างเสียงโจมตี
+        local function PlayAttackSound(character)
+            local hrp = character and character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            local s = Instance.new("Sound")
+            s.SoundId = "rbxassetid://12222005" -- เปลี่ยนได้ตามต้องการ
+            s.Volume = 1.5
+            s.PlayOnRemove = true
+            s.Parent = hrp
+            s:Destroy()
+        end
+
+        -- ฟังก์ชัน Damage ขั้นสูง (client-side call; server-side must still validate in production)
+        local function DealDamage(attackerPlayer, baseDamage, radius, cooldown, options)
+            options = options or {}
+            cooldown = cooldown or 0.5
+            if not attackerPlayer or not attackerPlayer.Character then return false, "no_character" end
+
+            -- *เช็คว่าเป็น Killer ก่อน* (สำคัญ)
+            if not IsPlayerKiller(attackerPlayer) then
+                return false, "not_killer"
+            end
+
+            local now = tick()
+            attackerPlayer._lastAttackTick = attackerPlayer._lastAttackTick or 0
+            if now - attackerPlayer._lastAttackTick < cooldown then
+                return false, "cooldown"
+            end
+            attackerPlayer._lastAttackTick = now
+
+            local multiplier = options.multiplier or 2
+            local finalDamage = baseDamage * multiplier
+
+            local hrp = attackerPlayer.Character:FindFirstChild("HumanoidRootPart") or attackerPlayer.Character:FindFirstChild("Torso")
+            if not hrp then return false, "no_hrp" end
+
+            local equippedTool = GetEquippedTool(attackerPlayer)
+            if not equippedTool then
+                return false, "no_tool"
+            end
+
+            local hitCount = 0
+            local maxTargets = options.maxTargets or math.huge
+
+            for _, targetPlayer in pairs(Players:GetPlayers()) do
+                if hitCount >= maxTargets then break end
+                if targetPlayer ~= attackerPlayer and targetPlayer.Character then
+                    local targetHum = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart") or targetPlayer.Character:FindFirstChild("Torso")
+                    if targetHum and targetHRP and targetHum.Health > 0 then
+                        if options.ignoreDead and targetHum.Health <= 0 then
+                            -- skip
+                        else
+                            local distance = (hrp.Position - targetHRP.Position).Magnitude
+                            if distance <= radius then
+                                if options.respectTeam and isFriendly(attackerPlayer, targetPlayer) then
+                                    -- skip teammates
+                                else
+                                    local ok, err = pcall(function()
+                                        if options.useTakeDamage == false then
+                                            targetHum.Health = math.max(0, targetHum.Health - finalDamage)
+                                        else
+                                            targetHum:TakeDamage(finalDamage)
+                                        end
+                                        if options.playSound then
+                                            PlayAttackSound(targetPlayer.Character)
+                                        end
+                                        if options.floatingDamage then
+                                            SpawnFloatingDamage(targetPlayer.Character, finalDamage)
+                                        end
+                                    end)
+                                    if ok then
+                                        hitCount = hitCount + 1
+                                    else
+                                        warn("[Damage ×2] Failed to apply damage:", err)
+                                    end
+                                end
                             end
                         end
                     end
                 end
             end
+
             return true, hitCount
         end
 
@@ -1021,38 +1197,51 @@ PlayersSectionRight:NewToggle({
             damageConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 if gameProcessed then return end
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local ok, info = DealDamage(LocalPlayer, 20, 5, 0.9, {
-                            multiplier = 2,
-                            ignoreDead = true,
-                            respectTeam = true,
-                            useTakeDamage = true,
-                            maxTargets = 5,
-                            playSound = true,
-                            floatingDamage = true
+                    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        return
+                    end
+
+                    -- ถ้าไม่ได้เป็น Killer แจ้งเตือนและไม่ให้โจมตี
+                    if not IsPlayerKiller(LocalPlayer) then
+                        Notification.new({
+                            Title = "Damage ×2",
+                            Description = "คุณไม่ได้เป็นฆาตกร — ไม่สามารถใช้ทักษะนี้ได้",
+                            Duration = 2,
+                            Icon = "rbxassetid://8997385628"
                         })
-                        if ok then
-                            Notification.new({
-                                Title = "Damage ×2",
-                                Description = string.format("Dealt damage to %d targets", info),
-                                Duration = 3,
-                                Icon = "rbxassetid://8997385628"
-                            })
-                        else
-                            Notification.new({
-                                Title = "Damage ×2",
-                                Description = "Failed: " .. tostring(info),
-                                Duration = 3,
-                                Icon = "rbxassetid://8997385628"
-                            })
-                        end
+                        return
+                    end
+
+                    local ok, info = DealDamage(LocalPlayer, 20, 5, 0.9, {
+                        multiplier = 2,
+                        ignoreDead = true,
+                        respectTeam = true,
+                        useTakeDamage = true,
+                        maxTargets = 5,
+                        playSound = true,
+                        floatingDamage = true
+                    })
+                    if ok then
+                        Notification.new({
+                            Title = "Damage ×2",
+                            Description = string.format("Dealt damage to %d targets", info),
+                            Duration = 3,
+                            Icon = "rbxassetid://8997385628"
+                        })
+                    else
+                        Notification.new({
+                            Title = "Damage ×2",
+                            Description = "Failed: " .. tostring(info),
+                            Duration = 3,
+                            Icon = "rbxassetid://8997385628"
+                        })
                     end
                 end
             end)
             table.insert(Connections, damageConnection)
             Notification.new({
                 Title = "Damage ×2",
-                Description = "Enabled: Click to deal double damage!",
+                Description = "Enabled: Click to deal double damage (Killer only)!",
                 Duration = 5,
                 Icon = "rbxassetid://8997385628"
             })

@@ -25,43 +25,23 @@ local state = {
     isLoopRunning = false
 }
 
-local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
+-- เปลี่ยนไปใช้ OrionLib ที่โหลดได้แน่นอน
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
--- Safer load function
-local function safeLoadRemote(url)
-    local ok, code = pcall(function() return HttpService:GetAsync(url) end)
-    if not ok or not code then
-        warn("safeLoadRemote: failed to GET", ok, code)
-        return nil
-    end
-    if not code:match("^%s*return") and not code:match("^%s*local") then
-        warn("safeLoadRemote: unexpected content header")
-        return nil
-    end
-    local func, err = loadstring(code)
-    if not func then
-        warn("safeLoadRemote: loadstring error", err)
-        return nil
-    end
-    local ok2, result = pcall(func)
-    if not ok2 then
-        warn("safeLoadRemote: runtime error", result)
-        return nil
-    end
-    if type(result) ~= "table" then
-        warn("safeLoadRemote: unexpected return type", type(result))
-        return nil
-    end
-    return result
-end
+local Window = OrionLib:MakeWindow({
+    Name = "YANZ HUB | V0.1.9",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "YANZHUB",
+    IntroEnabled = false
+})
 
-local ok_lib, NothingLibrary = pcall(function()
-    return safeLoadRemote(libURL)
-end)
-if not ok_lib or not NothingLibrary then
-    warn("Failed to load Nothing UI Library. Error or code issue:", NothingLibrary)
-    return
-end
+OrionLib:MakeNotification({
+    Name = "YANZ HUB Loaded",
+    Content = "สคริปต์โหลดสำเร็จ! กด RightShift เพื่อเปิด/ปิด UI",
+    Image = "rbxassetid://4483345998",
+    Time = 5
+})
 
 local function findHubGui()
     local function scan(container)
@@ -257,14 +237,24 @@ local positionRenderConn
 
 local function SafeTeleport(position)
     if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
-        updateLabel(StatusLabel, "❌ Error: Character or PrimaryPart not found")
+        OrionLib:MakeNotification({
+            Name = "Teleport Error",
+            Content = "❌ Error: Character or PrimaryPart not found",
+            Time = 3
+        })
         return
     end
     pcall(function()
         LocalPlayer.Character:PivotTo(CFrame.new(position))
-        updateLabel(StatusLabel, "Teleported to: " .. tostring(position))
+        OrionLib:MakeNotification({
+            Name = "Teleport Success",
+            Content = "Teleported to: " .. tostring(position),
+            Time = 3
+        })
         task.delay(2, function()
-            if not state.isLoopRunning then updateLabel(StatusLabel, "Status: Ready") end
+            if not state.isLoopRunning then
+                -- Update status if needed
+            end
         end)
     end)
 end
@@ -374,75 +364,67 @@ local function SecureServer()
     warn("SecureServer: No new server available")
 end
 
--- Create Window
-local Window
-local ok_window, res_window = pcall(function()
-    return NothingLibrary.new({
-        Title = "YANZ HUB | V0.1.9",
-        Description = "By lphisv5 | Game : Fich IT",
-        Keybind = Enum.KeyCode.RightShift,
-        Logo = 'http://www.roblox.com/asset/?id=125456335927282'
-    })
-end)
-if ok_window then Window = res_window else
-    warn("Cannot create window from NothingLibrary. Error:", res_window)
-    return
-end
-
--- Tabs & Sections
-local HomeTab = Window:NewTab({
-    Title = "Home",
-    Description = "Main Features",
-    Icon = "rbxassetid://7733960981"
+-- Tabs with Orion
+local HomeTab = Window:MakeTab({
+    Name = "Home",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
 })
-local AutoClickTab = Window:NewTab({
-    Title = "Main",
-    Description = "Auto Click Features",
-    Icon = "rbxassetid://7733960981"
-})
-local TeleportTab = Window:NewTab({
-    Title = "Teleport",
-    Description = "Teleport to Locations",
-    Icon = "rbxassetid://7733960981"
-})
-local HomeSection = HomeTab:NewSection({Title = "Main Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
-local AutoClickSection = AutoClickTab:NewSection({Title = "Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
-local SettingsSection = AutoClickTab:NewSection({Title = "Speed Settings", Icon = "rbxassetid://7743869054", Position = "Right"})
-local TeleportSection = TeleportTab:NewSection({Title = "Locations", Icon = "rbxassetid://7733916988", Position = "Left"})
 
--- New Server Tab
-local ServerTab = Window:NewTab({
-    Title = "Server",
-    Description = "Server Management Tools",
-    Icon = "rbxassetid://7733960981"
+local AutoClickTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
 })
-local ServerSection = ServerTab:NewSection({Title = "Server Controls", Icon = "rbxassetid://7733916988", Position = "Left"})
 
--- Position Label in UI
-local posLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
+local TeleportTab = Window:MakeTab({
+    Name = "Teleport",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
--- Improved updateLabel
-local function updateLabel(lbl, text)
-    if not lbl then return end
+local ServerTab = Window:MakeTab({
+    Name = "Server",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- Sections
+local HomeSection = HomeTab:AddSection({
+    Name = "Main Controls"
+})
+
+local AutoClickSection = AutoClickTab:AddSection({
+    Name = "Controls"
+})
+
+local SettingsSection = AutoClickTab:AddSection({
+    Name = "Speed Settings"
+})
+
+local TeleportSection = TeleportTab:AddSection({
+    Name = "Locations"
+})
+
+local ServerSection = ServerTab:AddSection({
+    Name = "Server Controls"
+})
+
+-- Position Label (เก็บ reference เพื่ออัพเดท)
+local posLabelRef = AutoClickTab:AddLabel("Player Pos: Waiting...")
+
+-- Improved updateLabel สำหรับ Orion (ใช้ :Set)
+local function updateLabel(ref, text)
+    if not ref then return end
     pcall(function()
-        if typeof(lbl) == "Instance" then
-            if lbl:IsA("TextLabel") or lbl:IsA("TextButton") or lbl:IsA("TextBox") then
-                lbl.Text = tostring(text)
-            elseif lbl.SetText then
-                lbl:SetText(tostring(text))
-            elseif lbl.Set then
-                lbl:Set(tostring(text))
-            end
-        elseif type(lbl) == "table" then
-            if lbl.Set and type(lbl.Set) == "function" then lbl:Set(tostring(text)) end
-            if lbl.SetText and type(lbl.SetText) == "function" then lbl:SetText(tostring(text)) end
-            if lbl.SetTitle and type(lbl.SetTitle) == "function" then lbl:SetTitle(tostring(text)) end
+        if ref.Set and type(ref.Set) == "function" then
+            ref:Set(tostring(text))
         end
     end)
 end
 
 -- Status Label
-local StatusLabel = AutoClickSection:NewTitle("Status: Ready")
+local statusLabelRef = AutoClickTab:AddLabel("Status: Ready")
 
 -- Connections manager
 local Connections = {}
@@ -464,54 +446,49 @@ local function DisconnectAll()
 end
 
 -- Home: Join Discord
-HomeSection:NewButton({
-    Title = "Join Discord",
-    Icon = "rbxassetid://7733960981",
+HomeTab:AddButton({
+    Name = "Join Discord",
     Callback = function()
         pcall(function()
             setclipboard("https://discord.gg/DfVuhsZb")
-            pcall(function()
-                if NothingLibrary.Notify then
-                    NothingLibrary:Notify({
-                        Title = "Join Our Discord!",
-                        Content = "Discord link has been copied to your clipboard! - https://discord.gg/DfVuhsZb",
-                        Duration = 5
-                    })
-                end
-            end)
+            OrionLib:MakeNotification({
+                Name = "Join Our Discord!",
+                Content = "Discord link has been copied to your clipboard! - https://discord.gg/DfVuhsZb",
+                Time = 5
+            })
         end)
     end
 })
 
 -- Auto Click Toggle
-local autoToggle = AutoClickSection:NewToggle({
-    Title = "Auto Click",
-    Default = state.isLoopRunning or false,
+local autoToggle = AutoClickTab:AddToggle({
+    Name = "Auto Click",
+    Default = state.isLoopRunning,
     Callback = function(value)
         if value then
             startAutoClick()
-            updateLabel(StatusLabel, "Auto Clicking Active")
+            updateLabel(statusLabelRef, "Auto Clicking Active")
             if HubGuiRoot then restoreUIInputTransparent(HubGuiRoot) end
         else
             stopAutoClick()
-            updateLabel(StatusLabel, "Status: Ready")
+            updateLabel(statusLabelRef, "Status: Ready")
         end
     end
 })
 
 -- Set Click Position Button
-AutoClickSection:NewButton({
-    Title = "SET CLICK POSITION",
+AutoClickTab:AddButton({
+    Name = "SET CLICK POSITION",
     Callback = function()
         local settingPosition = true
-        updateLabel(StatusLabel, "🖱️ Click anywhere to set position...")
+        updateLabel(statusLabelRef, "🖱️ Click anywhere to set position...")
         local conn
         conn = addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
             if gameProcessed or not settingPosition then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = UserInputService:GetMouseLocation()
                 state.autoClickPos = {X = mousePos.X, Y = mousePos.Y}
-                updateLabel(StatusLabel, "✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
+                updateLabel(statusLabelRef, "✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
                 settingPosition = false
                 if conn then conn:Disconnect() end
             end
@@ -520,10 +497,10 @@ AutoClickSection:NewButton({
             if settingPosition then
                 settingPosition = false
                 if conn then conn:Disconnect() end
-                updateLabel(StatusLabel, "❌ Position set cancelled")
+                updateLabel(statusLabelRef, "❌ Position set cancelled")
                 task.wait(2)
                 if not state.isLoopRunning then
-                    updateLabel(StatusLabel, "Status: Ready")
+                    updateLabel(statusLabelRef, "Status: Ready")
                 end
             end
         end)
@@ -538,20 +515,16 @@ local speeds = {
     {label = "SLOW", value = 1.5}
 }
 for _, speedData in ipairs(speeds) do
-    SettingsSection:NewButton({
-        Title = speedData.label .. " (" .. speedData.value .. "s)",
+    AutoClickTab:AddButton({
+        Name = speedData.label .. " (" .. speedData.value .. "s)",
         Callback = function()
             state.clickDelay = speedData.value
-            updateLabel(StatusLabel, "Delay: " .. speedData.value .. "s")
-            pcall(function()
-                if NothingLibrary.Notify then
-                    NothingLibrary:Notify({
-                        Title = "Speed Updated",
-                        Content = "Click delay set to " .. speedData.value .. "s",
-                        Duration = 2
-                    })
-                end
-            end)
+            updateLabel(statusLabelRef, "Delay: " .. speedData.value .. "s")
+            OrionLib:MakeNotification({
+                Name = "Speed Updated",
+                Content = "Click delay set to " .. speedData.value .. "s",
+                Time = 2
+            })
         end
     })
 end
@@ -569,8 +542,8 @@ local locations = {
 }
 
 for _, location in ipairs(locations) do
-    TeleportSection:NewButton({
-        Title = "Teleport to " .. location.name,
+    TeleportTab:AddButton({
+        Name = "Teleport to " .. location.name,
         Callback = function()
             SafeTeleport(location.pos)
         end
@@ -578,50 +551,50 @@ for _, location in ipairs(locations) do
 end
 
 -- Server tab buttons
-ServerSection:NewButton({
-    Title = "Rejoin Server",
+ServerTab:AddButton({
+    Name = "Rejoin Server",
     Callback = function()
-        pcall(function()
-            if NothingLibrary.Notify then
-                NothingLibrary:Notify({Title = "Rejoining...", Content = "Rejoining the current server...", Duration = 3})
-            end
-        end)
+        OrionLib:MakeNotification({
+            Name = "Rejoining...",
+            Content = "Rejoining the current server...",
+            Time = 3
+        })
         RejoinServer()
     end
 })
 
-ServerSection:NewButton({
-    Title = "Server Hop",
+ServerTab:AddButton({
+    Name = "Server Hop",
     Callback = function()
-        pcall(function()
-            if NothingLibrary.Notify then
-                NothingLibrary:Notify({Title = "Server Hop", Content = "Finding new server to join...", Duration = 3})
-            end
-        end)
+        OrionLib:MakeNotification({
+            Name = "Server Hop",
+            Content = "Finding new server to join...",
+            Time = 3
+        })
         ServerHop()
     end
 })
 
-ServerSection:NewButton({
-    Title = "Random Server",
+ServerTab:AddButton({
+    Name = "Random Server",
     Callback = function()
-        pcall(function()
-            if NothingLibrary.Notify then
-                NothingLibrary:Notify({Title = "Random Server", Content = "Joining random available server...", Duration = 3})
-            end
-        end)
+        OrionLib:MakeNotification({
+            Name = "Random Server",
+            Content = "Joining random available server...",
+            Time = 3
+        })
         RandomServer()
     end
 })
 
-ServerSection:NewButton({
-    Title = "Secure Server",
+ServerTab:AddButton({
+    Name = "Secure Server",
     Callback = function()
-        pcall(function()
-            if NothingLibrary.Notify then
-                NothingLibrary:Notify({Title = "Secure Server", Content = "Searching for safe server (unvisited)...", Duration = 3})
-            end
-        end)
+        OrionLib:MakeNotification({
+            Name = "Secure Server",
+            Content = "Searching for safe server (unvisited)...",
+            Time = 3
+        })
         SecureServer()
     end
 })
@@ -640,9 +613,9 @@ local function startPositionUpdater(character)
         pcall(function()
             if humanoidRootPart and humanoidRootPart.Parent then
                 local pos = humanoidRootPart.Position
-                updateLabel(posLabel, string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
+                updateLabel(posLabelRef, string.format("Player Pos: X=%.1f Y=%.1f Z=%.1f", pos.X, pos.Y, pos.Z))
             else
-                updateLabel(posLabel, "Player Pos: Waiting...")
+                updateLabel(posLabelRef, "Player Pos: Waiting...")
             end
         end)
     end)
@@ -662,17 +635,16 @@ addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.F6 then
         if state.isLoopRunning then
             stopAutoClick()
-            updateLabel(StatusLabel, "Emergency Stopped (F6)")
+            updateLabel(statusLabelRef, "Emergency Stopped (F6)")
             task.wait(2)
-            updateLabel(StatusLabel, "Status: Ready")
+            updateLabel(statusLabelRef, "Status: Ready")
         else
             startAutoClick()
-            updateLabel(StatusLabel, "Auto Clicking Active (F6)")
+            updateLabel(statusLabelRef, "Auto Clicking Active (F6)")
         end
         pcall(function()
-            if autoToggle and (autoToggle.Set or autoToggle.SetValue) then
-                if autoToggle.Set then autoToggle:Set(state.isLoopRunning) end
-                if autoToggle.SetValue then autoToggle:SetValue(state.isLoopRunning) end
+            if autoToggle and autoToggle:Set then
+                autoToggle:Set(state.isLoopRunning)
             end
         end)
         if HubGuiRoot then restoreUIInputTransparent(HubGuiRoot) end
@@ -683,13 +655,13 @@ local function cleanup()
     stopAutoClick()
     DisconnectAll()
     pcall(function()
-        if Window and (Window.Destroy or Window.Close) then
-            if Window.Destroy then Window:Destroy() end
-            if Window.Close then Window:Close() end
-        end
+        OrionLib:Destroy()
     end)
 end
 
 addConn(Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then cleanup() end
 end))
+
+-- Set keybind for Orion (RightShift)
+Window:ToggleKey(Enum.KeyCode.RightShift)

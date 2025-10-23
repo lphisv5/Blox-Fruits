@@ -11,7 +11,6 @@ if not LocalPlayer then
 end
 
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
 
 local ok_vim, VirtualInputManager = pcall(function() return game:GetService("VirtualInputManager") end)
 if not ok_vim then VirtualInputManager = nil end
@@ -19,21 +18,45 @@ if not ok_vim then VirtualInputManager = nil end
 local ok_vu, VirtualUser = pcall(function() return game:GetService("VirtualUser") end)
 if not ok_vu then VirtualUser = nil end
 
+-- Local state แทน _G เพื่อป้องกัน collision
+local state = {
+    clickDelay = 0.1,
+    autoClickPos = {X = nil, Y = nil},
+    isLoopRunning = false
+}
+
 local libURL = 'https://raw.githubusercontent.com/3345-c-a-t-s-u-s/NOTHING/main/source.lua'
-local ok_lib, NothingLibrary = pcall(function()
-    local code = game:HttpGetAsync(libURL)
-    if code then
-        print("first 1000 chars:", code:sub(1, 1000))
-        local func, err = loadstring(code)
-        if not func then
-            warn("Loadstring error:", err)
-            return nil
-        end
-        return func()
-    else
-        warn("Failed to fetch Nothing Library from URL:", libURL)
+
+-- Safer load function
+local function safeLoadRemote(url)
+    local ok, code = pcall(function() return HttpService:GetAsync(url) end)
+    if not ok or not code then
+        warn("safeLoadRemote: failed to GET", ok, code)
         return nil
     end
+    if not code:match("^%s*return") and not code:match("^%s*local") then
+        warn("safeLoadRemote: unexpected content header")
+        return nil
+    end
+    local func, err = loadstring(code)
+    if not func then
+        warn("safeLoadRemote: loadstring error", err)
+        return nil
+    end
+    local ok2, result = pcall(func)
+    if not ok2 then
+        warn("safeLoadRemote: runtime error", result)
+        return nil
+    end
+    if type(result) ~= "table" then
+        warn("safeLoadRemote: unexpected return type", type(result))
+        return nil
+    end
+    return result
+end
+
+local ok_lib, NothingLibrary = pcall(function()
+    return safeLoadRemote(libURL)
 end)
 if not ok_lib or not NothingLibrary then
     warn("Failed to load Nothing UI Library. Error or code issue:", NothingLibrary)
@@ -75,13 +98,16 @@ end
 
 local HubGuiRoot = findHubGui()
 
+-- Unique attribute name
+local ORIGINAL_ATTR = "__yanz_orig_InputTransparent"
+
 local function setUIInputTransparent(root, flag)
     if not root then return end
     pcall(function()
         for _, obj in ipairs(root:GetDescendants()) do
             if obj:IsA("GuiObject") then
-                if obj:GetAttribute("__origInputTransparent") == nil then
-                    obj:SetAttribute("__origInputTransparent", obj.InputTransparent)
+                if obj:GetAttribute(ORIGINAL_ATTR) == nil then
+                    obj:SetAttribute(ORIGINAL_ATTR, obj.InputTransparent)
                 end
                 obj.InputTransparent = flag
             end
@@ -94,10 +120,10 @@ local function restoreUIInputTransparent(root)
     pcall(function()
         for _, obj in ipairs(root:GetDescendants()) do
             if obj:IsA("GuiObject") then
-                local v = obj:GetAttribute("__origInputTransparent")
+                local v = obj:GetAttribute(ORIGINAL_ATTR)
                 if v ~= nil then
                     obj.InputTransparent = v
-                    obj:SetAttribute("__origInputTransparent", nil)
+                    obj:SetAttribute(ORIGINAL_ATTR, nil)
                 end
             end
         end
@@ -105,18 +131,32 @@ local function restoreUIInputTransparent(root)
 end
 
 local function tryFireRemote(hit)
+    local containers = {game:GetService("ReplicatedStorage"), workspace}
     local names = {"RemoteEvent", "InteractEvent", "ClickRemote", "PickupEvent"}
-    local paths = {game:GetService("ReplicatedStorage"), workspace}
-    for _, container in ipairs(paths) do
+    for _, container in ipairs(containers) do
         for _, name in ipairs(names) do
             local remote = container:FindFirstChild(name, true)
-            if remote and remote:IsA("RemoteEvent") then
-                local ok = pcall(function() remote:FireServer(hit) end)
-                if ok then return true end
+            if remote then
+                if remote:IsA("RemoteEvent") then
+                    local ok = pcall(remote.FireServer, remote, hit)
+                    if ok then return true end
+                elseif remote:IsA("RemoteFunction") then
+                    local ok2, _ = pcall(function() remote:InvokeServer(hit) end)
+                    if ok2 then return true end
+                end
             end
         end
     end
     return false
+end
+
+local function getSafeRaycastParams()
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Blacklist
+    local filter = {}
+    if LocalPlayer and LocalPlayer.Character then table.insert(filter, LocalPlayer.Character) end
+    rp.FilterDescendantsInstances = filter
+    return rp
 end
 
 local function SimulateInGameClick(screenPos)
@@ -124,19 +164,14 @@ local function SimulateInGameClick(screenPos)
     local cam = workspace.CurrentCamera
     if not cam then return false end
     local ray = cam:ScreenPointToRay(screenPos.X, screenPos.Y)
-    local rp = RaycastParams.new()
-    rp.FilterType = Enum.RaycastFilterType.Blacklist
-    rp.FilterDescendantsInstances = {LocalPlayer.Character or {}}
-
-    local ok, res = pcall(function()
-        return workspace:Raycast(ray.Origin, ray.Direction * 2000, rp)
-    end)
+    local rp = getSafeRaycastParams()
+    local ok, res = pcall(function() return workspace:Raycast(ray.Origin, ray.Direction * 2000, rp) end)
 
     if ok and res and res.Instance then
         local hit = res.Instance
 
         local cd = (hit.FindFirstAncestorWhichIsA and hit:FindFirstAncestorWhichIsA("ClickDetector")) or hit:FindFirstChildOfClass("ClickDetector")
-        if cd then
+        if cd and cd:IsA("ClickDetector") then
             local s = pcall(function()
                 if cd.FireClick then
                     pcall(function() cd:FireClick(LocalPlayer) end)
@@ -147,11 +182,16 @@ local function SimulateInGameClick(screenPos)
         end
 
         local prompt = (hit.FindFirstAncestorWhichIsA and hit:FindFirstAncestorWhichIsA("ProximityPrompt")) or hit:FindFirstChildOfClass("ProximityPrompt")
-        if prompt then
+        if prompt and prompt:IsA("ProximityPrompt") then
             local s2 = pcall(function()
-                if prompt.Trigger then pcall(function() prompt:Trigger() end) end
-                if prompt.InputHoldBegin then pcall(function() prompt:InputHoldBegin() end) end
-                if prompt.InputHoldEnd then pcall(function() prompt:InputHoldEnd() end) end
+                if prompt.Triggered then
+                    prompt:InputHoldBegin()
+                    prompt:InputHoldEnd()
+                else
+                    if prompt.Trigger then pcall(function() prompt:Trigger() end) end
+                    if prompt.InputHoldBegin then pcall(function() prompt:InputHoldBegin() end) end
+                    if prompt.InputHoldEnd then pcall(function() prompt:InputHoldEnd() end) end
+                end
             end)
             if s2 then return true end
         end
@@ -167,7 +207,6 @@ local function SimulateInGameClick(screenPos)
         end
     end
 
-    -- Updated to use VirtualUser for automatic data sending
     if VirtualUser then
         local okvu = pcall(function()
             VirtualUser:CaptureController()
@@ -176,8 +215,9 @@ local function SimulateInGameClick(screenPos)
         if okvu then return true end
     elseif VirtualInputManager then
         local okvm = pcall(function()
-            VirtualInputManager:SendMouseButtonEvent(screenPos.X, screenPos.Y, 0, true, workspace, 1)
-            VirtualInputManager:SendMouseButtonEvent(screenPos.X, screenPos.Y, 0, false, workspace, 1)
+            VirtualInputManager:SendMouseButtonEvent(screenPos.X, screenPos.Y, 0, true, workspace)
+            task.wait(0.02)
+            VirtualInputManager:SendMouseButtonEvent(screenPos.X, screenPos.Y, 0, false, workspace)
         end)
         if okvm then return true end
     end
@@ -189,36 +229,56 @@ local function ClickLoop_InGame()
     local cam = workspace.CurrentCamera
     if not cam then return end
     local viewport = cam.ViewportSize
-    local pos = (_G.autoClickPos and _G.autoClickPos.X and _G.autoClickPos.Y) and _G.autoClickPos or {X = viewport.X / 2, Y = viewport.Y / 2}
+    local pos = (state.autoClickPos and state.autoClickPos.X and state.autoClickPos.Y) and state.autoClickPos or {X = viewport.X / 2, Y = viewport.Y / 2}
 
     if HubGuiRoot then setUIInputTransparent(HubGuiRoot, true) end
     pcall(function() SimulateInGameClick(pos) end)
 end
 
+local clickLoopThread
+local function startAutoClick()
+    if clickLoopThread then return end
+    state.isLoopRunning = true
+    clickLoopThread = task.spawn(function()
+        while state.isLoopRunning do
+            ClickLoop_InGame()
+            task.wait(state.clickDelay or 0.1)
+        end
+        clickLoopThread = nil
+    end)
+end
+
+local function stopAutoClick()
+    state.isLoopRunning = false
+end
+
+local humanoidRootPart
+local positionRenderConn
+
 local function SafeTeleport(position)
-    if not humanoidRootPart or not humanoidRootPart.Parent then
-        updateLabel(StatusLabel, "❌ Error: Character not found")
+    if not LocalPlayer.Character or not LocalPlayer.Character.PrimaryPart then
+        updateLabel(StatusLabel, "❌ Error: Character or PrimaryPart not found")
         return
     end
     pcall(function()
-        local tweenInfo = TweenInfo.new(
-            1,
-            Enum.EasingStyle.Linear,
-            Enum.EasingDirection.InOut
-        )
-        local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(position)})
-        tween:Play()
+        LocalPlayer.Character:PivotTo(CFrame.new(position))
         updateLabel(StatusLabel, "Teleported to: " .. tostring(position))
-        task.spawn(function()
-            task.wait(2)
-            if not _G.isLoopRunning then
-                updateLabel(StatusLabel, "Status: Ready")
-            end
+        task.delay(2, function()
+            if not state.isLoopRunning then updateLabel(StatusLabel, "Status: Ready") end
         end)
     end)
 end
 
 local visitedServers = {}
+
+local function fetchServersPage(placeId, cursor)
+    local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s"):format(placeId, cursor and "&cursor="..cursor or "")
+    local ok, res = pcall(function() return HttpService:GetAsync(url, true) end)
+    if not ok or not res then return nil, "http_error" end
+    local ok2, data = pcall(function() return HttpService:JSONDecode(res) end)
+    if not ok2 or type(data) ~= "table" then return nil, "json_error" end
+    return data
+end
 
 local function RejoinServer()
     local placeId = game.PlaceId
@@ -234,25 +294,18 @@ local function ServerHop()
     local nextPageCursor
 
     repeat
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s"):format(placeId, nextPageCursor and "&cursor="..nextPageCursor or "")
-        local success, response = pcall(function() return HttpService:GetAsync(url) end)
-        if success then
-            local ok, data = pcall(function() return HttpService:JSONDecode(response) end)
-            if ok and data then
-                for _, v in ipairs(data.data or {}) do
-                    if v.playing < v.maxPlayers and v.id ~= game.JobId then
-                        table.insert(servers, v.id)
-                    end
-                end
-                nextPageCursor = data.nextPageCursor
-            else
-                warn("ServerHop: JSON decode failed")
-                break
-            end
-        else
-            warn("ServerHop: Failed to fetch server list")
+        local data, err = fetchServersPage(placeId, nextPageCursor)
+        if not data then
+            warn("ServerHop:", err)
             break
         end
+        for _, v in ipairs(data.data or {}) do
+            if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                table.insert(servers, v.id)
+            end
+        end
+        nextPageCursor = data.nextPageCursor
+        task.wait(0.2) -- backoff
     until not nextPageCursor
 
     if #servers > 0 then
@@ -271,19 +324,18 @@ local function RandomServer()
     local cursor
 
     repeat
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s"):format(placeId, cursor and "&cursor="..cursor or "")
-        local success, response = pcall(function() return HttpService:GetAsync(url) end)
-        if not success then break end
-
-        local ok, data = pcall(function() return HttpService:JSONDecode(response) end)
-        if not ok or not data then break end
-
+        local data, err = fetchServersPage(placeId, cursor)
+        if not data then
+            warn("RandomServer:", err)
+            break
+        end
         for _, v in ipairs(data.data or {}) do
             if v.playing < v.maxPlayers then
                 table.insert(allServers, v.id)
             end
         end
         cursor = data.nextPageCursor
+        task.wait(0.2)
     until not cursor
 
     if #allServers > 0 then
@@ -301,13 +353,11 @@ local function SecureServer()
     local cursor
 
     repeat
-        local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Asc&limit=100%s"):format(placeId, cursor and "&cursor="..cursor or "")
-        local success, response = pcall(function() return HttpService:GetAsync(url) end)
-        if not success then break end
-
-        local ok, data = pcall(function() return HttpService:JSONDecode(response) end)
-        if not ok or not data then break end
-
+        local data, err = fetchServersPage(placeId, cursor)
+        if not data then
+            warn("SecureServer:", err)
+            break
+        end
         for _, v in ipairs(data.data or {}) do
             if v.playing < v.maxPlayers and not visitedServers[v.id] and v.id ~= game.JobId then
                 visitedServers[v.id] = true
@@ -317,8 +367,8 @@ local function SecureServer()
                 return
             end
         end
-
         cursor = data.nextPageCursor
+        task.wait(0.2)
     until not cursor
 
     warn("SecureServer: No new server available")
@@ -371,19 +421,23 @@ local ServerSection = ServerTab:NewSection({Title = "Server Controls", Icon = "r
 -- Position Label in UI
 local posLabel = AutoClickSection:NewTitle("Player Pos: Waiting...")
 
--- Globals
-_G.clickDelay = _G.clickDelay or 0.1
-_G.autoClickPos = _G.autoClickPos or {X = nil, Y = nil}
-_G.isLoopRunning = _G.isLoopRunning or false
-
--- Helper: updateLabel
+-- Improved updateLabel
 local function updateLabel(lbl, text)
     if not lbl then return end
     pcall(function()
-        if typeof(lbl) == "Instance" and lbl.Text ~= nil then lbl.Text = tostring(text) end
-        if lbl.Set then lbl:Set(tostring(text)) end
-        if lbl.SetText then lbl:SetText(tostring(text)) end
-        if lbl.SetTitle then lbl:SetTitle(tostring(text)) end
+        if typeof(lbl) == "Instance" then
+            if lbl:IsA("TextLabel") or lbl:IsA("TextButton") or lbl:IsA("TextBox") then
+                lbl.Text = tostring(text)
+            elseif lbl.SetText then
+                lbl:SetText(tostring(text))
+            elseif lbl.Set then
+                lbl:Set(tostring(text))
+            end
+        elseif type(lbl) == "table" then
+            if lbl.Set and type(lbl.Set) == "function" then lbl:Set(tostring(text)) end
+            if lbl.SetText and type(lbl.SetText) == "function" then lbl:SetText(tostring(text)) end
+            if lbl.SetTitle and type(lbl.SetTitle) == "function" then lbl:SetTitle(tostring(text)) end
+        end
     end)
 end
 
@@ -391,8 +445,23 @@ end
 local StatusLabel = AutoClickSection:NewTitle("Status: Ready")
 
 -- Connections manager
-local connections = {}
-local function addConn(conn) if conn then table.insert(connections, conn) end return conn end
+local Connections = {}
+local function addConn(conn)
+    if conn and (typeof(conn) == "RBXScriptConnection" or (type(conn) == "table" and conn.Disconnect)) then
+        table.insert(Connections, conn)
+    end
+    return conn
+end
+
+local function DisconnectAll()
+    for i = #Connections, 1, -1 do
+        local c = Connections[i]
+        pcall(function()
+            if c and c.Disconnect then c:Disconnect() end
+        end)
+        Connections[i] = nil
+    end
+end
 
 -- Home: Join Discord
 HomeSection:NewButton({
@@ -417,19 +486,14 @@ HomeSection:NewButton({
 -- Auto Click Toggle
 local autoToggle = AutoClickSection:NewToggle({
     Title = "Auto Click",
-    Default = _G.isLoopRunning or false,
+    Default = state.isLoopRunning or false,
     Callback = function(value)
-        _G.isLoopRunning = value
         if value then
+            startAutoClick()
             updateLabel(StatusLabel, "Auto Clicking Active")
-            task.spawn(function()
-                while _G.isLoopRunning do
-                    ClickLoop_InGame()
-                    task.wait(_G.clickDelay or 0.1)
-                end
-            end)
             if HubGuiRoot then restoreUIInputTransparent(HubGuiRoot) end
         else
+            stopAutoClick()
             updateLabel(StatusLabel, "Status: Ready")
         end
     end
@@ -446,7 +510,7 @@ AutoClickSection:NewButton({
             if gameProcessed or not settingPosition then return end
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 local mousePos = UserInputService:GetMouseLocation()
-                _G.autoClickPos = {X = mousePos.X, Y = mousePos.Y}
+                state.autoClickPos = {X = mousePos.X, Y = mousePos.Y}
                 updateLabel(StatusLabel, "✅ Position set: " .. math.floor(mousePos.X) .. ", " .. math.floor(mousePos.Y))
                 settingPosition = false
                 if conn then conn:Disconnect() end
@@ -458,7 +522,7 @@ AutoClickSection:NewButton({
                 if conn then conn:Disconnect() end
                 updateLabel(StatusLabel, "❌ Position set cancelled")
                 task.wait(2)
-                if not _G.isLoopRunning then
+                if not state.isLoopRunning then
                     updateLabel(StatusLabel, "Status: Ready")
                 end
             end
@@ -477,7 +541,7 @@ for _, speedData in ipairs(speeds) do
     SettingsSection:NewButton({
         Title = speedData.label .. " (" .. speedData.value .. "s)",
         Callback = function()
-            _G.clickDelay = speedData.value
+            state.clickDelay = speedData.value
             updateLabel(StatusLabel, "Delay: " .. speedData.value .. "s")
             pcall(function()
                 if NothingLibrary.Notify then
@@ -513,7 +577,7 @@ for _, location in ipairs(locations) do
     })
 end
 
--- Server tab buttons (moved to ServerTab)
+-- Server tab buttons
 ServerSection:NewButton({
     Title = "Rejoin Server",
     Callback = function()
@@ -563,9 +627,16 @@ ServerSection:NewButton({
 })
 
 local function startPositionUpdater(character)
+    if positionRenderConn then
+        pcall(function() positionRenderConn:Disconnect() end)
+        positionRenderConn = nil
+    end
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    if humanoidRootPart then
+        character.PrimaryPart = humanoidRootPart
+    end
 
-    local renderConn = RunService.RenderStepped:Connect(function()
+    positionRenderConn = RunService.RenderStepped:Connect(function()
         pcall(function()
             if humanoidRootPart and humanoidRootPart.Parent then
                 local pos = humanoidRootPart.Position
@@ -575,7 +646,7 @@ local function startPositionUpdater(character)
             end
         end)
     end)
-    addConn(renderConn)
+    addConn(positionRenderConn)
 end
 
 if LocalPlayer.Character then
@@ -589,41 +660,33 @@ end))
 addConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     if input.KeyCode == Enum.KeyCode.F6 then
-        _G.isLoopRunning = not _G.isLoopRunning
-        pcall(function()
-            if autoToggle and autoToggle.Set then
-                autoToggle:Set(_G.isLoopRunning)
-            elseif autoToggle and autoToggle.SetValue then
-                autoToggle:SetValue(_G.isLoopRunning)
-            end
-        end)
-        if _G.isLoopRunning then
-            updateLabel(StatusLabel, "Auto Clicking Active (F6)")
-            task.spawn(function()
-                while _G.isLoopRunning do
-                    ClickLoop_InGame()
-                    task.wait(_G.clickDelay or 0.2)
-                end
-            end)
-        else
+        if state.isLoopRunning then
+            stopAutoClick()
             updateLabel(StatusLabel, "Emergency Stopped (F6)")
             task.wait(2)
-            if not _G.isLoopRunning then
-                updateLabel(StatusLabel, "Status: Ready")
-            end
+            updateLabel(StatusLabel, "Status: Ready")
+        else
+            startAutoClick()
+            updateLabel(StatusLabel, "Auto Clicking Active (F6)")
         end
+        pcall(function()
+            if autoToggle and (autoToggle.Set or autoToggle.SetValue) then
+                if autoToggle.Set then autoToggle:Set(state.isLoopRunning) end
+                if autoToggle.SetValue then autoToggle:SetValue(state.isLoopRunning) end
+            end
+        end)
         if HubGuiRoot then restoreUIInputTransparent(HubGuiRoot) end
     end
 end))
 
 local function cleanup()
-    _G.isLoopRunning = false
-    for _, c in ipairs(connections) do
-        pcall(function() if c and c.Disconnect then c:Disconnect() end end)
-    end
+    stopAutoClick()
+    DisconnectAll()
     pcall(function()
-        if Window and Window.Destroy then Window:Destroy() end
-        if Window and Window.Close then Window:Close() end
+        if Window and (Window.Destroy or Window.Close) then
+            if Window.Destroy then Window:Destroy() end
+            if Window.Close then Window:Close() end
+        end
     end)
 end
 

@@ -1,12 +1,11 @@
--- โหลด GUI Library
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "YANZ HUB",
-    SubTitle = "Game : +1 Size Race",
-    TabWidth = 160,
+    Title = "YANZ HUB | V1.4",
+    SubTitle = "By lphisv5 | +1 Size Race",
+    TabWidth = 120,
     Size = UDim2.fromOffset(500, 400),
     Acrylic = true,
     Theme = "Dark",
@@ -42,9 +41,6 @@ local function HRP()
     return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 end
 
--- ===========================
--- Variables
--- ===========================
 -- Auto Farm
 local autoFarm = false
 local farmPoints = {
@@ -76,7 +72,7 @@ local FarmToggle = Tabs.Main:AddToggle("AutoFarm", {
 FarmToggle:OnChanged(function(state)
     autoFarm = state
     if autoFarm then
-        farmIndex = 1 -- เริ่มจากจุดใกล้สุด
+        farmIndex = 1
         local char = LocalPlayer.Character
         if char and HRP() then
             if not char:FindFirstChild("FarmBox") then
@@ -91,7 +87,7 @@ FarmToggle:OnChanged(function(state)
             end
         end
     else
-        moving = false -- หยุดทันที
+        moving = false
     end
 end)
 
@@ -105,12 +101,12 @@ AutoWinToggle:OnChanged(function(state)
     if autoWin then
         winActive = true
     else
-        winActive = false -- หยุดทันที
+        winActive = false
     end
     Fluent:Notify({
         Title = "Auto Win",
         Content = autoWin and "Enabled" or "Disabled",
-        Duration = 2
+        Duration = 1
     })
 end)
 
@@ -120,7 +116,7 @@ Tabs.Main:AddButton({
     Description = "Teleport to the Speed Machine",
     Callback = function()
         if HRP() then
-            HRP().CFrame = CFrame.new(-87.06, 21.19, -9387.45) -- จุดเครื่อง Speed (ใหม่)
+            HRP().CFrame = CFrame.new(-87.06, 21.19, -9387.45)
         end
     end,
 })
@@ -178,7 +174,6 @@ task.spawn(function()
         if autoFarm and HRP() and not moving then
             local target = farmPoints[farmIndex]
             
-            -- Tween ตัวละครไปยังตำแหน่ง + ลอยตัว
             moving = true
             local distance = (HRP().Position - target).Magnitude
             local duration = distance / 1000
@@ -189,13 +184,11 @@ task.spawn(function()
             tween.Completed:Wait()
             moving = false
 
-            -- อัปเดต Box หลัง Tween เสร็จ
             local box = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("FarmBox")
             if box then
                 box.CFrame = HRP().CFrame * CFrame.new(0, -4, 0)
             end
 
-            -- สลับพิกัด
             farmIndex = farmIndex == 1 and 2 or 1
         end
     end
@@ -221,7 +214,7 @@ task.spawn(function()
             tween:Play()
             tween.Completed:Wait()
 
-            if not autoWin then break end -- ถ้าปิด Toggle หยุดทันที
+            if not autoWin then break end
 
             task.wait(1)
             HRP().CFrame = CFrame.new(winStart)

@@ -41,6 +41,63 @@ local function HRP()
     return LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 end
 
+-- Auto Respawn Feature
+local autoRespawn = true
+local respawnConnections = {}
+
+local function setupRespawnHandling()
+    for _, conn in pairs(respawnConnections) do
+        if conn then conn:Disconnect() end
+    end
+    respawnConnections = {}
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local hrp = HRP()
+    
+    if humanoid then
+        local diedConn = humanoid.Died:Connect(function()
+            if autoRespawn then
+                task.wait(0.1)
+                LocalPlayer:LoadCharacter()
+                Fluent:Notify({ Title = "Auto-Respawn", Content = "Character died - Respawning!", Duration = 2 })
+            end
+        end)
+        table.insert(respawnConnections, diedConn)
+    end
+    
+    -- Detect HRP removal
+    if hrp then
+        local hrpAncestryConn = hrp.AncestryChanged:Connect(function()
+            if not hrp.Parent then
+                if autoRespawn then
+                    task.wait(0.1)
+                    LocalPlayer:LoadCharacter()
+                    Fluent:Notify({ Title = "Auto-Respawn", Content = "HRP lost - Respawning!", Duration = 2 })
+                end
+            end
+        end)
+        table.insert(respawnConnections, hrpAncestryConn)
+    end
+   
+    local charRemovingConn = LocalPlayer.CharacterRemoving:Connect(function()
+        if autoRespawn then
+            task.wait(0.1)
+            LocalPlayer:LoadCharacter()
+            Fluent:Notify({ Title = "Auto-Respawn", Content = "Character removing - Respawning!", Duration = 2 })
+        end
+    end)
+    table.insert(respawnConnections, charRemovingConn)
+end
+
+setupRespawnHandling()
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(1)
+    setupRespawnHandling()
+end)
+
 -- Auto Farm
 local autoFarm = false
 local farmPoints = {
@@ -125,16 +182,23 @@ Tabs.Main:AddButton({
 -- Player Tab Features
 -- ===========================
 -- Anti AFK
+local antiAFKConnection = nil
 Tabs.Player:AddButton({
     Title = "Anti-AFK",
     Description = "Prevent being kicked out of the game",
     Callback = function()
-        local VirtualUser = game:GetService("VirtualUser")
-        LocalPlayer.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
-        Fluent:Notify({ Title = "Anti-AFK", Content = "successfully", Duration = 3 })
+        if antiAFKConnection then
+            antiAFKConnection:Disconnect()
+            antiAFKConnection = nil
+            Fluent:Notify({ Title = "Anti-AFK", Content = "Disabled", Duration = 2 })
+        else
+            local VirtualUser = game:GetService("VirtualUser")
+            antiAFKConnection = LocalPlayer.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+            Fluent:Notify({ Title = "Anti-AFK", Content = "Enabled", Duration = 2 })
+        end
     end,
 })
 
@@ -152,72 +216,85 @@ end)
 -- ===========================
 -- Smooth Tween Movement
 local function TweenToPosition(targetPos, height)
-    if not HRP() then return end
+    local hrp = HRP()
+    if not hrp then return false end
     moving = true
     local offset = height or 65
-    local distance = (HRP().Position - targetPos).Magnitude
+    local distance = (hrp.Position - targetPos).Magnitude
     local duration = distance / 200
     local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
     local tweenGoal = {CFrame = CFrame.new(targetPos + Vector3.new(0, offset, 0))}
-    local tween = TweenService:Create(HRP(), tweenInfo, tweenGoal)
+    local tween = TweenService:Create(hrp, tweenInfo, tweenGoal)
     tween:Play()
     tween.Completed:Wait()
     moving = false
+    return true
 end
 
--- ===========================
--- Loops
--- ===========================
 -- Auto Farm Smooth Loop
 task.spawn(function()
-    while RunService.RenderStepped:Wait() do
-        if autoFarm and HRP() and not moving then
+    while true do
+        task.wait()
+        if not autoFarm or not LocalPlayer.Character or not HRP() or moving then continue end
+        
+        local success, err = pcall(function()
             local target = farmPoints[farmIndex]
+            if not TweenToPosition(target, 1) then return end
             
-            moving = true
-            local distance = (HRP().Position - target).Magnitude
-            local duration = distance / 1000
-            local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-            local tweenGoal = {CFrame = CFrame.new(target + Vector3.new(0, 1, 0))}
-            local tween = TweenService:Create(HRP(), tweenInfo, tweenGoal)
-            tween:Play()
-            tween.Completed:Wait()
-            moving = false
-
             local box = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("FarmBox")
             if box then
                 box.CFrame = HRP().CFrame * CFrame.new(0, -4, 0)
             end
-
+            
             farmIndex = farmIndex == 1 and 2 or 1
+        end)
+        
+        if not success then
+            warn("[YANZ HUB] Auto Farm error:", err)
+            task.wait(1)
         end
     end
 end)
 
 -- Speed Hack Loop
 task.spawn(function()
-    while RunService.RenderStepped:Wait() do
-        if speedHack and HRP() then
+    while true do
+        task.wait()
+        if not speedHack or not HRP() then continue end
+        
+        local success, err = pcall(function()
             HRP().CFrame = HRP().CFrame * CFrame.new(0, 0, -speedValue)
+        end)
+        
+        if not success then
+            warn("[YANZ HUB] Speed Hack error:", err)
         end
     end
 end)
 
 -- Auto Win Loop
 task.spawn(function()
-    while RunService.RenderStepped:Wait() do
-        if autoWin and HRP() and winActive then
+    while true do
+        task.wait()
+        if not autoWin or not HRP() or not winActive then continue end
+        
+        local success, err = pcall(function()
             local distance = (HRP().Position - winGoal).Magnitude
             local duration = distance / winSpeed
             local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
             local tween = TweenService:Create(HRP(), tweenInfo, {CFrame = CFrame.new(winGoal)})
             tween:Play()
             tween.Completed:Wait()
-
-            if not autoWin then break end
-
+            
+            if not autoWin then return end
+            
             task.wait(1)
             HRP().CFrame = CFrame.new(winStart)
+            task.wait(1)
+        end)
+        
+        if not success then
+            warn("[YANZ HUB] Auto Win error:", err)
             task.wait(1)
         end
     end
@@ -283,12 +360,14 @@ local function StealthHumanoid(hum)
     end)
 end
 
-if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-    StealthHumanoid(LocalPlayer.Character:FindFirstChildOfClass("Humanoid"))
+local function applyStealthOnCharacter(char)
+    local hum = char:WaitForChild("Humanoid")
+    StealthHumanoid(hum)
 end
-LocalPlayer.CharacterAdded:Connect(function(char)
-    char:WaitForChild("Humanoid")
-    StealthHumanoid(char:FindFirstChildOfClass("Humanoid"))
-end)
 
-warn("[YANZ HUB] Advanced Anti-Kick Loaded!")
+if LocalPlayer.Character then
+    applyStealthOnCharacter(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(applyStealthOnCharacter)
+
+warn("[YANZ HUB] Advanced Anti-Kick & Auto-Respawn Loaded!")

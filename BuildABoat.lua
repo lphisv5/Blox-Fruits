@@ -16,7 +16,7 @@ if not success then
 end
 
 if not success or not Rayfield or not Rayfield.CreateWindow then
-    error("ไม่สามารถโหลด Rayfield UI Library ได้")
+    error("Unable to load Rayfield UI Library.")
 end
 
 local HttpService = cloneref(game:GetService("HttpService"))

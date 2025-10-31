@@ -1,9 +1,7 @@
--- ตรวจสอบว่าเป็นเกม Build A Boat For Treasure หรือไม่
 if game.PlaceId ~= 537413528 then
     return
 end
 
--- โหลด Rayfield UI Library
 local Rayfield
 local success
 
@@ -21,7 +19,6 @@ if not success or not Rayfield or not Rayfield.CreateWindow then
     error("ไม่สามารถโหลด Rayfield UI Library ได้")
 end
 
--- บริการและตัวแปรที่จำเป็น
 local HttpService = cloneref(game:GetService("HttpService"))
 local TeleportService = cloneref(game:GetService("TeleportService"))
 local Players = game:GetService("Players")
@@ -32,7 +29,6 @@ local httprequest = (syn and syn.request) or (http and http.request) or http_req
 local player = game.Players.LocalPlayer
 local Nplayer = game.Players.LocalPlayer.Name
 
--- ตัวแปรสำหรับ Auto Farm
 local Silent = false
 local clockTime = 0
 local running = false
@@ -43,11 +39,10 @@ local GoldPerHour = 0
 local lastGoldValue = player.Data.Gold.Value
 local IGBLOCK = player.Data.GoldBlock.Value
 
--- สร้างหน้าต่าง UI
 local Window = Rayfield:CreateWindow({
     Name = "YANZ HUB | Build A Boat For Treasure",
     LoadingTitle = "YANZ HUB",
-    LoadingSubtitle = "Made by @thereal_asu",
+    LoadingSubtitle = "Made by @lphisv5",
     Theme = "DarkBlue",
     DisableRayfieldPrompts = true,
     DisableBuildWarnings = true,
